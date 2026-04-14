@@ -223,7 +223,8 @@ function setOn(on){
 }
 
 function connect(){
-  const ws=new WebSocket(`ws://${location.host}`);
+  const proto=location.protocol==='https:'?'wss':'ws';
+  const ws=new WebSocket(`${proto}://${location.host}`);
   ws.onopen=()=>{
     fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected)});
     fetch('/api/history').then(r=>r.json()).then(h=>{
