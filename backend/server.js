@@ -87,6 +87,32 @@ app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state', (req, res) => res.json(deviceState));
 app.get('/api/history', (req, res) => res.json(history));
 
+// Odkryj dostępne kody metryk dla urządzenia
+app.get('/api/discover-codes', async (req, res) => {
+  if (!mainSn || !ACCESS_KEY) return res.json({ error: 'brak konfiguracji' });
+  const { date } = req.query;
+  const d = date || new Date().toISOString().split('T')[0];
+  const beginTime = `${d} 00:00:00`;
+  const endTime   = `${d} 23:59:59`;
+
+  // Testuj wszystkie możliwe prefiksy
+  const prefixes = ['BK011','BK012','BK021','BK022','BK031','BK041','BK051','BK061','BK071','BK081','BK091','BK101','BK111','BK121','BK131','BK141','BK151','BK161','BK171','BK181','BK191','BK201','BK211','BK221','BK231','BK241','BK251','BK261','BK271','BK281','BK291','BK301','BK311','BK321','BK331','BK341','BK351','BK361','BK371','BK381','BK391','BK401','BK411','BK421','BK431','BK441','BK451','BK461','BK471','BK481','BK491','BK501','BK511','BK521','BK531','BK541','BK551','BK561','BK571','BK581','BK591','BK601','BK611','BK621','BK631'];
+  const suffix = '-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA';
+  const working = [];
+  for (const prefix of prefixes) {
+    try {
+      const r = await ecoflowPost('/iot-open/sign/device/quota/data', {
+        sn: mainSn, params: { beginTime, endTime, code: prefix + suffix }
+      });
+      if (r.code === '0') {
+        working.push(prefix);
+        console.log(`✅ Działa prefiks: ${prefix}`);
+      }
+    } catch(e) {}
+  }
+  res.json({ working, tested: prefixes.length, sn: mainSn });
+});
+
 // Historia z API EcoFlow — dzienna/miesięczna
 app.get('/api/historical', async (req, res) => {
   const { period, date } = req.query; // period: day|month, date: YYYY-MM-DD lub YYYY-MM
