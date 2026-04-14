@@ -14,7 +14,7 @@ Web dashboard dla mikroinwertera EcoFlow STREAM Easy 1020W (BK01Z).
 2. URL: `https://github.com/TWOJ_LOGIN/ecoflow-stream-dashboard`
 3. Compose path: `docker-compose.yml`
 4. Dodaj zmienne środowiskowe:
-   - `DEVICE_SN` = numer seryjny urządzenia (np. `BK01Z1SACH3L4901`)
+   - `DEVICE_SN` = numer seryjny urządzenia (np. `BK01Z1SACxxxxxxxxxxx`)
    - `EF_ACCESS_KEY` = Access Key z developer.ecoflow.com
    - `EF_SECRET_KEY` = Secret Key z developer.ecoflow.com
 5. **Deploy the stack**
