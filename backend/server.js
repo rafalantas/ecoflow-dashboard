@@ -1,10 +1,13 @@
-const express = require('express');
-const http = require('http');
+const express  = require('express');
+const http     = require('http');
 const WebSocket = require('ws');
-const mqtt = require('mqtt');
-const path = require('path');
-const crypto = require('crypto');
-const axios = require('axios');
+const mqtt     = require('mqtt');
+const path     = require('path');
+const crypto   = require('crypto');
+const axios    = require('axios');
+const fs       = require('fs');
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uuidv4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -30,8 +33,7 @@ function makeSignedHeaders(accessKey, secretKey, bodyParams = {}) {
   let dataStr = '';
   if (Object.keys(bodyParams).length > 0) {
     const flat = flattenKeys(bodyParams);
-    const sortedKeys = Object.keys(flat).sort();
-    dataStr = sortedKeys.map(k => `${k}=${flat[k]}`).join('&') + '&';
+    dataStr = Object.keys(flat).sort().map(k => `${k}=${flat[k]}`).join('&') + '&';
   }
   const sigStr = `${dataStr}accessKey=${accessKey}&nonce=${nonce}&timestamp=${timestamp}`;
   const sign = crypto.createHmac('sha256', secretKey).update(sigStr).digest('hex');
@@ -46,124 +48,126 @@ async function ecoflowGet(url, queryParams = {}) {
   return resp.data;
 }
 
-async function ecoflowPost(url, body = {}) {
-  const headers = makeSignedHeaders(ACCESS_KEY, SECRET_KEY, body);
-  const resp = await axios.post(`${API_HOST}${url}`, body, { headers, timeout: 10000 });
-  return resp.data;
-}
-
-async function ecoflowPost(url, body = {}) {
-  const headers = makeSignedHeaders(ACCESS_KEY, SECRET_KEY, body);
-  const resp = await axios.post(`${API_HOST}${url}`, body, { headers, timeout: 10000 });
-  return resp.data;
-}
+// ─── Config ──────────────────────────────────────────────────────────────────
 
 const PORT       = process.env.PORT            || 8080;
 const DEVICE_SN  = process.env.DEVICE_SN       || '';
 const ACCESS_KEY = process.env.EF_ACCESS_KEY   || '';
 const SECRET_KEY = process.env.EF_SECRET_KEY   || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
+let   mainSn     = DEVICE_SN;
 
-let mainSn = DEVICE_SN; // będzie zaktualizowany po pobraniu głównego SN
+// ─── Lokalny licznik energii ──────────────────────────────────────────────────
+
+const ENERGY_FILE = '/data/energy.json';
+
+function loadEnergy() {
+  try {
+    if (fs.existsSync(ENERGY_FILE)) return JSON.parse(fs.readFileSync(ENERGY_FILE, 'utf8'));
+  } catch(e) {}
+  return { daily: {}, monthly: {} };
+}
+
+function saveEnergy() {
+  try {
+    fs.mkdirSync('/data', { recursive: true });
+    fs.writeFileSync(ENERGY_FILE, JSON.stringify(energyData, null, 2));
+  } catch(e) { console.error('Save energy error:', e.message); }
+}
+
+let energyData  = loadEnergy();
+let lastEnergyTs = Date.now();
+
+function accumulateEnergy() {
+  const now  = Date.now();
+  const dtH  = (now - lastEnergyTs) / 3600000; // godziny
+  lastEnergyTs = now;
+
+  if (dtH <= 0 || dtH > 0.1) return; // ignoruj przerwy > 6 minut
+
+  const pv1Wh  = (deviceState.pv1Power  || 0) * dtH;
+  const pv2Wh  = (deviceState.pv2Power  || 0) * dtH;
+  const feedWh = (deviceState.feedPower || 0) * dtH;
+
+  const today = new Date().toISOString().split('T')[0];
+  const month = today.substring(0, 7);
+
+  if (!energyData.daily[today])   energyData.daily[today]   = { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+  if (!energyData.monthly[month]) energyData.monthly[month] = { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+
+  for (const key of ['daily', 'monthly']) {
+    const bucket = key === 'daily' ? energyData.daily[today] : energyData.monthly[month];
+    bucket.pv1Wh  += pv1Wh;
+    bucket.pv2Wh  += pv2Wh;
+    bucket.pvWh   += pv1Wh + pv2Wh;
+    bucket.feedWh += feedWh;
+  }
+
+  // Usuń dane starsze niż 90 dni
+  const cutoff = new Date(Date.now() - 90 * 24 * 3600000).toISOString().split('T')[0];
+  Object.keys(energyData.daily).forEach(k => { if (k < cutoff) delete energyData.daily[k]; });
+}
+
+// Akumuluj i zapisuj co minutę
+setInterval(() => { accumulateEnergy(); saveEnergy(); }, 60000);
+
+// ─── State ────────────────────────────────────────────────────────────────────
 
 let deviceState = {
   connected: false, lastUpdate: null,
-  pvPower: 0, pv1Power: 0, pv2Power: 0,
-  gridPower: 0, feedPower: 0, fromGrid: 0,
-  loadPower: 0, battPower: 0, battSoc: 0,
+  pv1Power: 0, pv2Power: 0, pvPower: 0,
+  feedPower: 0, fromGrid: 0, gridPower: 0,
   acVoltage: 0, acFreq: 0, acCurrent: 0,
   pv1Voltage: 0, pv2Voltage: 0,
   pv1Current: 0, pv2Current: 0,
-  invTemp: 0, gridStatus: '', feedGridMode: 0,
+  invTemp: 0, gridStatus: '',
 };
 
 let history = { feed: [], pv1: [], pv2: [], timestamps: [] };
 const MAX_HISTORY = 300;
 
-const app = express();
-const server = http.createServer(app);
+// ─── Server ───────────────────────────────────────────────────────────────────
+
+const app     = express();
+const server  = http.createServer(app);
 const WSServer = new WebSocket.Server({ server });
+
 app.use(express.static(path.join(__dirname, '../frontend/public')));
-app.get('/api/state', (req, res) => res.json(deviceState));
+app.get('/api/state',   (req, res) => res.json(deviceState));
 app.get('/api/history', (req, res) => res.json(history));
 
-// Odkryj dostępne kody metryk dla urządzenia
-app.get('/api/discover-codes', async (req, res) => {
-  if (!mainSn || !ACCESS_KEY) return res.json({ error: 'brak konfiguracji' });
-  const { date } = req.query;
-  const d = date || new Date().toISOString().split('T')[0];
-  const beginTime = `${d} 00:00:00`;
-  const endTime   = `${d} 23:59:59`;
-
-  // Testuj wszystkie możliwe prefiksy
-  const prefixes = ['BK011','BK012','BK021','BK022','BK031','BK041','BK051','BK061','BK071','BK081','BK091','BK101','BK111','BK121','BK131','BK141','BK151','BK161','BK171','BK181','BK191','BK201','BK211','BK221','BK231','BK241','BK251','BK261','BK271','BK281','BK291','BK301','BK311','BK321','BK331','BK341','BK351','BK361','BK371','BK381','BK391','BK401','BK411','BK421','BK431','BK441','BK451','BK461','BK471','BK481','BK491','BK501','BK511','BK521','BK531','BK541','BK551','BK561','BK571','BK581','BK591','BK601','BK611','BK621','BK631'];
-  const suffix = '-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA';
-  const working = [];
-  for (const prefix of prefixes) {
-    try {
-      const r = await ecoflowPost('/iot-open/sign/device/quota/data', {
-        sn: mainSn, params: { beginTime, endTime, code: prefix + suffix }
-      });
-      if (r.code === '0') {
-        working.push(prefix);
-        console.log(`✅ Działa prefiks: ${prefix}`);
-      }
-    } catch(e) {}
-  }
-  res.json({ working, tested: prefixes.length, sn: mainSn });
-});
-
-// Historia z API EcoFlow — dzienna/miesięczna
-app.get('/api/historical', async (req, res) => {
-  const { period, date } = req.query; // period: day|month, date: YYYY-MM-DD lub YYYY-MM
-  if (!mainSn || !ACCESS_KEY) return res.json({ error: 'brak konfiguracji' });
-
-  try {
-    let beginTime, endTime;
-    if (period === 'month') {
-      const [y, m] = date.split('-');
-      beginTime = `${y}-${m}-01 00:00:00`;
-      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
-      endTime = `${y}-${m}-${lastDay} 23:59:59`;
-    } else {
-      beginTime = `${date} 00:00:00`;
-      endTime   = `${date} 23:59:59`;
-    }
-
-    // Z dokumentacji: BK621 to stały prefiks kodu dla wszystkich urządzeń STREAM
-    // Czas musi być w UTC — konwertuj z lokalnego
-    const allCodes = [
-      { type: 'pv',   code: 'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA' },
-      { type: 'grid', code: 'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA' },
-      { type: 'feed', code: 'BK621-App-HOME-INDEPENDENCE-PERCENT-FLOW-indep-progress_bar-NOTDISTINGUISH-MASTER_DATA' },
-    ];
-
-    const results = {};
-    for (const { type, code } of allCodes) {
-      const r = await ecoflowPost('/iot-open/sign/device/quota/data', {
-        sn: mainSn, params: { beginTime, endTime, code }
-      });
-      console.log(`📅 ${type}: code=${r.code} msg=${r.message} data=${JSON.stringify(r.data?.data || r.data || '').substring(0,150)}`);
-      results[type] = r;
-    }
-
-    const pvData   = results.pv?.data?.data   || results.pv?.data   || [];
-    const gridData = results.grid?.data?.data || results.grid?.data || [];
-
-    const pvWh   = Array.isArray(pvData)   ? parseFloat(pvData[0]?.indexValue   || 0) : 0;
-    const feedWh = Array.isArray(gridData) ? parseFloat(gridData.find(d => d.extra === '2')?.indexValue || 0) : 0;
-    const fromWh = Array.isArray(gridData) ? parseFloat(gridData.find(d => d.extra === '1')?.indexValue || 0) : 0;
-
-    res.json({
-      period, date, beginTime, endTime,
-      pvWh, feedWh, fromGridWh: fromWh,
-      raw: results
-    });
-  } catch(e) {
-    console.error('Historical error:', e.message);
-    res.json({ error: e.message });
+// Historia lokalna
+app.get('/api/historical', (req, res) => {
+  const { period, date } = req.query;
+  accumulateEnergy();
+  if (period === 'month') {
+    const data = energyData.monthly[date] || { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+    const days = Object.keys(energyData.daily).filter(d => d.startsWith(date)).length;
+    res.json({ period, date, ...roundEnergy(data), days });
+  } else {
+    const data = energyData.daily[date] || { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+    res.json({ period, date, ...roundEnergy(data) });
   }
 });
+
+// Wszystkie dostępne dni — do kalendarza
+app.get('/api/energy-days', (req, res) => {
+  accumulateEnergy();
+  const days = {};
+  Object.entries(energyData.daily).forEach(([d, v]) => {
+    days[d] = { pvKwh: +(v.pvWh/1000).toFixed(3), feedKwh: +(v.feedWh/1000).toFixed(3) };
+  });
+  res.json(days);
+});
+
+function roundEnergy(e) {
+  return {
+    pv1Wh:  Math.round(e.pv1Wh),
+    pv2Wh:  Math.round(e.pv2Wh),
+    pvWh:   Math.round(e.pvWh),
+    feedWh: Math.round(e.feedWh),
+  };
+}
 
 function broadcast(data) {
   const msg = JSON.stringify(data);
@@ -180,38 +184,41 @@ function recordHistory() {
   }
 }
 
+// ─── Parse MQTT params ────────────────────────────────────────────────────────
+
 function applyParams(params) {
   let updated = false;
-  const set = (key, field, transform) => {
-    if (params[key] !== undefined && params[key] !== null) {
-      const val = transform ? transform(params[key]) : params[key];
-      if (val !== deviceState[field]) {
-        deviceState[field] = val;
-        updated = true;
-      }
-    }
-  };
   const r1 = v => Math.round(v * 10) / 10;
   const r2 = v => Math.round(v * 100) / 100;
 
-  // PV - rzeczywiste nazwy z BK01Z
-  set('powGetPv',            'pv1Power',   r1);
-  set('powGetPv2',           'pv2Power',   r1);
-  // pvPower = suma PV1+PV2
+  const set = (key, field, fn) => {
+    if (params[key] !== undefined && params[key] !== null) {
+      const val = fn(params[key]);
+      if (Math.abs((deviceState[field] || 0) - val) > 0.05 || deviceState[field] !== val) {
+        deviceState[field] = val; updated = true;
+      }
+    }
+  };
+
+  set('powGetPv',          'pv1Power',   r1);
+  set('powGetPv2',         'pv2Power',   r1);
+  set('gridConnectionPower','gridPower',  r1);
+  set('gridConnectionVol', 'acVoltage',  r1);
+  set('gridConnectionFreq','acFreq',     r2);
+  set('gridConnectionAmp', 'acCurrent',  r2);
+  set('plugInInfoPvVol',   'pv1Voltage', r1);
+  set('plugInInfoPv2Vol',  'pv2Voltage', r1);
+  set('plugInInfoPvAmp',   'pv1Current', r2);
+  set('plugInInfoPv2Amp',  'pv2Current', r2);
+  set('invNtcTemp3',       'invTemp',    v => v);
+  set('gridConnectionSta', 'gridStatus', v => v);
+
   if (params['powGetPv'] !== undefined || params['powGetPv2'] !== undefined) {
-    deviceState.pvPower = Math.round(((deviceState.pv1Power||0) + (deviceState.pv2Power||0)) * 10) / 10;
+    deviceState.pvPower = r1((deviceState.pv1Power || 0) + (deviceState.pv2Power || 0));
     updated = true;
   }
-  set('powGetPvSum',         'pvPower',    r1); // fallback jeśli dostępne
 
-  // Sieć
-  set('gridConnectionPower', 'gridPower',  r1);
-  set('gridConnectionVol',   'acVoltage',  r1);
-  set('gridConnectionFreq',  'acFreq',     r2);
-  set('gridConnectionAmp',   'acCurrent',  r2);
-
-  // Dla STREAM Easy: gridConnectionPower dodatnie = feed-in (oddawanie do sieci)
-  // ujemne = pobieranie z sieci
+  // gridConnectionPower dodatnie = feed-in (dla STREAM Easy)
   if (params['gridConnectionPower'] !== undefined) {
     const g = params['gridConnectionPower'];
     deviceState.feedPower = g > 0 ? r1(g) : 0;
@@ -219,50 +226,26 @@ function applyParams(params) {
     updated = true;
   }
 
-  // Obciążenie domu
-  set('powGetSysLoad',       'loadPower',  r1);
-
-  // Bateria
-  set('powGetBpCms',         'battPower',  r1);
-  set('cmsBattSoc',          'battSoc',    r1);
-  set('feedGridMode',        'feedGridMode', v => v);
-
-  // PV napięcia i prądy
-  set('plugInInfoPvVol',     'pv1Voltage', r1);
-  set('plugInInfoPv2Vol',    'pv2Voltage', r1);
-  set('plugInInfoPvAmp',     'pv1Current', r2);
-  set('plugInInfoPv2Amp',    'pv2Current', r2);
-
-  // Temperatura
-  set('invNtcTemp3',         'invTemp',    v => v);
-
-  // Status połączenia
-  set('gridConnectionSta',   'gridStatus', v => v);
-
-  // STREAM Easy nie mierzy obciążenia domu — pomijamy
-
   if (updated) {
     deviceState.lastUpdate = new Date().toISOString();
+    accumulateEnergy(); // zliczaj energię przy każdej aktualizacji
     recordHistory();
     broadcast({ type: 'state', data: deviceState });
-    console.log(`📊 pv1=${deviceState.pv1Power}W pv2=${deviceState.pv2Power}W grid=${deviceState.gridPower}W feed=${deviceState.feedPower}W load=${deviceState.loadPower}W`);
+    console.log(`📊 pv1=${deviceState.pv1Power}W pv2=${deviceState.pv2Power}W feed=${deviceState.feedPower}W`);
   }
   return updated;
 }
 
+// ─── MQTT ─────────────────────────────────────────────────────────────────────
+
 async function getMainSn() {
   try {
-    console.log(`🔍 Pobieranie głównego SN dla ${DEVICE_SN}...`);
     const data = await ecoflowGet('/iot-open/sign/device/system/main/sn', { sn: DEVICE_SN });
-    if (data.code === '0' && data.data && data.data.sn) {
+    if (data.code === '0' && data.data?.sn) {
       mainSn = data.data.sn;
       console.log(`✅ Główny SN: ${mainSn}`);
-    } else {
-      console.log(`⚠️  Nie udało się pobrać głównego SN, używam ${DEVICE_SN}`);
     }
-  } catch (e) {
-    console.log(`⚠️  getMainSn error: ${e.message}, używam ${DEVICE_SN}`);
-  }
+  } catch(e) { console.log(`⚠️  getMainSn: ${e.message}`); }
 }
 
 async function fetchAllQuotas() {
@@ -270,65 +253,65 @@ async function fetchAllQuotas() {
     const data = await ecoflowGet('/iot-open/sign/device/quota/all', { sn: mainSn });
     if (data.code === '0' && data.data && Object.keys(data.data).length > 0) {
       applyParams(data.data);
-    } else {
-      console.log('📊 REST quota: brak danych (code:', data.code, ')');
     }
-  } catch (e) {
-    console.error('❌ REST quota failed:', e.message);
-  }
-}
-
-async function getMqttCredentials() {
-  const data = await ecoflowGet('/iot-open/sign/certification');
-  if (data.code !== '0') throw new Error(`API error ${data.code}: ${data.message}`);
-  console.log(`✅ MQTT credentials OK — account: ${data.data.certificateAccount}`);
-  return data.data;
+  } catch(e) { console.error('REST quota error:', e.message); }
 }
 
 async function startMqtt() {
-  if (!ACCESS_KEY || !SECRET_KEY) {
-    console.error('❌ Brak EF_ACCESS_KEY lub EF_SECRET_KEY!');
-    startDemoMode(); return;
-  }
-  if (!DEVICE_SN) { console.error('❌ Brak DEVICE_SN!'); return; }
+  if (!ACCESS_KEY || !SECRET_KEY) { startDemoMode(); return; }
 
-  // Pobierz główny SN systemu
   await getMainSn();
 
   let creds;
-  try { creds = await getMqttCredentials(); }
-  catch (e) {
-    console.error('❌ Błąd credentials:', e.message);
+  try {
+    const data = await ecoflowGet('/iot-open/sign/certification');
+    if (data.code !== '0') throw new Error(data.message);
+    creds = data.data;
+    console.log(`✅ MQTT credentials — account: ${creds.certificateAccount}`);
+  } catch(e) {
+    console.error('❌ Credentials error:', e.message);
     setTimeout(startMqtt, 30000); return;
   }
 
-  const clientId = `open-${uuidv4()}`;
-  const mqttUrl = `mqtts://${creds.url}:${creds.port}`;
-  console.log(`📡 MQTT łączę: ${mqttUrl}`);
-
-  const client = mqtt.connect(mqttUrl, {
-    clientId,
+  const client = mqtt.connect(`mqtts://${creds.url}:${creds.port}`, {
+    clientId: `open-${uuidv4()}`,
     username: creds.certificateAccount,
     password: creds.certificatePassword,
     rejectUnauthorized: false,
     reconnectPeriod: 5000,
   });
 
-  // Temat quota — urządzenie wysyła dane automatycznie
-  const quotaTopic  = `/open/${creds.certificateAccount}/${mainSn}/quota`;
-  const statusTopic = `/open/${creds.certificateAccount}/${mainSn}/status`;
+  const quotaTopic    = `/open/${creds.certificateAccount}/${mainSn}/quota`;
+  const statusTopic   = `/open/${creds.certificateAccount}/${mainSn}/status`;
+  const getReplyTopic = `/open/${creds.certificateAccount}/${mainSn}/get_reply`;
+  const getTopic      = `/open/${creds.certificateAccount}/${mainSn}/get`;
 
   client.on('connect', () => {
     console.log('✅ MQTT połączony!');
     deviceState.connected = true;
     broadcast({ type: 'status', connected: true });
-
-    client.subscribe(quotaTopic,  err => { if (!err) console.log(`📡 Sub: ${quotaTopic}`); });
-    client.subscribe(statusTopic, err => { if (!err) console.log(`📡 Sub: ${statusTopic}`); });
-
-    // REST natychmiast + co 30s jako backup
+    client.subscribe(quotaTopic);
+    client.subscribe(statusTopic);
+    client.subscribe(getReplyTopic);
+    console.log(`📡 Sub: ${quotaTopic}`);
     fetchAllQuotas();
     setInterval(fetchAllQuotas, 30000);
+
+    // Zapytaj urządzenie przez MQTT get o dostępne parametry
+    setTimeout(() => {
+      // Próbuj pobrać historię dzienną przez MQTT get
+      const msg = JSON.stringify({
+        id: String(Date.now()),
+        version: '1.0',
+        params: { quotas: [
+          'quota_cloud_ts',
+          'powGetPvSum',
+          'gridConnectionPower',
+        ]}
+      });
+      client.publish(getTopic, msg);
+      console.log(`📤 MQTT get -> ${getTopic}`);
+    }, 3000);
   });
 
   client.on('message', (topic, payload) => {
@@ -336,49 +319,53 @@ async function startMqtt() {
       const str = payload.toString('utf8');
       if (!str.startsWith('{')) return;
       const data = JSON.parse(str);
-
       if (topic.endsWith('/status')) {
-        const online = data.params && data.params.status === 1;
+        const online = data.params?.status === 1;
         deviceState.connected = online;
         broadcast({ type: 'status', connected: online });
-        console.log(`📡 Status: ${online ? 'online' : 'offline'}`);
         return;
       }
-
-      // Quota — dane urządzenia
-      const params = data.params || data;
-      if (params && typeof params === 'object' && Object.keys(params).length > 0) {
-        console.log('📨 MQTT keys:', Object.keys(params).join(', '));
-        console.log('📨 MQTT vals:', JSON.stringify(params).substring(0, 400));
-        applyParams(params);
+      if (topic.endsWith('/get_reply')) {
+        console.log('📥 get_reply:', JSON.stringify(data).substring(0, 500));
+        return;
       }
-    } catch (e) { /* ignoruj */ }
+      const params = data.params || data;
+      if (params && typeof params === 'object') applyParams(params);
+    } catch(e) {}
   });
 
   client.on('error', err => console.error('MQTT error:', err.message));
   client.on('close', () => {
     deviceState.connected = false;
     broadcast({ type: 'status', connected: false });
-    console.log('⚠️  MQTT rozłączony');
   });
 }
 
+// ─── Demo mode ────────────────────────────────────────────────────────────────
+
 function startDemoMode() {
-  console.log('🎭 Demo mode');
+  console.log('🎭 Demo mode (brak kluczy API)');
   let t = 0;
   setInterval(() => {
     t += 0.1;
-    deviceState.pvPower   = Math.round(600 + 200 * Math.sin(t) + Math.random() * 20);
-    deviceState.loadPower = Math.round(300 + 100 * Math.sin(t * 0.7));
-    deviceState.feedPower = Math.max(0, Math.round(deviceState.pvPower - deviceState.loadPower));
-    deviceState.gridPower = -(deviceState.feedPower);
-    deviceState.battSoc   = Math.round(50 + 30 * Math.sin(t * 0.1));
-    deviceState.connected = true;
+    deviceState.pv1Power   = Math.round(300 + 200 * Math.sin(t) + Math.random() * 10);
+    deviceState.pv2Power   = Math.round(300 + 200 * Math.sin(t + 0.1) + Math.random() * 10);
+    deviceState.pvPower    = deviceState.pv1Power + deviceState.pv2Power;
+    deviceState.feedPower  = deviceState.pvPower;
+    deviceState.acVoltage  = 230;
+    deviceState.acFreq     = 50;
+    deviceState.pv1Voltage = 38.5;
+    deviceState.pv2Voltage = 38.3;
+    deviceState.invTemp    = 35;
+    deviceState.connected  = true;
     deviceState.lastUpdate = new Date().toISOString();
+    accumulateEnergy();
     recordHistory();
     broadcast({ type: 'state', data: deviceState });
   }, 2000);
 }
+
+// ─── Start ────────────────────────────────────────────────────────────────────
 
 server.listen(PORT, () => {
   console.log(`🚀 Dashboard: http://localhost:${PORT}`);
