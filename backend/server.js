@@ -126,11 +126,12 @@ function applyParams(params) {
   set('gridConnectionFreq',  'acFreq',     r2);
   set('gridConnectionAmp',   'acCurrent',  r2);
 
-  // Feed-in = gridConnectionPower ujemny
+  // Dla STREAM Easy: gridConnectionPower dodatnie = feed-in (oddawanie do sieci)
+  // ujemne = pobieranie z sieci
   if (params['gridConnectionPower'] !== undefined) {
     const g = params['gridConnectionPower'];
-    deviceState.feedPower  = g < 0 ? r1(Math.abs(g)) : 0;
-    deviceState.fromGrid   = g > 0 ? r1(g) : 0;
+    deviceState.feedPower = g > 0 ? r1(g) : 0;
+    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
     updated = true;
   }
 
@@ -153,6 +154,8 @@ function applyParams(params) {
 
   // Status połączenia
   set('gridConnectionSta',   'gridStatus', v => v);
+
+  // STREAM Easy nie mierzy obciążenia domu — pomijamy
 
   if (updated) {
     deviceState.lastUpdate = new Date().toISOString();
