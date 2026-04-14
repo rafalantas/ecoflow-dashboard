@@ -1,252 +1,375 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EcoFlow STREAM — Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#0a0e14;--sur:#111820;--brd:#1e2d3d;
-    --pv1:#f5a623;--pv2:#e05c1a;--grn:#39d353;--blu:#58a6ff;--red:#ff6b6b;--cyn:#56d0e0;
-    --t1:#e6edf3;--t2:#7d8590;
-    --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh}
+const express  = require('express');
+const http     = require('http');
+const WebSocket = require('ws');
+const mqtt     = require('mqtt');
+const path     = require('path');
+const crypto   = require('crypto');
+const axios    = require('axios');
+const fs       = require('fs');
 
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-bottom:1px solid var(--brd);background:var(--sur)}
-  .tl{display:flex;align-items:center;gap:10px}
-  .logo{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;color:var(--pv1)}
-  .did{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--brd);padding:3px 8px;border-radius:4px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .5s}
-  .dot.on{background:var(--grn);box-shadow:0 0 6px var(--grn)}
-  .tr{font-family:var(--mono);font-size:11px;color:var(--t2)}
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  .main{padding:18px 22px;max-width:980px;margin:0 auto}
-  .sec{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:20px;margin-bottom:14px}
-  .stitle{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:18px}
-
-  /* Flow */
-  .flow{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
-  .fn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px}
-  .ficon{font-size:22px;margin-bottom:2px}
-  .flb{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em}
-  .fv{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1}
-  .fu{font-size:12px;font-weight:400;color:var(--t2)}
-  .fs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:2px}
-  .arr{font-size:20px;color:var(--brd);flex-shrink:0;transition:color .5s}
-  .arr.a1{color:var(--pv1)}.arr.a2{color:var(--pv2)}.arr.ag{color:var(--grn)}
-
-  /* Cards */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
-  .card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:14px;position:relative;overflow:hidden}
-  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-  .c1::before{background:var(--pv1)}.c2::before{background:var(--pv2)}
-  .cg::before{background:var(--grn)}.cb::before{background:var(--blu)}.cc::before{background:var(--cyn)}
-  .clb{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
-  .cv{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1}
-  .cv .u{font-size:10px;color:var(--t2);font-weight:400}
-  .cs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px}
-  .bar{margin-top:7px;height:3px;background:var(--brd);border-radius:2px;overflow:hidden}
-  .bf{height:100%;border-radius:2px;transition:width .5s}
-
-  /* Chart */
-  canvas{width:100%!important;display:block}
-  .chdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .leg{display:flex;gap:12px}
-  .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--t2)}
-  .ld{width:8px;height:8px;border-radius:50%}
-
-  #bnr{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--red);text-align:center}
-
-  @media(max-width:600px){.main{padding:10px}.fv{font-size:22px}.grid{grid-template-columns:repeat(2,1fr)}}
-</style>
-</head>
-<body>
-
-<div class="topbar">
-  <div class="tl">
-    <span class="logo">EcoFlow STREAM Easy</span>
-    <span class="did">BK01Z1SACH3L4901</span>
-    <div class="dot" id="dot"></div>
-  </div>
-  <div class="tr" id="ts">—</div>
-</div>
-
-<div class="main">
-  <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
-
-  <!-- Przepływ -->
-  <div class="sec">
-    <div class="stitle">// przepływ energii</div>
-    <div class="flow">
-      <div class="fn">
-        <div class="ficon">☀️</div>
-        <div class="flb" style="color:var(--pv1)">Panel PV1</div>
-        <div class="fv" id="pv1" style="color:var(--pv1)">–<span class="fu"> W</span></div>
-        <div class="fs" id="pv1s"></div>
-      </div>
-      <div class="arr" id="a1">+</div>
-      <div class="fn">
-        <div class="ficon">☀️</div>
-        <div class="flb" style="color:var(--pv2)">Panel PV2</div>
-        <div class="fv" id="pv2" style="color:var(--pv2)">–<span class="fu"> W</span></div>
-        <div class="fs" id="pv2s"></div>
-      </div>
-      <div class="arr" id="a2">→</div>
-      <div class="fn">
-        <div class="ficon">⚡</div>
-        <div class="flb">Feed-in</div>
-        <div class="fv" id="feed" style="color:var(--grn)">–<span class="fu"> W</span></div>
-        <div class="fs" id="feeds"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Karty -->
-  <div class="grid">
-    <div class="card c1">
-      <div class="clb">PV1 napięcie</div>
-      <div class="cv" id="pv1v">–<span class="u"> V</span></div>
-      <div class="cs" id="pv1a"></div>
-    </div>
-    <div class="card c2">
-      <div class="clb">PV2 napięcie</div>
-      <div class="cv" id="pv2v">–<span class="u"> V</span></div>
-      <div class="cs" id="pv2a"></div>
-    </div>
-    <div class="card cg">
-      <div class="clb">Feed-in</div>
-      <div class="cv" id="feedcard">–<span class="u"> W</span></div>
-      <div class="bar"><div class="bf" id="feedbar" style="background:var(--grn)"></div></div>
-      <div class="cs">max 1020W</div>
-    </div>
-    <div class="card c1">
-      <div class="clb">PV razem</div>
-      <div class="cv" id="pvtot">–<span class="u"> W</span></div>
-      <div class="bar"><div class="bf" id="pvbar" style="background:linear-gradient(90deg,var(--pv1),var(--pv2))"></div></div>
-    </div>
-    <div class="card cc">
-      <div class="clb">Napięcie AC</div>
-      <div class="cv" id="acv">–<span class="u"> V</span></div>
-      <div class="cs" id="acf"></div>
-    </div>
-    <div class="card cb">
-      <div class="clb">Temp. inwertera</div>
-      <div class="cv" id="temp">–<span class="u"> °C</span></div>
-    </div>
-  </div>
-
-  <!-- Wykres -->
-  <div class="sec">
-    <div class="chdr">
-      <div class="stitle" style="margin:0">// historia sesji</div>
-      <div class="leg">
-        <div class="li"><div class="ld" style="background:var(--pv1)"></div>PV1</div>
-        <div class="li"><div class="ld" style="background:var(--pv2)"></div>PV2</div>
-        <div class="li"><div class="ld" style="background:var(--grn)"></div>Feed-in</div>
-      </div>
-    </div>
-    <canvas id="chart" height="100"></canvas>
-  </div>
-</div>
-
-<script>
-let cd={pv1:[],pv2:[],feed:[],ts:[]};
-const cv=document.getElementById('chart'),cx=cv.getContext('2d');
-
-function drawChart(){
-  const dpr=window.devicePixelRatio||1,w=cv.offsetWidth,h=100;
-  cv.width=w*dpr;cv.height=h*dpr;cx.scale(dpr,dpr);cx.clearRect(0,0,w,h);
-  const all=[...cd.pv1,...cd.pv2,...cd.feed],mx=Math.max(...all,100),n=cd.feed.length;
-  if(n<2)return;
-  const p={t:6,b:16,l:40,r:6},cw=w-p.l-p.r,ch=h-p.t-p.b;
-  cx.strokeStyle='rgba(255,255,255,.04)';cx.lineWidth=1;
-  for(let i=0;i<=4;i++){
-    const y=p.t+(ch/4)*i;
-    cx.beginPath();cx.moveTo(p.l,y);cx.lineTo(w-p.r,y);cx.stroke();
-    cx.fillStyle='rgba(125,133,144,.6)';cx.font='9px IBM Plex Mono,monospace';cx.textAlign='right';
-    cx.fillText(Math.round(mx*(1-i/4))+'W',p.l-4,y+3);
-  }
-  function line(data,color){
-    cx.beginPath();cx.strokeStyle=color;cx.lineWidth=1.5;cx.lineJoin='round';
-    for(let i=0;i<data.length;i++){
-      const x=p.l+(i/(n-1))*cw,y=p.t+ch-(data[i]/mx)*ch;
-      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
-    }cx.stroke();
-  }
-  line(cd.feed,'#39d353');
-  line(cd.pv2,'#e05c1a');
-  line(cd.pv1,'#f5a623');
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
 }
 
-function f(v,d=0){return v>0?(d>0?v.toFixed(d):Math.round(v)):'–'}
-
-function update(s){
-  const pv1=s.pv1Power||0,pv2=s.pv2Power||0;
-  const pv=s.pvPower||(pv1+pv2);
-  const feed=s.feedPower||0;
-  const pct=Math.min(100,Math.round(pv/1020*100));
-  const fpct=Math.min(100,Math.round(feed/1020*100));
-
-  document.getElementById('pv1').innerHTML=`${f(pv1)}<span class="fu"> W</span>`;
-  document.getElementById('pv2').innerHTML=`${f(pv2)}<span class="fu"> W</span>`;
-  document.getElementById('feed').innerHTML=`${f(feed)}<span class="fu"> W</span>`;
-  document.getElementById('feeds').textContent=feed>5?'do sieci ↑':'brak feed-in';
-  document.getElementById('pv1s').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
-  document.getElementById('pv2s').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
-
-  // Strzałki
-  document.getElementById('a1').className=`arr${pv1>5?' a1':pv2>5?' a2':''}`;
-  document.getElementById('a2').className=`arr${feed>5?' ag':''}`;
-
-  // Karty
-  document.getElementById('pv1v').innerHTML=s.pv1Voltage>0?`${s.pv1Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
-  document.getElementById('pv1a').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
-  document.getElementById('pv2v').innerHTML=s.pv2Voltage>0?`${s.pv2Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
-  document.getElementById('pv2a').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
-  document.getElementById('feedcard').innerHTML=`${f(feed)}<span class="u"> W</span>`;
-  document.getElementById('feedbar').style.width=fpct+'%';
-  document.getElementById('pvtot').innerHTML=`${f(pv)}<span class="u"> W</span>`;
-  document.getElementById('pvbar').style.width=pct+'%';
-  document.getElementById('acv').innerHTML=s.acVoltage>0?`${s.acVoltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
-  document.getElementById('acf').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
-  document.getElementById('temp').innerHTML=s.invTemp>0?`${s.invTemp}<span class="u"> °C</span>`:`–<span class="u"> °C</span>`;
-
-  if(s.lastUpdate)document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
+function flattenKeys(obj, prefix = '') {
+  let res = {};
+  for (const k of Object.keys(obj)) {
+    const fullKey = prefix ? `${prefix}.${k}` : k;
+    if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+      res = { ...res, ...flattenKeys(obj[k], fullKey) };
+    } else { res[fullKey] = obj[k]; }
+  }
+  return res;
 }
 
-function setOn(on){
-  document.getElementById('dot').classList.toggle('on',on);
-  document.getElementById('bnr').style.display=on?'none':'block';
+function makeSignedHeaders(accessKey, secretKey, bodyParams = {}) {
+  const nonce = String(100000 + Math.floor(Math.random() * 100000));
+  const timestamp = String(Date.now());
+  let dataStr = '';
+  if (Object.keys(bodyParams).length > 0) {
+    const flat = flattenKeys(bodyParams);
+    dataStr = Object.keys(flat).sort().map(k => `${k}=${flat[k]}`).join('&') + '&';
+  }
+  const sigStr = `${dataStr}accessKey=${accessKey}&nonce=${nonce}&timestamp=${timestamp}`;
+  const sign = crypto.createHmac('sha256', secretKey).update(sigStr).digest('hex');
+  return { 'Content-Type': 'application/json;charset=UTF-8', accessKey, nonce, timestamp, sign };
 }
 
-function connect(){
-  const ws=new WebSocket(`ws://${location.host}`);
-  ws.onopen=()=>{
-    fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected)});
-    fetch('/api/history').then(r=>r.json()).then(h=>{
-      cd={pv1:h.pv1||[],pv2:h.pv2||[],feed:h.feed||[],ts:h.timestamps||[]};drawChart();
-    });
+async function ecoflowGet(url, queryParams = {}) {
+  const headers = makeSignedHeaders(ACCESS_KEY, SECRET_KEY, {});
+  const qs = Object.keys(queryParams).length > 0
+    ? '?' + Object.entries(queryParams).map(([k, v]) => `${k}=${v}`).join('&') : '';
+  const resp = await axios.get(`${API_HOST}${url}${qs}`, { headers, timeout: 10000 });
+  return resp.data;
+}
+
+// ─── Config ──────────────────────────────────────────────────────────────────
+
+const PORT       = process.env.PORT            || 8080;
+const DEVICE_SN  = process.env.DEVICE_SN       || '';
+const ACCESS_KEY = process.env.EF_ACCESS_KEY   || '';
+const SECRET_KEY = process.env.EF_SECRET_KEY   || '';
+const API_HOST   = 'https://api-e.ecoflow.com';
+let   mainSn     = DEVICE_SN;
+
+// ─── Lokalny licznik energii ──────────────────────────────────────────────────
+
+const ENERGY_FILE = '/data/energy.json';
+
+function loadEnergy() {
+  try {
+    if (fs.existsSync(ENERGY_FILE)) return JSON.parse(fs.readFileSync(ENERGY_FILE, 'utf8'));
+  } catch(e) {}
+  return { daily: {}, monthly: {} };
+}
+
+function saveEnergy() {
+  try {
+    fs.mkdirSync('/data', { recursive: true });
+    fs.writeFileSync(ENERGY_FILE, JSON.stringify(energyData, null, 2));
+  } catch(e) { console.error('Save energy error:', e.message); }
+}
+
+let energyData  = loadEnergy();
+let lastEnergyTs = Date.now();
+
+function accumulateEnergy() {
+  const now  = Date.now();
+  const dtH  = (now - lastEnergyTs) / 3600000; // godziny
+  lastEnergyTs = now;
+
+  if (dtH <= 0 || dtH > 0.1) return; // ignoruj przerwy > 6 minut
+
+  const pv1Wh  = (deviceState.pv1Power  || 0) * dtH;
+  const pv2Wh  = (deviceState.pv2Power  || 0) * dtH;
+  const feedWh = (deviceState.feedPower || 0) * dtH;
+
+  const today = new Date().toISOString().split('T')[0];
+  const month = today.substring(0, 7);
+
+  if (!energyData.daily[today])   energyData.daily[today]   = { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+  if (!energyData.monthly[month]) energyData.monthly[month] = { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+
+  for (const key of ['daily', 'monthly']) {
+    const bucket = key === 'daily' ? energyData.daily[today] : energyData.monthly[month];
+    bucket.pv1Wh  += pv1Wh;
+    bucket.pv2Wh  += pv2Wh;
+    bucket.pvWh   += pv1Wh + pv2Wh;
+    bucket.feedWh += feedWh;
+  }
+
+  // Usuń dane starsze niż 90 dni
+  const cutoff = new Date(Date.now() - 90 * 24 * 3600000).toISOString().split('T')[0];
+  Object.keys(energyData.daily).forEach(k => { if (k < cutoff) delete energyData.daily[k]; });
+}
+
+// Akumuluj i zapisuj co minutę
+setInterval(() => { accumulateEnergy(); saveEnergy(); }, 60000);
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let deviceState = {
+  connected: false, lastUpdate: null,
+  pv1Power: 0, pv2Power: 0, pvPower: 0,
+  feedPower: 0, fromGrid: 0, gridPower: 0,
+  acVoltage: 0, acFreq: 0, acCurrent: 0,
+  pv1Voltage: 0, pv2Voltage: 0,
+  pv1Current: 0, pv2Current: 0,
+  invTemp: 0, gridStatus: '',
+};
+
+let history = { feed: [], pv1: [], pv2: [], timestamps: [] };
+const MAX_HISTORY = 300;
+
+// ─── Server ───────────────────────────────────────────────────────────────────
+
+const app     = express();
+const server  = http.createServer(app);
+const WSServer = new WebSocket.Server({ server });
+
+app.use(express.static(path.join(__dirname, '../frontend/public')));
+app.get('/api/state',   (req, res) => res.json(deviceState));
+app.get('/api/history', (req, res) => res.json(history));
+
+// Historia lokalna
+app.get('/api/historical', (req, res) => {
+  const { period, date } = req.query;
+  accumulateEnergy();
+  if (period === 'month') {
+    const data = energyData.monthly[date] || { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+    const days = Object.keys(energyData.daily).filter(d => d.startsWith(date)).length;
+    res.json({ period, date, ...roundEnergy(data), days });
+  } else {
+    const data = energyData.daily[date] || { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
+    res.json({ period, date, ...roundEnergy(data) });
+  }
+});
+
+// Wszystkie dostępne dni — do kalendarza
+app.get('/api/energy-days', (req, res) => {
+  accumulateEnergy();
+  const days = {};
+  Object.entries(energyData.daily).forEach(([d, v]) => {
+    days[d] = { pvKwh: +(v.pvWh/1000).toFixed(3), feedKwh: +(v.feedWh/1000).toFixed(3) };
+  });
+  res.json(days);
+});
+
+function roundEnergy(e) {
+  return {
+    pv1Wh:  Math.round(e.pv1Wh),
+    pv2Wh:  Math.round(e.pv2Wh),
+    pvWh:   Math.round(e.pvWh),
+    feedWh: Math.round(e.feedWh),
   };
-  ws.onmessage=e=>{
-    const m=JSON.parse(e.data);
-    if(m.type==='state'){
-      update(m.data);setOn(m.data.connected);
-      cd.pv1.push(m.data.pv1Power||0);
-      cd.pv2.push(m.data.pv2Power||0);
-      cd.feed.push(m.data.feedPower||0);
-      cd.ts.push(new Date().toISOString());
-      if(cd.feed.length>300)['pv1','pv2','feed','ts'].forEach(k=>cd[k].shift());
-      drawChart();
-    }else if(m.type==='status')setOn(m.connected);
-  };
-  ws.onclose=()=>{setOn(false);setTimeout(connect,3000)};
 }
 
-window.addEventListener('resize',drawChart);
-connect();
-</script>
-</body>
-</html>
+function broadcast(data) {
+  const msg = JSON.stringify(data);
+  WSServer.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
+}
+
+function recordHistory() {
+  history.timestamps.push(new Date().toISOString());
+  history.feed.push(deviceState.feedPower);
+  history.pv1.push(deviceState.pv1Power);
+  history.pv2.push(deviceState.pv2Power);
+  if (history.timestamps.length > MAX_HISTORY) {
+    ['timestamps','feed','pv1','pv2'].forEach(k => history[k].shift());
+  }
+}
+
+// ─── Parse MQTT params ────────────────────────────────────────────────────────
+
+function applyParams(params) {
+  let updated = false;
+  const r1 = v => Math.round(v * 10) / 10;
+  const r2 = v => Math.round(v * 100) / 100;
+
+  const set = (key, field, fn) => {
+    if (params[key] !== undefined && params[key] !== null) {
+      const val = fn(params[key]);
+      if (Math.abs((deviceState[field] || 0) - val) > 0.05 || deviceState[field] !== val) {
+        deviceState[field] = val; updated = true;
+      }
+    }
+  };
+
+  set('powGetPv',          'pv1Power',   r1);
+  set('powGetPv2',         'pv2Power',   r1);
+  set('gridConnectionPower','gridPower',  r1);
+  set('gridConnectionVol', 'acVoltage',  r1);
+  set('gridConnectionFreq','acFreq',     r2);
+  set('gridConnectionAmp', 'acCurrent',  r2);
+  set('plugInInfoPvVol',   'pv1Voltage', r1);
+  set('plugInInfoPv2Vol',  'pv2Voltage', r1);
+  set('plugInInfoPvAmp',   'pv1Current', r2);
+  set('plugInInfoPv2Amp',  'pv2Current', r2);
+  set('invNtcTemp3',       'invTemp',    v => v);
+  set('gridConnectionSta', 'gridStatus', v => v);
+
+  if (params['powGetPv'] !== undefined || params['powGetPv2'] !== undefined) {
+    deviceState.pvPower = r1((deviceState.pv1Power || 0) + (deviceState.pv2Power || 0));
+    updated = true;
+  }
+
+  // gridConnectionPower dodatnie = feed-in (dla STREAM Easy)
+  if (params['gridConnectionPower'] !== undefined) {
+    const g = params['gridConnectionPower'];
+    deviceState.feedPower = g > 0 ? r1(g) : 0;
+    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
+    updated = true;
+  }
+
+  if (updated) {
+    deviceState.lastUpdate = new Date().toISOString();
+    accumulateEnergy(); // zliczaj energię przy każdej aktualizacji
+    recordHistory();
+    broadcast({ type: 'state', data: deviceState });
+    console.log(`📊 pv1=${deviceState.pv1Power}W pv2=${deviceState.pv2Power}W feed=${deviceState.feedPower}W`);
+  }
+  return updated;
+}
+
+// ─── MQTT ─────────────────────────────────────────────────────────────────────
+
+async function getMainSn() {
+  try {
+    const data = await ecoflowGet('/iot-open/sign/device/system/main/sn', { sn: DEVICE_SN });
+    if (data.code === '0' && data.data?.sn) {
+      mainSn = data.data.sn;
+      console.log(`✅ Główny SN: ${mainSn}`);
+    }
+  } catch(e) { console.log(`⚠️  getMainSn: ${e.message}`); }
+}
+
+async function fetchAllQuotas() {
+  try {
+    const data = await ecoflowGet('/iot-open/sign/device/quota/all', { sn: mainSn });
+    if (data.code === '0' && data.data && Object.keys(data.data).length > 0) {
+      applyParams(data.data);
+    }
+  } catch(e) { console.error('REST quota error:', e.message); }
+}
+
+async function startMqtt() {
+  if (!ACCESS_KEY || !SECRET_KEY) { startDemoMode(); return; }
+
+  await getMainSn();
+
+  let creds;
+  try {
+    const data = await ecoflowGet('/iot-open/sign/certification');
+    if (data.code !== '0') throw new Error(data.message);
+    creds = data.data;
+    console.log(`✅ MQTT credentials — account: ${creds.certificateAccount}`);
+  } catch(e) {
+    console.error('❌ Credentials error:', e.message);
+    setTimeout(startMqtt, 30000); return;
+  }
+
+  const client = mqtt.connect(`mqtts://${creds.url}:${creds.port}`, {
+    clientId: `open-${uuidv4()}`,
+    username: creds.certificateAccount,
+    password: creds.certificatePassword,
+    rejectUnauthorized: false,
+    reconnectPeriod: 5000,
+  });
+
+  const quotaTopic    = `/open/${creds.certificateAccount}/${mainSn}/quota`;
+  const statusTopic   = `/open/${creds.certificateAccount}/${mainSn}/status`;
+  const getReplyTopic = `/open/${creds.certificateAccount}/${mainSn}/get_reply`;
+  const getTopic      = `/open/${creds.certificateAccount}/${mainSn}/get`;
+
+  client.on('connect', () => {
+    console.log('✅ MQTT połączony!');
+    deviceState.connected = true;
+    broadcast({ type: 'status', connected: true });
+    client.subscribe(quotaTopic);
+    client.subscribe(statusTopic);
+    client.subscribe(getReplyTopic);
+    console.log(`📡 Sub: ${quotaTopic}`);
+    fetchAllQuotas();
+    setInterval(fetchAllQuotas, 30000);
+
+    // Zapytaj urządzenie przez MQTT get o dostępne parametry
+    setTimeout(() => {
+      // Próbuj pobrać historię dzienną przez MQTT get
+      const msg = JSON.stringify({
+        id: String(Date.now()),
+        version: '1.0',
+        params: { quotas: [
+          'quota_cloud_ts',
+          'powGetPvSum',
+          'gridConnectionPower',
+        ]}
+      });
+      client.publish(getTopic, msg);
+      console.log(`📤 MQTT get -> ${getTopic}`);
+    }, 3000);
+  });
+
+  client.on('message', (topic, payload) => {
+    try {
+      const str = payload.toString('utf8');
+      if (!str.startsWith('{')) return;
+      const data = JSON.parse(str);
+      if (topic.endsWith('/status')) {
+        const online = data.params?.status === 1;
+        deviceState.connected = online;
+        broadcast({ type: 'status', connected: online });
+        return;
+      }
+      if (topic.endsWith('/get_reply')) {
+        console.log('📥 get_reply:', JSON.stringify(data).substring(0, 500));
+        return;
+      }
+      const params = data.params || data;
+      if (params && typeof params === 'object') applyParams(params);
+    } catch(e) {}
+  });
+
+  client.on('error', err => console.error('MQTT error:', err.message));
+  client.on('close', () => {
+    deviceState.connected = false;
+    broadcast({ type: 'status', connected: false });
+  });
+}
+
+// ─── Demo mode ────────────────────────────────────────────────────────────────
+
+function startDemoMode() {
+  console.log('🎭 Demo mode (brak kluczy API)');
+  let t = 0;
+  setInterval(() => {
+    t += 0.1;
+    deviceState.pv1Power   = Math.round(300 + 200 * Math.sin(t) + Math.random() * 10);
+    deviceState.pv2Power   = Math.round(300 + 200 * Math.sin(t + 0.1) + Math.random() * 10);
+    deviceState.pvPower    = deviceState.pv1Power + deviceState.pv2Power;
+    deviceState.feedPower  = deviceState.pvPower;
+    deviceState.acVoltage  = 230;
+    deviceState.acFreq     = 50;
+    deviceState.pv1Voltage = 38.5;
+    deviceState.pv2Voltage = 38.3;
+    deviceState.invTemp    = 35;
+    deviceState.connected  = true;
+    deviceState.lastUpdate = new Date().toISOString();
+    accumulateEnergy();
+    recordHistory();
+    broadcast({ type: 'state', data: deviceState });
+  }, 2000);
+}
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+server.listen(PORT, () => {
+  console.log(`🚀 Dashboard: http://localhost:${PORT}`);
+  console.log(`📟 Device SN: ${DEVICE_SN || '(brak!)'}`);
+  console.log(`🔑 Access Key: ${ACCESS_KEY ? ACCESS_KEY.substring(0, 8) + '...' : '(brak!)'}`);
+  startMqtt();
+});
