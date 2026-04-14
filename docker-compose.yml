@@ -2,7 +2,6 @@ version: '3.8'
 services:
   ecoflow-dashboard:
     build: .
-    image: ecoflow-dashboard:latest
     container_name: ecoflow-dashboard
     ports:
       - "8080:8080"
@@ -11,7 +10,7 @@ services:
       - EF_ACCESS_KEY=${EF_ACCESS_KEY}
       - EF_SECRET_KEY=${EF_SECRET_KEY}
     restart: unless-stopped
- 
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
