@@ -9,7 +9,7 @@
   :root {
     --bg:#0a0e14;--surface:#111820;--border:#1e2d3d;
     --accent:#f5a623;--green:#39d353;--blue:#58a6ff;
-    --red:#ff6b6b;--purple:#bc8cff;--cyan:#56d0e0;
+    --red:#ff6b6b;--cyan:#56d0e0;
     --text1:#e6edf3;--text2:#7d8590;
     --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
   }
@@ -24,38 +24,35 @@
   .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
   .tr{font-family:var(--mono);font-size:11px;color:var(--text2)}
 
-  .main{padding:18px 24px;max-width:1100px;margin:0 auto}
+  .main{padding:18px 24px;max-width:1000px;margin:0 auto}
 
   .sec{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:14px}
   .sec-title{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:18px}
 
   /* Flow */
-  .flow{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
-  .fnode{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:100px}
-  .ficon{font-size:20px;margin-bottom:2px}
+  .flow{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
+  .fnode{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px}
+  .ficon{font-size:22px;margin-bottom:2px}
   .flabel{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em}
-  .fval{font-family:var(--mono);font-size:24px;font-weight:600;line-height:1}
-  .funit{font-size:11px;font-weight:400;color:var(--text2)}
-  .fsub{font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:1px}
-  .arr{font-size:16px;color:var(--border);flex-shrink:0;transition:color .5s}
+  .fval{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1}
+  .funit{font-size:12px;font-weight:400;color:var(--text2)}
+  .fsub{font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:2px}
+  .arr{font-size:20px;color:var(--border);flex-shrink:0;transition:color .5s}
   .arr.a{color:var(--accent)}
-  .arr.b{color:var(--blue)}
 
   /* Grid */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:13px;position:relative;overflow:hidden}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;position:relative;overflow:hidden}
   .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
   .cg::before{background:var(--green)}.co::before{background:var(--accent)}
-  .cb::before{background:var(--blue)}.cp::before{background:var(--purple)}
-  .cr::before{background:var(--red)}.cc::before{background:var(--cyan)}
+  .cb::before{background:var(--blue)}.cc::before{background:var(--cyan)}
   .clabel{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
-  .cval{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1}
+  .cval{font-family:var(--mono);font-size:21px;font-weight:600;line-height:1}
   .cval .u{font-size:10px;color:var(--text2);font-weight:400}
   .csub{font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px}
   .bar{margin-top:7px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
   .barfill{height:100%;border-radius:2px;transition:width .5s}
 
-  /* Chart */
   canvas{width:100%!important;display:block}
   .chart-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
   .leg{display:flex;gap:12px}
@@ -64,13 +61,13 @@
 
   #banner{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--red);text-align:center}
 
-  @media(max-width:600px){.main{padding:10px}.fval{font-size:19px}.grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:600px){.main{padding:10px}.fval{font-size:22px}.grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <div class="topbar">
   <div class="tl">
-    <span class="logo">EcoFlow STREAM</span>
+    <span class="logo">EcoFlow STREAM Easy</span>
     <span class="devid">BK01Z1SACH3L4901</span>
     <div class="dot" id="dot"></div>
   </div>
@@ -86,55 +83,45 @@
     <div class="flow">
       <div class="fnode">
         <div class="ficon">☀️</div>
-        <div class="flabel">PV1</div>
-        <div class="fval" id="pv1" style="color:var(--accent)">–<span class="funit">W</span></div>
+        <div class="flabel">Panel PV1</div>
+        <div class="fval" id="pv1" style="color:var(--accent)">–<span class="funit"> W</span></div>
         <div class="fsub" id="pv1s">—</div>
       </div>
-      <div class="arr" id="a0">+</div>
+      <div class="arr a">+</div>
       <div class="fnode">
         <div class="ficon">☀️</div>
-        <div class="flabel">PV2</div>
-        <div class="fval" id="pv2" style="color:var(--accent)">–<span class="funit">W</span></div>
+        <div class="flabel">Panel PV2</div>
+        <div class="fval" id="pv2" style="color:var(--accent)">–<span class="funit"> W</span></div>
         <div class="fsub" id="pv2s">—</div>
       </div>
-      <div class="arr" id="a1">→</div>
-      <div class="fnode">
-        <div class="ficon">🏠</div>
-        <div class="flabel">Dom</div>
-        <div class="fval" id="load" style="color:var(--blue)">–<span class="funit">W</span></div>
-        <div class="fsub">obciążenie</div>
-      </div>
-      <div class="arr" id="a2">⇄</div>
+      <div class="arr" id="arr">→</div>
       <div class="fnode">
         <div class="ficon">⚡</div>
-        <div class="flabel">Sieć</div>
-        <div class="fval" id="grid" style="color:var(--green)">–<span class="funit">W</span></div>
-        <div class="fsub" id="grids">—</div>
+        <div class="flabel">Feed-in</div>
+        <div class="fval" id="feed" style="color:var(--green)">–<span class="funit"> W</span></div>
+        <div class="fsub" id="feeds">—</div>
       </div>
     </div>
   </div>
 
-  <!-- Karty metryki -->
+  <!-- Karty -->
   <div class="grid">
-    <div class="card cg">
-      <div class="clabel">Feed-in</div>
-      <div class="cval" id="feed">–<span class="u"> W</span></div>
-      <div class="csub">do sieci</div>
-    </div>
     <div class="card co">
       <div class="clabel">PV razem</div>
       <div class="cval" id="pvtot">–<span class="u"> W</span></div>
       <div class="bar"><div class="barfill" id="pvbar" style="background:var(--accent)"></div></div>
+      <div class="csub">max 1020W</div>
     </div>
-    <div class="card cr">
-      <div class="clabel">Pobieranie</div>
-      <div class="cval" id="fromgrid">–<span class="u"> W</span></div>
-      <div class="csub">z sieci</div>
+    <div class="card cg">
+      <div class="clabel">Wydajność</div>
+      <div class="cval" id="eff">–<span class="u"> %</span></div>
+      <div class="bar"><div class="barfill" id="effbar" style="background:var(--green)"></div></div>
+      <div class="csub">z max 1020W</div>
     </div>
     <div class="card cc">
       <div class="clabel">Napięcie AC</div>
       <div class="cval" id="acv">–<span class="u"> V</span></div>
-      <div class="csub" id="acfreq">—</div>
+      <div class="csub" id="acf">—</div>
     </div>
     <div class="card co">
       <div class="clabel">PV1 napięcie</div>
@@ -149,11 +136,6 @@
     <div class="card cb">
       <div class="clabel">Temp. inwertera</div>
       <div class="cval" id="temp">–<span class="u"> °C</span></div>
-    </div>
-    <div class="card cg">
-      <div class="clabel">Autokonsumpcja</div>
-      <div class="cval" id="self">–<span class="u"> %</span></div>
-      <div class="bar"><div class="barfill" id="selfbar" style="background:var(--green)"></div></div>
     </div>
   </div>
 
@@ -172,17 +154,17 @@
 </div>
 
 <script>
-let cd = {pv1:[],pv2:[],feed:[],ts:[]};
-const cv = document.getElementById('chart'), cx = cv.getContext('2d');
+let cd={pv1:[],pv2:[],feed:[],ts:[]};
+const cv=document.getElementById('chart'),cx=cv.getContext('2d');
 
-function drawChart() {
-  const dpr=window.devicePixelRatio||1, w=cv.offsetWidth, h=100;
-  cv.width=w*dpr; cv.height=h*dpr; cx.scale(dpr,dpr);
+function drawChart(){
+  const dpr=window.devicePixelRatio||1,w=cv.offsetWidth,h=100;
+  cv.width=w*dpr;cv.height=h*dpr;cx.scale(dpr,dpr);
   cx.clearRect(0,0,w,h);
-  const all=[...cd.pv1,...cd.pv2,...cd.feed], mx=Math.max(...all,100), n=cd.feed.length;
+  const all=[...cd.pv1,...cd.pv2,...cd.feed],mx=Math.max(...all,100),n=cd.feed.length;
   if(n<2)return;
-  const p={t:6,b:16,l:40,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
-  cx.strokeStyle='rgba(255,255,255,.04)'; cx.lineWidth=1;
+  const p={t:6,b:16,l:40,r:6},cw=w-p.l-p.r,ch=h-p.t-p.b;
+  cx.strokeStyle='rgba(255,255,255,.04)';cx.lineWidth=1;
   for(let i=0;i<=4;i++){
     const y=p.t+(ch/4)*i;
     cx.beginPath();cx.moveTo(p.l,y);cx.lineTo(w-p.r,y);cx.stroke();
@@ -192,53 +174,41 @@ function drawChart() {
   function line(data,color){
     cx.beginPath();cx.strokeStyle=color;cx.lineWidth=1.5;cx.lineJoin='round';
     for(let i=0;i<data.length;i++){
-      const x=p.l+(i/(n-1))*cw, y=p.t+ch-(data[i]/mx)*ch;
+      const x=p.l+(i/(n-1))*cw,y=p.t+ch-(data[i]/mx)*ch;
       i===0?cx.moveTo(x,y):cx.lineTo(x,y);
-    }
-    cx.stroke();
+    }cx.stroke();
   }
-  line(cd.pv2,'#c8935a');
-  line(cd.pv1,'#f5a623');
-  line(cd.feed,'#39d353');
+  line(cd.pv2,'#c8935a');line(cd.pv1,'#f5a623');line(cd.feed,'#39d353');
 }
 
 function f(v,d=0){return v>0?(d>0?v.toFixed(d):Math.round(v)):'–'}
-function W(id,v){document.getElementById(id).innerHTML=`${f(v)}<span class="u"> W</span>`}
-function V(id,v,d=1){document.getElementById(id).innerHTML=`${v>0?v.toFixed(d):'–'}<span class="u"> V</span>`}
 
 function update(s){
-  const pv1=s.pv1Power||0, pv2=s.pv2Power||0, pv=s.pvPower||pv1+pv2;
-  const load=s.loadPower||0, grid=s.gridPower||0;
-  const feed=s.feedPower||0, from=s.fromGrid||0;
+  const pv1=s.pv1Power||0,pv2=s.pv2Power||0;
+  const pv=s.pvPower||(pv1+pv2);
+  const feed=s.feedPower||0;
+  const pct=Math.min(100,Math.round(pv/1020*100));
 
-  // Flow
   document.getElementById('pv1').innerHTML=`${f(pv1)}<span class="funit"> W</span>`;
   document.getElementById('pv2').innerHTML=`${f(pv2)}<span class="funit"> W</span>`;
-  document.getElementById('load').innerHTML=`${f(load)}<span class="funit"> W</span>`;
-  document.getElementById('grid').innerHTML=`${f(Math.abs(grid))}<span class="funit"> W</span>`;
+  document.getElementById('feed').innerHTML=`${f(feed)}<span class="funit"> W</span>`;
+  document.getElementById('feeds').textContent=feed>5?'oddawanie do sieci ↑':'brak feed-in';
   document.getElementById('pv1s').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)}A`:'';
   document.getElementById('pv2s').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)}A`:'';
-  document.getElementById('grids').textContent=grid<-1?'feed-in ↑':grid>1?'pobieranie ↓':'brak przepływu';
+  document.getElementById('arr').className=`arr${feed>5?' a':''}`;
 
-  // Strzałki
-  document.getElementById('a0').className=`arr${(pv1>5||pv2>5)?' a':''}`;
-  document.getElementById('a1').className=`arr${pv>5?' a':''}`;
-  document.getElementById('a2').className=`arr${grid<-1?' a':grid>1?' b':''}`;
+  document.getElementById('pvtot').innerHTML=`${f(pv)}<span class="u"> W</span>`;
+  document.getElementById('pvbar').style.width=pct+'%';
+  document.getElementById('eff').innerHTML=`${pct}<span class="u"> %</span>`;
+  document.getElementById('effbar').style.width=pct+'%';
 
-  // Karty
-  W('feed',feed); W('pvtot',pv); W('fromgrid',from);
-  document.getElementById('pvbar').style.width=Math.min(100,pv/1020*100)+'%';
-  V('acv',s.acVoltage);
-  document.getElementById('acfreq').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
-  V('pv1v',s.pv1Voltage);
+  document.getElementById('acv').innerHTML=s.acVoltage>0?`${s.acVoltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
+  document.getElementById('acf').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
+  document.getElementById('pv1v').innerHTML=s.pv1Voltage>0?`${s.pv1Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('pv1a').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
-  V('pv2v',s.pv2Voltage);
+  document.getElementById('pv2v').innerHTML=s.pv2Voltage>0?`${s.pv2Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('pv2a').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
   document.getElementById('temp').innerHTML=s.invTemp>0?`${s.invTemp}<span class="u"> °C</span>`:`–<span class="u"> °C</span>`;
-
-  const selfPct=pv>0?Math.min(100,Math.round((pv-feed)/pv*100)):0;
-  document.getElementById('self').innerHTML=pv>0?`${selfPct}<span class="u"> %</span>`:`–<span class="u"> %</span>`;
-  document.getElementById('selfbar').style.width=selfPct+'%';
 
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 }
@@ -260,14 +230,14 @@ function connect(){
   ws.onmessage=e=>{
     const m=JSON.parse(e.data);
     if(m.type==='state'){
-      update(m.data); setOn(m.data.connected);
+      update(m.data);setOn(m.data.connected);
       cd.pv1.push(m.data.pv1Power||0);
       cd.pv2.push(m.data.pv2Power||0);
       cd.feed.push(m.data.feedPower||0);
       cd.ts.push(new Date().toISOString());
       if(cd.feed.length>300)['pv1','pv2','feed','ts'].forEach(k=>cd[k].shift());
       drawChart();
-    } else if(m.type==='status') setOn(m.connected);
+    }else if(m.type==='status')setOn(m.connected);
   };
   ws.onclose=()=>{setOn(false);setTimeout(connect,3000)};
 }
