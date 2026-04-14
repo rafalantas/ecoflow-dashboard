@@ -104,30 +104,34 @@ app.get('/api/historical', async (req, res) => {
       endTime   = `${date} 23:59:59`;
     }
 
-    // Pobierz energię PV
-    const pvResp = await ecoflowPost('/iot-open/sign/device/quota/data', {
-      sn: mainSn,
-      params: { beginTime, endTime, code: 'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA' }
-    });
+    // Z dokumentacji: BK621 to stały prefiks kodu dla wszystkich urządzeń STREAM
+    // Czas musi być w UTC — konwertuj z lokalnego
+    const allCodes = [
+      { type: 'pv',   code: 'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA' },
+      { type: 'grid', code: 'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA' },
+      { type: 'feed', code: 'BK621-App-HOME-INDEPENDENCE-PERCENT-FLOW-indep-progress_bar-NOTDISTINGUISH-MASTER_DATA' },
+    ];
 
-    // Pobierz energię sieci (feed-in i pobieranie)
-    const gridResp = await ecoflowPost('/iot-open/sign/device/quota/data', {
-      sn: mainSn,
-      params: { beginTime, endTime, code: 'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA' }
-    });
+    const results = {};
+    for (const { type, code } of allCodes) {
+      const r = await ecoflowPost('/iot-open/sign/device/quota/data', {
+        sn: mainSn, params: { beginTime, endTime, code }
+      });
+      console.log(`📅 ${type} [${code.substring(0,5)}]: code=${r.code} data=${JSON.stringify(r.data?.data || r.data).substring(0,100)}`);
+      results[type] = r;
+    }
 
-    const pvWh    = pvResp.data?.data?.[0]?.indexValue || 0;
-    const gridData = gridResp.data?.data || [];
-    // extra=1 pobieranie z sieci, extra=2 oddawanie do sieci
-    const feedWh  = gridData.find(d => d.extra === '2')?.indexValue || 0;
-    const fromWh  = gridData.find(d => d.extra === '1')?.indexValue || 0;
+    const pvData   = results.pv?.data?.data   || results.pv?.data   || [];
+    const gridData = results.grid?.data?.data || results.grid?.data || [];
+
+    const pvWh   = Array.isArray(pvData)   ? parseFloat(pvData[0]?.indexValue   || 0) : 0;
+    const feedWh = Array.isArray(gridData) ? parseFloat(gridData.find(d => d.extra === '2')?.indexValue || 0) : 0;
+    const fromWh = Array.isArray(gridData) ? parseFloat(gridData.find(d => d.extra === '1')?.indexValue || 0) : 0;
 
     res.json({
       period, date, beginTime, endTime,
-      pvWh: parseFloat(pvWh),
-      feedWh: parseFloat(feedWh),
-      fromGridWh: parseFloat(fromWh),
-      raw: { pv: pvResp, grid: gridResp }
+      pvWh, feedWh, fromGridWh: fromWh,
+      raw: results
     });
   } catch(e) {
     console.error('Historical error:', e.message);
