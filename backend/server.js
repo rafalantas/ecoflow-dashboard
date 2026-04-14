@@ -113,6 +113,9 @@ setInterval(() => { accumulateEnergy(); saveEnergy(); }, 60000);
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
+// Zbieraj wszystkie klucze które kiedykolwiek przyszły
+let allReceivedKeys = {};
+
 let deviceState = {
   connected: false, lastUpdate: null,
   pv1Power: 0, pv2Power: 0, pvPower: 0,
@@ -134,6 +137,7 @@ const WSServer = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (req, res) => res.json(deviceState));
+app.get('/api/all-keys', (req, res) => res.json(allReceivedKeys));
 app.get('/api/history', (req, res) => res.json(history));
 
 // Historia lokalna
@@ -226,9 +230,14 @@ function applyParams(params) {
     updated = true;
   }
 
+  // Zapisz wszystkie otrzymane klucze z wartościami
+  Object.entries(params).forEach(([k, v]) => {
+    allReceivedKeys[k] = v;
+  });
+
   if (updated) {
     deviceState.lastUpdate = new Date().toISOString();
-    accumulateEnergy(); // zliczaj energię przy każdej aktualizacji
+    accumulateEnergy();
     recordHistory();
     broadcast({ type: 'state', data: deviceState });
     console.log(`📊 pv1=${deviceState.pv1Power}W pv2=${deviceState.pv2Power}W feed=${deviceState.feedPower}W`);
