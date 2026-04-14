@@ -3,273 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>STREAM Easy — Dashboard</title>
+<title>EcoFlow STREAM — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0e14;
-    --surface: #111820;
-    --border: #1e2d3d;
-    --accent: #f5a623;
-    --green: #39d353;
-    --blue: #58a6ff;
-    --red: #ff6b6b;
-    --text1: #e6edf3;
-    --text2: #7d8590;
+    --bg: #0a0e14; --surface: #111820; --border: #1e2d3d;
+    --accent: #f5a623; --green: #39d353; --blue: #58a6ff;
+    --red: #ff6b6b; --purple: #bc8cff;
+    --text1: #e6edf3; --text2: #7d8590;
     --font-mono: 'IBM Plex Mono', monospace;
     --font-sans: 'IBM Plex Sans', sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text1);
-    font-family: var(--font-sans);
-    min-height: 100vh;
-    padding: 0;
-  }
+  body { background: var(--bg); color: var(--text1); font-family: var(--font-sans); min-height: 100vh; }
 
-  /* Top bar */
   .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface);
   }
   .topbar-left { display: flex; align-items: center; gap: 12px; }
-  .logo {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    color: var(--accent);
-    text-transform: uppercase;
-  }
-  .device-id {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text2);
-    background: var(--border);
-    padding: 3px 8px;
-    border-radius: 4px;
-  }
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--red);
-    transition: background 0.5s;
-  }
+  .logo { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.1em; color: var(--accent); }
+  .device-id { font-family: var(--font-mono); font-size: 11px; color: var(--text2); background: var(--border); padding: 3px 8px; border-radius: 4px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: background 0.5s; }
   .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .topbar-right {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text2);
-  }
+  .topbar-right { font-family: var(--font-mono); font-size: 11px; color: var(--text2); }
 
-  /* Main grid */
-  .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+  .main { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
 
-  /* Power flow section */
-  .flow-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    margin-bottom: 20px;
-  }
-  .flow-title {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    margin-bottom: 20px;
-  }
-  .flow-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .flow-node {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    min-width: 120px;
-  }
-  .flow-node-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-  .flow-node-value {
-    font-family: var(--font-mono);
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1;
-  }
-  .flow-node-unit {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--text2);
-  }
-  .flow-pv1 .flow-node-value { color: var(--accent); }
-  .flow-pv2 .flow-node-value { color: var(--accent); }
-  .flow-feed .flow-node-value { color: var(--green); }
-  .flow-arrow {
-    font-size: 20px;
-    color: var(--border);
-    flex-shrink: 0;
-  }
+  /* Flow section */
+  .flow-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+  .section-title { font-family: var(--font-mono); font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 20px; }
+
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  .flow-node { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 110px; }
+  .flow-node-icon { font-size: 22px; margin-bottom: 2px; }
+  .flow-node-label { font-family: var(--font-mono); font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; }
+  .flow-node-value { font-family: var(--font-mono); font-size: 26px; font-weight: 600; line-height: 1; }
+  .flow-node-unit { font-size: 12px; font-weight: 400; color: var(--text2); }
+  .flow-node-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 2px; }
+  .flow-arrow { font-size: 18px; color: var(--border); flex-shrink: 0; transition: color 0.5s; }
   .flow-arrow.active { color: var(--accent); }
+  .flow-arrow.reverse { color: var(--blue); }
 
-  /* Sub info row */
-  .flow-sub {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    margin-top: 2px;
-  }
-
-  /* Metrics grid */
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .metric-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  .metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--border);
-  }
-  .metric-card.c-orange::before { background: var(--accent); }
-  .metric-card.c-green::before  { background: var(--green); }
-  .metric-card.c-blue::before   { background: var(--blue); }
-  .metric-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 8px;
-  }
-  .metric-value {
-    font-family: var(--font-mono);
-    font-size: 22px;
-    font-weight: 600;
-    color: var(--text1);
-    line-height: 1;
-  }
-  .metric-value .unit {
-    font-size: 11px;
-    color: var(--text2);
-    font-weight: 400;
-  }
-  .metric-sub {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    margin-top: 4px;
-  }
-
-  /* Progress bar */
-  .util-bar {
-    margin-top: 8px;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .util-bar-fill {
-    height: 100%;
-    background: var(--green);
-    border-radius: 2px;
-    transition: width 0.5s ease;
-    width: 0%;
-  }
+  /* Cards */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; position: relative; overflow: hidden; }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .card.c-green::before  { background: var(--green); }
+  .card.c-orange::before { background: var(--accent); }
+  .card.c-blue::before   { background: var(--blue); }
+  .card.c-purple::before { background: var(--purple); }
+  .card.c-red::before    { background: var(--red); }
+  .card-label { font-family: var(--font-mono); font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .card-value { font-family: var(--font-mono); font-size: 22px; font-weight: 600; line-height: 1; }
+  .card-value .unit { font-size: 11px; color: var(--text2); font-weight: 400; }
+  .card-sub { font-family: var(--font-mono); font-size: 10px; color: var(--text2); margin-top: 4px; }
+  .bar { margin-top: 8px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
 
   /* Chart */
-  .chart-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-  }
-  .chart-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .chart-title {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-  }
-  .chart-legend {
-    display: flex;
-    gap: 16px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text2);
-  }
-  .legend-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-  }
+  .chart-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .chart-legend { display: flex; gap: 14px; }
+  .leg { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--text2); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
   canvas { width: 100% !important; display: block; }
 
-  /* Offline overlay */
-  #offline-banner {
-    display: none;
-    background: rgba(255,107,107,0.1);
-    border: 1px solid rgba(255,107,107,0.3);
-    border-radius: 6px;
-    padding: 10px 16px;
-    margin-bottom: 16px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--red);
-    text-align: center;
-  }
+  #offline-banner { display: none; background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); border-radius: 6px; padding: 10px 16px; margin-bottom: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--red); text-align: center; }
 
   @media (max-width: 600px) {
     .main { padding: 12px; }
-    .flow-node-value { font-size: 22px; }
-    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .flow-node-value { font-size: 20px; }
+    .cards-grid { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="topbar-left">
     <span class="logo">EcoFlow STREAM</span>
-    <span class="device-id" id="deviceId">—</span>
+    <span class="device-id" id="deviceId">BK01Z1SACH3L4901</span>
     <div class="status-dot" id="statusDot"></div>
   </div>
   <div class="topbar-right" id="lastUpdate">—</div>
@@ -278,191 +91,187 @@
 <div class="main">
   <div id="offline-banner">⚠ Brak połączenia z urządzeniem</div>
 
-  <!-- Power flow -->
+  <!-- Przepływ energii -->
   <div class="flow-section">
-    <div class="flow-title">// przepływ energii</div>
+    <div class="section-title">// przepływ energii</div>
     <div class="flow-row">
-      <div class="flow-node flow-pv1">
-        <div class="flow-node-label">Panel PV1</div>
-        <div class="flow-node-value" id="pv1Power">–<span class="flow-node-unit"> W</span></div>
-        <div class="flow-sub" id="pv1Sub">—</div>
-      </div>
-      <div class="flow-arrow" id="arrow1">→</div>
-      <div class="flow-node flow-pv2">
-        <div class="flow-node-label">Panel PV2</div>
-        <div class="flow-node-value" id="pv2Power">–<span class="flow-node-unit"> W</span></div>
-        <div class="flow-sub" id="pv2Sub">—</div>
-      </div>
-      <div class="flow-arrow" id="arrow2">→</div>
+
       <div class="flow-node">
-        <div class="flow-node-label">Inwerter</div>
-        <div class="flow-node-value" id="pvTotal" style="color:var(--blue)">–<span class="flow-node-unit"> W</span></div>
-        <div class="flow-sub" id="acVsub">—</div>
+        <div class="flow-node-icon">☀️</div>
+        <div class="flow-node-label">Panele PV</div>
+        <div class="flow-node-value" id="pvPower" style="color:var(--accent)">–<span class="flow-node-unit"> W</span></div>
+        <div class="flow-node-sub">łącznie</div>
       </div>
-      <div class="flow-arrow" id="arrow3">→</div>
-      <div class="flow-node flow-feed">
-        <div class="flow-node-label">Feed-in</div>
-        <div class="flow-node-value" id="feedPower">–<span class="flow-node-unit"> W</span></div>
-        <div class="flow-sub" id="feedSub">0% z 1020W</div>
+
+      <div class="flow-arrow" id="arr1">→</div>
+
+      <div class="flow-node">
+        <div class="flow-node-icon">🏠</div>
+        <div class="flow-node-label">Dom</div>
+        <div class="flow-node-value" id="loadPower" style="color:var(--blue)">–<span class="flow-node-unit"> W</span></div>
+        <div class="flow-node-sub">obciążenie</div>
       </div>
+
+      <div class="flow-arrow" id="arr2">⇄</div>
+
+      <div class="flow-node">
+        <div class="flow-node-icon">⚡</div>
+        <div class="flow-node-label">Sieć</div>
+        <div class="flow-node-value" id="gridPower" style="color:var(--green)">–<span class="flow-node-unit"> W</span></div>
+        <div class="flow-node-sub" id="gridSub">—</div>
+      </div>
+
+      <div class="flow-arrow" id="arr3">⇄</div>
+
+      <div class="flow-node">
+        <div class="flow-node-icon">🔋</div>
+        <div class="flow-node-label">Bateria</div>
+        <div class="flow-node-value" id="battPower" style="color:var(--purple)">–<span class="flow-node-unit"> W</span></div>
+        <div class="flow-node-sub" id="battSub">—</div>
+      </div>
+
     </div>
   </div>
 
-  <!-- Metrics -->
-  <div class="metrics-grid">
-    <div class="metric-card c-orange">
-      <div class="metric-label">PV1 napięcie</div>
-      <div class="metric-value" id="pv1Volt">–<span class="unit"> V</span></div>
+  <!-- Karty -->
+  <div class="cards-grid">
+    <div class="card c-green">
+      <div class="card-label">Feed-in</div>
+      <div class="card-value" id="feedPower">–<span class="unit"> W</span></div>
+      <div class="card-sub">do sieci</div>
     </div>
-    <div class="metric-card c-orange">
-      <div class="metric-label">PV2 napięcie</div>
-      <div class="metric-value" id="pv2Volt">–<span class="unit"> V</span></div>
+    <div class="card c-orange">
+      <div class="card-label">PV łącznie</div>
+      <div class="card-value" id="pvCard">–<span class="unit"> W</span></div>
+      <div class="bar"><div class="bar-fill" id="pvBar" style="background:var(--accent); width:0%"></div></div>
     </div>
-    <div class="metric-card c-orange">
-      <div class="metric-label">PV1 temperatura</div>
-      <div class="metric-value" id="pv1Temp">–<span class="unit"> °C</span></div>
+    <div class="card c-purple">
+      <div class="card-label">Bateria</div>
+      <div class="card-value" id="battSoc">–<span class="unit"> %</span></div>
+      <div class="bar"><div class="bar-fill" id="battBar" style="background:var(--purple); width:0%"></div></div>
     </div>
-    <div class="metric-card c-orange">
-      <div class="metric-label">PV2 temperatura</div>
-      <div class="metric-value" id="pv2Temp">–<span class="unit"> °C</span></div>
+    <div class="card c-blue">
+      <div class="card-label">Obciążenie</div>
+      <div class="card-value" id="loadCard">–<span class="unit"> W</span></div>
+      <div class="card-sub">dom</div>
     </div>
-    <div class="metric-card c-blue">
-      <div class="metric-label">Napięcie AC</div>
-      <div class="metric-value" id="acVolt">–<span class="unit"> V</span></div>
+    <div class="card c-red">
+      <div class="card-label">Pobieranie</div>
+      <div class="card-value" id="fromGrid">–<span class="unit"> W</span></div>
+      <div class="card-sub">z sieci</div>
     </div>
-    <div class="metric-card c-green">
-      <div class="metric-label">Wykorzystanie</div>
-      <div class="metric-value" id="utilPct">–<span class="unit"> %</span></div>
-      <div class="util-bar"><div class="util-bar-fill" id="utilBar"></div></div>
-      <div class="metric-sub">max 1020W</div>
+    <div class="card c-green">
+      <div class="card-label">Autokonsumpcja</div>
+      <div class="card-value" id="selfUse">–<span class="unit"> %</span></div>
+      <div class="bar"><div class="bar-fill" id="selfBar" style="background:var(--green); width:0%"></div></div>
     </div>
   </div>
 
-  <!-- Chart -->
+  <!-- Wykres -->
   <div class="chart-section">
     <div class="chart-header">
-      <div class="chart-title">// historia mocy</div>
+      <div class="section-title" style="margin:0">// historia mocy</div>
       <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Feed-in</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> PV1</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#c8935a"></div> PV2</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--accent)"></div> PV</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div> Dom</div>
+        <div class="leg"><div class="leg-dot" style="background:var(--green)"></div> Feed-in</div>
       </div>
     </div>
-    <canvas id="chart" height="120"></canvas>
+    <canvas id="chart" height="110"></canvas>
   </div>
 </div>
 
 <script>
-const SN = location.hostname !== 'localhost' ? '' : '';
-document.getElementById('deviceId').textContent = 'BK01Z1SACH3L4901';
+let chartData = { feed: [], pv: [], load: [], ts: [] };
 
-// Chart
 const canvas = document.getElementById('chart');
 const ctx = canvas.getContext('2d');
-let chartData = { feed: [], pv1: [], pv2: [], ts: [] };
 
 function drawChart() {
   const dpr = window.devicePixelRatio || 1;
-  const w = canvas.offsetWidth;
-  const h = 120;
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
+  const w = canvas.offsetWidth, h = 110;
+  canvas.width = w * dpr; canvas.height = h * dpr;
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, w, h);
-
-  const all = [...chartData.feed, ...chartData.pv1, ...chartData.pv2];
+  const all = [...chartData.feed, ...chartData.pv, ...chartData.load];
   const maxVal = Math.max(...all, 100);
   const n = chartData.feed.length;
   if (n < 2) return;
-
-  const pad = { t: 10, b: 20, l: 40, r: 10 };
-  const cw = w - pad.l - pad.r;
-  const ch = h - pad.t - pad.b;
-
-  // Grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  ctx.lineWidth = 1;
+  const pad = { t: 8, b: 18, l: 42, r: 8 };
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = pad.t + (ch / 4) * i;
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(125,133,144,0.5)';
-    ctx.font = '9px IBM Plex Mono, monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(maxVal * (1 - i/4)) + 'W', pad.l - 4, y + 3);
+    ctx.fillStyle = 'rgba(125,133,144,0.6)'; ctx.font = '9px IBM Plex Mono,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal * (1 - i / 4)) + 'W', pad.l - 4, y + 3);
   }
-
-  function drawLine(data, color) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
+  function line(data, color) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
     for (let i = 0; i < data.length; i++) {
-      const x = pad.l + (i / (n-1)) * cw;
+      const x = pad.l + (i / (n - 1)) * cw;
       const y = pad.t + ch - (data[i] / maxVal) * ch;
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.stroke();
   }
-
-  drawLine(chartData.pv2, '#c8935a');
-  drawLine(chartData.pv1, '#f5a623');
-  drawLine(chartData.feed, '#39d353');
+  line(chartData.load, '#58a6ff');
+  line(chartData.pv,   '#f5a623');
+  line(chartData.feed, '#39d353');
 }
 
-// State update
+function fmt(v, d = 0) { return v > 0 ? (d > 0 ? v.toFixed(d) : Math.round(v)) : '–'; }
+
 function update(s) {
-  const fmt = v => v > 0 ? v : '–';
-  const fmtF = (v, d) => v > 0 ? v.toFixed(d) : '–';
+  const pv   = s.pvPower   || 0;
+  const load = s.loadPower || 0;
+  const grid = s.gridPower || 0;
+  const batt = s.battPower || 0;
+  const soc  = s.battSoc   || 0;
+  const feed = s.feedPower || 0;
+  const fromGridW = grid > 0 ? Math.round(grid) : 0;
+  const selfUsePct = pv > 0 ? Math.min(100, Math.round((pv - feed) / pv * 100)) : 0;
 
-  document.getElementById('pv1Power').innerHTML = `${fmt(Math.round(s.pv1Power))}<span class="flow-node-unit"> W</span>`;
-  document.getElementById('pv2Power').innerHTML = `${fmt(Math.round(s.pv2Power))}<span class="flow-node-unit"> W</span>`;
-  document.getElementById('pvTotal').innerHTML  = `${fmt(Math.round(s.pvTotal || s.pv1Power+s.pv2Power))}<span class="flow-node-unit"> W</span>`;
-  document.getElementById('feedPower').innerHTML = `${fmt(Math.round(s.feedPower))}<span class="flow-node-unit"> W</span>`;
+  // Flow
+  document.getElementById('pvPower').innerHTML   = `${fmt(pv)}<span class="flow-node-unit"> W</span>`;
+  document.getElementById('loadPower').innerHTML  = `${fmt(load)}<span class="flow-node-unit"> W</span>`;
+  document.getElementById('gridPower').innerHTML  = `${fmt(Math.abs(grid))}<span class="flow-node-unit"> W</span>`;
+  document.getElementById('gridSub').textContent  = grid < -1 ? 'feed-in ↑' : grid > 1 ? 'pobieranie ↓' : 'brak przepływu';
+  document.getElementById('battPower').innerHTML  = `${fmt(Math.abs(batt))}<span class="flow-node-unit"> W</span>`;
+  document.getElementById('battSub').textContent  = batt > 1 ? `ładowanie (${soc}%)` : batt < -1 ? `rozładowanie (${soc}%)` : `${soc}%`;
 
-  // Sub labels
-  const pv1cur = s.pv1Current > 0 ? `${s.pv1Current.toFixed(1)}A` : '';
-  const pv2cur = s.pv2Current > 0 ? `${s.pv2Current.toFixed(1)}A` : '';
-  document.getElementById('pv1Sub').textContent = pv1cur;
-  document.getElementById('pv2Sub').textContent = pv2cur;
-  document.getElementById('acVsub').textContent = s.acVoltage > 0 ? `${s.acVoltage.toFixed(1)}V AC` : '';
-  const pct = s.feedPower > 0 ? Math.round(s.feedPower / 1020 * 100) : 0;
-  document.getElementById('feedSub').textContent = `${pct}% z 1020W`;
+  // Strzałki
+  document.getElementById('arr1').className = `flow-arrow${pv > 10 ? ' active' : ''}`;
+  document.getElementById('arr2').className = `flow-arrow${grid < -1 ? ' active' : grid > 1 ? ' reverse' : ''}`;
+  document.getElementById('arr3').className = `flow-arrow${Math.abs(batt) > 10 ? (batt > 0 ? ' active' : ' reverse') : ''}`;
 
-  // Metrics
-  document.getElementById('pv1Volt').innerHTML = s.pv1Voltage > 0 ? `${s.pv1Voltage.toFixed(1)}<span class="unit"> V</span>` : `–<span class="unit"> V</span>`;
-  document.getElementById('pv2Volt').innerHTML = s.pv2Voltage > 0 ? `${s.pv2Voltage.toFixed(1)}<span class="unit"> V</span>` : `–<span class="unit"> V</span>`;
-  document.getElementById('pv1Temp').innerHTML = s.pv1Temp > 0 ? `${s.pv1Temp.toFixed(1)}<span class="unit"> °C</span>` : `–<span class="unit"> °C</span>`;
-  document.getElementById('pv2Temp').innerHTML = s.pv2Temp > 0 ? `${s.pv2Temp.toFixed(1)}<span class="unit"> °C</span>` : `–<span class="unit"> °C</span>`;
-  document.getElementById('acVolt').innerHTML  = s.acVoltage > 0 ? `${s.acVoltage.toFixed(1)}<span class="unit"> V</span>` : `–<span class="unit"> V</span>`;
-  document.getElementById('utilPct').innerHTML = `${pct}<span class="unit"> %</span>`;
-  document.getElementById('utilBar').style.width = pct + '%';
+  // Karty
+  document.getElementById('feedPower').innerHTML = `${fmt(feed)}<span class="unit"> W</span>`;
+  document.getElementById('pvCard').innerHTML    = `${fmt(pv)}<span class="unit"> W</span>`;
+  document.getElementById('battSoc').innerHTML   = `${soc > 0 ? soc.toFixed(1) : '–'}<span class="unit"> %</span>`;
+  document.getElementById('loadCard').innerHTML  = `${fmt(load)}<span class="unit"> W</span>`;
+  document.getElementById('fromGrid').innerHTML  = `${fromGridW > 0 ? fromGridW : '–'}<span class="unit"> W</span>`;
+  document.getElementById('selfUse').innerHTML   = `${pv > 0 ? selfUsePct : '–'}<span class="unit"> %</span>`;
 
-  // Arrows
-  const active = s.feedPower > 5;
-  ['arrow1','arrow2','arrow3'].forEach(id => {
-    document.getElementById(id).classList.toggle('active', active);
-  });
+  // Paski
+  document.getElementById('pvBar').style.width   = Math.min(100, pv / 1020 * 100) + '%';
+  document.getElementById('battBar').style.width  = soc + '%';
+  document.getElementById('selfBar').style.width  = selfUsePct + '%';
 
-  // Last update
-  if (s.lastUpdate) {
-    const d = new Date(s.lastUpdate);
-    document.getElementById('lastUpdate').textContent = d.toLocaleTimeString('pl-PL');
-  }
+  if (s.lastUpdate) document.getElementById('lastUpdate').textContent = new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 }
 
-function setConnected(online) {
+function setOnline(online) {
   document.getElementById('statusDot').classList.toggle('online', online);
   document.getElementById('offline-banner').style.display = online ? 'none' : 'block';
 }
 
-// WebSocket
 function connect() {
   const ws = new WebSocket(`ws://${location.host}`);
   ws.onopen = () => {
-    setConnected(false);
-    fetch('/api/state').then(r=>r.json()).then(s => { update(s); setConnected(s.connected); });
-    fetch('/api/history').then(r=>r.json()).then(h => {
-      chartData = { feed: h.feed||[], pv1: h.pv1||[], pv2: h.pv2||[], ts: h.timestamps||[] };
+    fetch('/api/state').then(r => r.json()).then(s => { update(s); setOnline(s.connected); });
+    fetch('/api/history').then(r => r.json()).then(h => {
+      chartData = { feed: h.feed||[], pv: h.pv||[], load: h.load||[], ts: h.timestamps||[] };
       drawChart();
     });
   };
@@ -470,20 +279,18 @@ function connect() {
     const msg = JSON.parse(e.data);
     if (msg.type === 'state') {
       update(msg.data);
-      setConnected(msg.data.connected);
-      chartData.feed.push(msg.data.feedPower);
-      chartData.pv1.push(msg.data.pv1Power);
-      chartData.pv2.push(msg.data.pv2Power);
+      setOnline(msg.data.connected);
+      chartData.feed.push(msg.data.feedPower || 0);
+      chartData.pv.push(msg.data.pvPower || 0);
+      chartData.load.push(msg.data.loadPower || 0);
       chartData.ts.push(new Date().toISOString());
-      if (chartData.feed.length > 300) {
-        ['feed','pv1','pv2','ts'].forEach(k => chartData[k].shift());
-      }
+      if (chartData.feed.length > 300) ['feed','pv','load','ts'].forEach(k => chartData[k].shift());
       drawChart();
     } else if (msg.type === 'status') {
-      setConnected(msg.connected);
+      setOnline(msg.connected);
     }
   };
-  ws.onclose = () => { setConnected(false); setTimeout(connect, 3000); };
+  ws.onclose = () => { setOnline(false); setTimeout(connect, 3000); };
 }
 
 window.addEventListener('resize', drawChart);
