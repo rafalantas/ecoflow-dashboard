@@ -234,6 +234,8 @@ async function startMqtt() {
       // Quota — dane urządzenia
       const params = data.params || data;
       if (params && typeof params === 'object' && Object.keys(params).length > 0) {
+        console.log('📨 MQTT keys:', Object.keys(params).join(', '));
+        console.log('📨 MQTT vals:', JSON.stringify(params).substring(0, 400));
         applyParams(params);
       }
     } catch (e) { /* ignoruj */ }
