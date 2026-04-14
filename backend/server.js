@@ -117,7 +117,7 @@ app.get('/api/historical', async (req, res) => {
       const r = await ecoflowPost('/iot-open/sign/device/quota/data', {
         sn: mainSn, params: { beginTime, endTime, code }
       });
-      console.log(`📅 ${type} [${code.substring(0,5)}]: code=${r.code} data=${JSON.stringify(r.data?.data || r.data).substring(0,100)}`);
+      console.log(`📅 ${type}: code=${r.code} msg=${r.message} data=${JSON.stringify(r.data?.data || r.data || '').substring(0,150)}`);
       results[type] = r;
     }
 
