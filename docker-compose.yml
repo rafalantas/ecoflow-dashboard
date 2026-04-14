@@ -11,8 +11,8 @@ services:
       - EF_ACCESS_KEY=${EF_ACCESS_KEY}
       - EF_SECRET_KEY=${EF_SECRET_KEY}
     restart: unless-stopped
-  
- cloudflared:
+ 
+  cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
@@ -21,4 +21,3 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - ecoflow-dashboard
- 
