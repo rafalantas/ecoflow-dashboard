@@ -13,22 +13,24 @@ function uuidv4() {
   });
 }
 
-function makeSignedHeaders(accessKey, secretKey, params = {}) {
+function flattenKeys(obj, prefix = '') {
+  let res = {};
+  for (const k of Object.keys(obj)) {
+    const fullKey = prefix ? `${prefix}.${k}` : k;
+    if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+      res = { ...res, ...flattenKeys(obj[k], fullKey) };
+    } else { res[fullKey] = obj[k]; }
+  }
+  return res;
+}
+
+function makeSignedHeaders(accessKey, secretKey, bodyParams = {}) {
   const nonce = String(100000 + Math.floor(Math.random() * 100000));
   const timestamp = String(Date.now());
-  function flattenKeys(obj, prefix = '') {
-    let res = {};
-    for (const k of Object.keys(obj)) {
-      const fullKey = prefix ? `${prefix}.${k}` : k;
-      if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
-        res = { ...res, ...flattenKeys(obj[k], fullKey) };
-      } else { res[fullKey] = obj[k]; }
-    }
-    return res;
-  }
+  // Only body params (POST/PUT) go into signature, NOT query string params
   let dataStr = '';
-  if (Object.keys(params).length > 0) {
-    const flat = flattenKeys(params);
+  if (Object.keys(bodyParams).length > 0) {
+    const flat = flattenKeys(bodyParams);
     const sortedKeys = Object.keys(flat).sort();
     dataStr = sortedKeys.map(k => `${k}=${flat[k]}`).join('&') + '&';
   }
@@ -37,11 +39,11 @@ function makeSignedHeaders(accessKey, secretKey, params = {}) {
   return { 'Content-Type': 'application/json;charset=UTF-8', accessKey, nonce, timestamp, sign };
 }
 
-async function ecoflowGet(url, accessKey, secretKey, params = {}) {
-  const headers = makeSignedHeaders(accessKey, secretKey, params);
-  // For GET: params in query string (already included in signature via makeSignedHeaders)
-  const qs = Object.keys(params).length > 0
-    ? '?' + Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&') : '';
+async function ecoflowGet(url, accessKey, secretKey, queryParams = {}) {
+  // GET: signature does NOT include query params
+  const headers = makeSignedHeaders(accessKey, secretKey, {});
+  const qs = Object.keys(queryParams).length > 0
+    ? '?' + Object.entries(queryParams).map(([k, v]) => `${k}=${v}`).join('&') : '';
   console.log(`🌐 GET ${API_HOST}${url}${qs}`);
   const resp = await axios.get(`${API_HOST}${url}${qs}`, { headers, timeout: 10000 });
   return resp.data;
