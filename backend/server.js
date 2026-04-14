@@ -52,6 +52,12 @@ async function ecoflowPost(url, body = {}) {
   return resp.data;
 }
 
+async function ecoflowPost(url, body = {}) {
+  const headers = makeSignedHeaders(ACCESS_KEY, SECRET_KEY, body);
+  const resp = await axios.post(`${API_HOST}${url}`, body, { headers, timeout: 10000 });
+  return resp.data;
+}
+
 const PORT       = process.env.PORT            || 8080;
 const DEVICE_SN  = process.env.DEVICE_SN       || '';
 const ACCESS_KEY = process.env.EF_ACCESS_KEY   || '';
@@ -80,6 +86,54 @@ const WSServer = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state', (req, res) => res.json(deviceState));
 app.get('/api/history', (req, res) => res.json(history));
+
+// Historia z API EcoFlow — dzienna/miesięczna
+app.get('/api/historical', async (req, res) => {
+  const { period, date } = req.query; // period: day|month, date: YYYY-MM-DD lub YYYY-MM
+  if (!mainSn || !ACCESS_KEY) return res.json({ error: 'brak konfiguracji' });
+
+  try {
+    let beginTime, endTime;
+    if (period === 'month') {
+      const [y, m] = date.split('-');
+      beginTime = `${y}-${m}-01 00:00:00`;
+      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+      endTime = `${y}-${m}-${lastDay} 23:59:59`;
+    } else {
+      beginTime = `${date} 00:00:00`;
+      endTime   = `${date} 23:59:59`;
+    }
+
+    // Pobierz energię PV
+    const pvResp = await ecoflowPost('/iot-open/sign/device/quota/data', {
+      sn: mainSn,
+      params: { beginTime, endTime, code: 'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA' }
+    });
+
+    // Pobierz energię sieci (feed-in i pobieranie)
+    const gridResp = await ecoflowPost('/iot-open/sign/device/quota/data', {
+      sn: mainSn,
+      params: { beginTime, endTime, code: 'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA' }
+    });
+
+    const pvWh    = pvResp.data?.data?.[0]?.indexValue || 0;
+    const gridData = gridResp.data?.data || [];
+    // extra=1 pobieranie z sieci, extra=2 oddawanie do sieci
+    const feedWh  = gridData.find(d => d.extra === '2')?.indexValue || 0;
+    const fromWh  = gridData.find(d => d.extra === '1')?.indexValue || 0;
+
+    res.json({
+      period, date, beginTime, endTime,
+      pvWh: parseFloat(pvWh),
+      feedWh: parseFloat(feedWh),
+      fromGridWh: parseFloat(fromWh),
+      raw: { pv: pvResp, grid: gridResp }
+    });
+  } catch(e) {
+    console.error('Historical error:', e.message);
+    res.json({ error: e.message });
+  }
+});
 
 function broadcast(data) {
   const msg = JSON.stringify(data);
