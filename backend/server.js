@@ -62,20 +62,16 @@ let mainSn = DEVICE_SN; // będzie zaktualizowany po pobraniu głównego SN
 
 let deviceState = {
   connected: false, lastUpdate: null,
-  // Z dokumentacji STREAM API
-  pvPower: 0,            // powGetPvSum — moc PV (W)
-  gridPower: 0,          // gridConnectionPower — moc sieci (+ pobieranie, - oddawanie)
-  feedPower: 0,          // gridConnectionPower ujemny = feed-in
-  loadPower: 0,          // powGetSysLoad — obciążenie domu (W)
-  battPower: 0,          // powGetBpCms — moc baterii (W)
-  battSoc: 0,            // cmsBattSoc — poziom baterii (%)
-  feedGridMode: 0,       // 1=off, 2=on
-  // PV per panel — jeśli dostępne
-  pv1Power: 0,
-  pv2Power: 0,
+  pvPower: 0, pv1Power: 0, pv2Power: 0,
+  gridPower: 0, feedPower: 0, fromGrid: 0,
+  loadPower: 0, battPower: 0, battSoc: 0,
+  acVoltage: 0, acFreq: 0, acCurrent: 0,
+  pv1Voltage: 0, pv2Voltage: 0,
+  pv1Current: 0, pv2Current: 0,
+  invTemp: 0, gridStatus: '', feedGridMode: 0,
 };
 
-let history = { feed: [], pv: [], load: [], timestamps: [] };
+let history = { feed: [], pv1: [], pv2: [], timestamps: [] };
 const MAX_HISTORY = 300;
 
 const app = express();
@@ -93,10 +89,10 @@ function broadcast(data) {
 function recordHistory() {
   history.timestamps.push(new Date().toISOString());
   history.feed.push(deviceState.feedPower);
-  history.pv.push(deviceState.pvPower);
-  history.load.push(deviceState.loadPower);
+  history.pv1.push(deviceState.pv1Power);
+  history.pv2.push(deviceState.pv2Power);
   if (history.timestamps.length > MAX_HISTORY) {
-    ['timestamps','feed','pv','load'].forEach(k => history[k].shift());
+    ['timestamps','feed','pv1','pv2'].forEach(k => history[k].shift());
   }
 }
 
@@ -111,27 +107,58 @@ function applyParams(params) {
       }
     }
   };
+  const r1 = v => Math.round(v * 10) / 10;
+  const r2 = v => Math.round(v * 100) / 100;
 
-  // Oficjalne parametry STREAM z dokumentacji
-  set('powGetPvSum',       'pvPower',   v => Math.round(v * 10) / 10);
-  set('gridConnectionPower', 'gridPower', v => Math.round(v * 10) / 10);
-  set('powGetSysLoad',     'loadPower', v => Math.round(v * 10) / 10);
-  set('powGetBpCms',       'battPower', v => Math.round(v * 10) / 10);
-  set('cmsBattSoc',        'battSoc',   v => Math.round(v * 10) / 10);
-  set('feedGridMode',      'feedGridMode', v => v);
-
-  // Feed-in = gridConnectionPower ujemny (oddawanie do sieci)
-  if (params['gridConnectionPower'] !== undefined) {
-    const g = params['gridConnectionPower'];
-    deviceState.feedPower = g < 0 ? Math.round(Math.abs(g) * 10) / 10 : 0;
+  // PV - rzeczywiste nazwy z BK01Z
+  set('powGetPv',            'pv1Power',   r1);
+  set('powGetPv2',           'pv2Power',   r1);
+  // pvPower = suma PV1+PV2
+  if (params['powGetPv'] !== undefined || params['powGetPv2'] !== undefined) {
+    deviceState.pvPower = Math.round(((deviceState.pv1Power||0) + (deviceState.pv2Power||0)) * 10) / 10;
     updated = true;
   }
+  set('powGetPvSum',         'pvPower',    r1); // fallback jeśli dostępne
+
+  // Sieć
+  set('gridConnectionPower', 'gridPower',  r1);
+  set('gridConnectionVol',   'acVoltage',  r1);
+  set('gridConnectionFreq',  'acFreq',     r2);
+  set('gridConnectionAmp',   'acCurrent',  r2);
+
+  // Feed-in = gridConnectionPower ujemny
+  if (params['gridConnectionPower'] !== undefined) {
+    const g = params['gridConnectionPower'];
+    deviceState.feedPower  = g < 0 ? r1(Math.abs(g)) : 0;
+    deviceState.fromGrid   = g > 0 ? r1(g) : 0;
+    updated = true;
+  }
+
+  // Obciążenie domu
+  set('powGetSysLoad',       'loadPower',  r1);
+
+  // Bateria
+  set('powGetBpCms',         'battPower',  r1);
+  set('cmsBattSoc',          'battSoc',    r1);
+  set('feedGridMode',        'feedGridMode', v => v);
+
+  // PV napięcia i prądy
+  set('plugInInfoPvVol',     'pv1Voltage', r1);
+  set('plugInInfoPv2Vol',    'pv2Voltage', r1);
+  set('plugInInfoPvAmp',     'pv1Current', r2);
+  set('plugInInfoPv2Amp',    'pv2Current', r2);
+
+  // Temperatura
+  set('invNtcTemp3',         'invTemp',    v => v);
+
+  // Status połączenia
+  set('gridConnectionSta',   'gridStatus', v => v);
 
   if (updated) {
     deviceState.lastUpdate = new Date().toISOString();
     recordHistory();
     broadcast({ type: 'state', data: deviceState });
-    console.log(`📊 pv=${deviceState.pvPower}W grid=${deviceState.gridPower}W feed=${deviceState.feedPower}W load=${deviceState.loadPower}W batt=${deviceState.battSoc}%`);
+    console.log(`📊 pv1=${deviceState.pv1Power}W pv2=${deviceState.pv2Power}W grid=${deviceState.gridPower}W feed=${deviceState.feedPower}W load=${deviceState.loadPower}W`);
   }
   return updated;
 }
