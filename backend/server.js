@@ -141,14 +141,13 @@ async function getMqttCredentials() {
 async function fetchAllQuotas() {
   try {
     const data = await ecoflowGet('/iot-open/sign/device/quota/all', ACCESS_KEY, SECRET_KEY, { sn: DEVICE_SN });
-    if (data.code === '0' && data.data) {
+    console.log('📊 REST raw:', JSON.stringify(data).substring(0, 500));
+    if (data.code === '0' && data.data && Object.keys(data.data).length > 0) {
       const updated = applyParams(data.data);
-      if (updated) {
-        const pv1 = deviceState.pv1Power, pv2 = deviceState.pv2Power, feed = deviceState.feedPower;
-        console.log(`📊 REST: feed=${feed}W pv1=${pv1}W pv2=${pv2}W`);
-      } else {
-        console.log('📊 REST quota: OK (brak zmian)');
-      }
+      const pv1 = deviceState.pv1Power, pv2 = deviceState.pv2Power, feed = deviceState.feedPower;
+      console.log(`📊 REST: feed=${feed}W pv1=${pv1}W pv2=${pv2}W (${Object.keys(data.data).length} params)`);
+    } else if (data.code === '0') {
+      console.warn('⚠️  REST quota: puste dane — urządzenie offline lub BK01Z nie wspierany przez API');
     } else {
       console.warn(`⚠️  REST quota: ${data.message} (code: ${data.code})`);
     }
