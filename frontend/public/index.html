@@ -24,12 +24,16 @@
   .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
   .tr{font-family:var(--mono);font-size:11px;color:var(--text2)}
 
-  .main{padding:18px 24px;max-width:1000px;margin:0 auto}
+  /* Tabs */
+  .tabs{display:flex;gap:2px;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+  .tab{font-family:var(--mono);font-size:11px;padding:10px 16px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s;text-transform:uppercase;letter-spacing:.08em}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-content{display:none}.tab-content.active{display:block}
 
+  .main{padding:18px 24px;max-width:1000px;margin:0 auto}
   .sec{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:14px}
   .sec-title{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:18px}
 
-  /* Flow */
   .flow{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
   .fnode{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px}
   .ficon{font-size:22px;margin-bottom:2px}
@@ -40,7 +44,6 @@
   .arr{font-size:20px;color:var(--border);flex-shrink:0;transition:color .5s}
   .arr.a{color:var(--accent)}
 
-  /* Grid */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;position:relative;overflow:hidden}
   .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -59,9 +62,35 @@
   .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--text2)}
   .ld{width:7px;height:7px;border-radius:50%}
 
+  /* Historia */
+  .hist-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .hist-controls input,.hist-controls select{
+    background:var(--border);border:1px solid var(--border);color:var(--text1);
+    font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:6px;outline:none;
+    transition:border-color .2s;
+  }
+  .hist-controls input:focus,.hist-controls select:focus{border-color:var(--accent)}
+  .btn{background:var(--accent);color:#000;font-family:var(--mono);font-size:11px;font-weight:600;
+    padding:8px 16px;border:none;border-radius:6px;cursor:pointer;letter-spacing:.05em;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  .hist-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+  .hcard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+  .hcard::before{content:'';display:block;height:2px;border-radius:2px;margin-bottom:12px}
+  .hcard.hg::before{background:var(--green)}.hcard.ho::before{background:var(--accent)}
+  .hcard.hr::before{background:var(--red)}
+  .hlabel{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .hval{font-family:var(--mono);font-size:26px;font-weight:600}
+  .hunit{font-size:12px;color:var(--text2);font-weight:400}
+  .hsub{font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:3px}
+
+  .hist-loading{text-align:center;padding:40px;font-family:var(--mono);font-size:12px;color:var(--text2)}
+  .hist-error{text-align:center;padding:20px;font-family:var(--mono);font-size:12px;color:var(--red);background:rgba(255,107,107,.05);border-radius:6px;border:1px solid rgba(255,107,107,.2)}
+
   #banner{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--red);text-align:center}
 
-  @media(max-width:600px){.main{padding:10px}.fval{font-size:22px}.grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:600px){.main{padding:10px}.fval{font-size:22px}.grid{grid-template-columns:repeat(2,1fr)}.tabs{padding:0 12px}}
 </style>
 </head>
 <body>
@@ -74,10 +103,16 @@
   <div class="tr" id="ts">—</div>
 </div>
 
+<div class="tabs">
+  <div class="tab active" onclick="showTab('live')">Na żywo</div>
+  <div class="tab" onclick="showTab('hist')">Historia</div>
+</div>
+
+<!-- NA ŻYWO -->
+<div id="tab-live" class="tab-content active">
 <div class="main">
   <div id="banner">⚠ Brak połączenia z urządzeniem</div>
 
-  <!-- Przepływ -->
   <div class="sec">
     <div class="sec-title">// przepływ energii</div>
     <div class="flow">
@@ -104,7 +139,6 @@
     </div>
   </div>
 
-  <!-- Karty -->
   <div class="grid">
     <div class="card co">
       <div class="clabel">PV razem</div>
@@ -139,10 +173,9 @@
     </div>
   </div>
 
-  <!-- Wykres -->
   <div class="sec">
     <div class="chart-hdr">
-      <div class="sec-title" style="margin:0">// historia mocy</div>
+      <div class="sec-title" style="margin:0">// historia sesji</div>
       <div class="leg">
         <div class="li"><div class="ld" style="background:var(--accent)"></div>PV1</div>
         <div class="li"><div class="ld" style="background:#c8935a"></div>PV2</div>
@@ -152,11 +185,37 @@
     <canvas id="chart" height="100"></canvas>
   </div>
 </div>
+</div>
+
+<!-- HISTORIA -->
+<div id="tab-hist" class="tab-content">
+<div class="main">
+  <div class="sec">
+    <div class="sec-title">// historia energii</div>
+    <div class="hist-controls">
+      <select id="histPeriod" onchange="updateHistInput()">
+        <option value="day">Dzień</option>
+        <option value="month">Miesiąc</option>
+      </select>
+      <input type="date" id="histDate" value="">
+      <button class="btn" onclick="loadHistory()" id="histBtn">Wczytaj</button>
+    </div>
+    <div id="histResult"></div>
+  </div>
+</div>
+</div>
 
 <script>
+// ── Tabs ──
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['live','hist'][i]===name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ── Live chart ──
 let cd={pv1:[],pv2:[],feed:[],ts:[]};
 const cv=document.getElementById('chart'),cx=cv.getContext('2d');
-
 function drawChart(){
   const dpr=window.devicePixelRatio||1,w=cv.offsetWidth,h=100;
   cv.width=w*dpr;cv.height=h*dpr;cx.scale(dpr,dpr);
@@ -181,14 +240,11 @@ function drawChart(){
   line(cd.pv2,'#c8935a');line(cd.pv1,'#f5a623');line(cd.feed,'#39d353');
 }
 
+// ── Live update ──
 function f(v,d=0){return v>0?(d>0?v.toFixed(d):Math.round(v)):'–'}
-
 function update(s){
-  const pv1=s.pv1Power||0,pv2=s.pv2Power||0;
-  const pv=s.pvPower||(pv1+pv2);
-  const feed=s.feedPower||0;
+  const pv1=s.pv1Power||0,pv2=s.pv2Power||0,pv=s.pvPower||(pv1+pv2),feed=s.feedPower||0;
   const pct=Math.min(100,Math.round(pv/1020*100));
-
   document.getElementById('pv1').innerHTML=`${f(pv1)}<span class="funit"> W</span>`;
   document.getElementById('pv2').innerHTML=`${f(pv2)}<span class="funit"> W</span>`;
   document.getElementById('feed').innerHTML=`${f(feed)}<span class="funit"> W</span>`;
@@ -196,12 +252,10 @@ function update(s){
   document.getElementById('pv1s').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)}A`:'';
   document.getElementById('pv2s').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)}A`:'';
   document.getElementById('arr').className=`arr${feed>5?' a':''}`;
-
   document.getElementById('pvtot').innerHTML=`${f(pv)}<span class="u"> W</span>`;
   document.getElementById('pvbar').style.width=pct+'%';
   document.getElementById('eff').innerHTML=`${pct}<span class="u"> %</span>`;
   document.getElementById('effbar').style.width=pct+'%';
-
   document.getElementById('acv').innerHTML=s.acVoltage>0?`${s.acVoltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('acf').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
   document.getElementById('pv1v').innerHTML=s.pv1Voltage>0?`${s.pv1Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
@@ -209,31 +263,79 @@ function update(s){
   document.getElementById('pv2v').innerHTML=s.pv2Voltage>0?`${s.pv2Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('pv2a').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
   document.getElementById('temp').innerHTML=s.invTemp>0?`${s.invTemp}<span class="u"> °C</span>`:`–<span class="u"> °C</span>`;
-
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 }
-
 function setOn(on){
   document.getElementById('dot').classList.toggle('on',on);
   document.getElementById('banner').style.display=on?'none':'block';
 }
 
+// ── Historia ──
+function updateHistInput(){
+  const period=document.getElementById('histPeriod').value;
+  const inp=document.getElementById('histDate');
+  if(period==='month'){inp.type='month';}else{inp.type='date';}
+}
+
+async function loadHistory(){
+  const period=document.getElementById('histPeriod').value;
+  const date=document.getElementById('histDate').value;
+  if(!date){alert('Wybierz datę');return;}
+  const btn=document.getElementById('histBtn');
+  btn.disabled=true;btn.textContent='Ładuję...';
+  document.getElementById('histResult').innerHTML='<div class="hist-loading">⏳ Pobieranie danych z API EcoFlow...</div>';
+  try{
+    const r=await fetch(`/api/historical?period=${period}&date=${date}`);
+    const d=await r.json();
+    if(d.error){
+      document.getElementById('histResult').innerHTML=`<div class="hist-error">❌ ${d.error}</div>`;
+      return;
+    }
+    const pvKwh=(d.pvWh/1000).toFixed(2);
+    const feedKwh=(d.feedWh/1000).toFixed(2);
+    const label=period==='month'?'miesiąc':'dzień';
+    document.getElementById('histResult').innerHTML=`
+      <div class="hist-summary">
+        <div class="hcard ho">
+          <div class="hlabel">Energia PV</div>
+          <div class="hval">${pvKwh}<span class="hunit"> kWh</span></div>
+          <div class="hsub">wyprodukowano (${label})</div>
+        </div>
+        <div class="hcard hg">
+          <div class="hlabel">Feed-in</div>
+          <div class="hval">${feedKwh}<span class="hunit"> kWh</span></div>
+          <div class="hsub">oddano do sieci (${label})</div>
+        </div>
+        <div class="hcard ho">
+          <div class="hlabel">Autokonsumpcja</div>
+          <div class="hval">${d.pvWh>0?((1-d.feedWh/d.pvWh)*100).toFixed(1):'–'}<span class="hunit"> %</span></div>
+          <div class="hsub">PV zużyte lokalnie</div>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:4px">
+        Okres: ${d.beginTime} — ${d.endTime}
+      </div>`;
+  }catch(e){
+    document.getElementById('histResult').innerHTML=`<div class="hist-error">❌ Błąd: ${e.message}</div>`;
+  }finally{
+    btn.disabled=false;btn.textContent='Wczytaj';
+  }
+}
+
+// ── WS ──
 function connect(){
   const ws=new WebSocket(`ws://${location.host}`);
   ws.onopen=()=>{
     fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected)});
     fetch('/api/history').then(r=>r.json()).then(h=>{
-      cd={pv1:h.pv1||[],pv2:h.pv2||[],feed:h.feed||[],ts:h.timestamps||[]};
-      drawChart();
+      cd={pv1:h.pv1||[],pv2:h.pv2||[],feed:h.feed||[],ts:h.timestamps||[]};drawChart();
     });
   };
   ws.onmessage=e=>{
     const m=JSON.parse(e.data);
     if(m.type==='state'){
       update(m.data);setOn(m.data.connected);
-      cd.pv1.push(m.data.pv1Power||0);
-      cd.pv2.push(m.data.pv2Power||0);
-      cd.feed.push(m.data.feedPower||0);
+      cd.pv1.push(m.data.pv1Power||0);cd.pv2.push(m.data.pv2Power||0);cd.feed.push(m.data.feedPower||0);
       cd.ts.push(new Date().toISOString());
       if(cd.feed.length>300)['pv1','pv2','feed','ts'].forEach(k=>cd[k].shift());
       drawChart();
@@ -242,6 +344,9 @@ function connect(){
   ws.onclose=()=>{setOn(false);setTimeout(connect,3000)};
 }
 
+// Init
+const today=new Date().toISOString().split('T')[0];
+document.getElementById('histDate').value=today;
 window.addEventListener('resize',drawChart);
 connect();
 </script>
