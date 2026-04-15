@@ -1,605 +1,451 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EcoFlow STREAM — Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#0a0e14;--sur:#111820;--brd:#1e2d3d;
-    --pv1:#f5a623;--pv2:#e05c1a;--grn:#39d353;--blu:#58a6ff;--red:#ff6b6b;--cyn:#56d0e0;--yel:#f0c040;
-    --t1:#e6edf3;--t2:#7d8590;
-    --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+const express   = require('express');
+const http      = require('http');
+const WebSocket = require('ws');
+const mqtt      = require('mqtt');
+const path      = require('path');
+const crypto    = require('crypto');
+const axios     = require('axios');
+
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+function flattenKeys(obj, prefix = '') {
+  let res = {};
+  for (const k of Object.keys(obj)) {
+    const fullKey = prefix ? `${prefix}.${k}` : k;
+    if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+      res = { ...res, ...flattenKeys(obj[k], fullKey) };
+    } else { res[fullKey] = obj[k]; }
   }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh}
-  .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-bottom:1px solid var(--brd);background:var(--sur)}
-  .tl{display:flex;align-items:center;gap:10px}
-  .logo{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;color:var(--pv1)}
-  .did{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--brd);padding:3px 8px;border-radius:4px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .5s}
-  .dot.on{background:var(--grn);box-shadow:0 0 6px var(--grn)}
-  .tr{font-family:var(--mono);font-size:11px;color:var(--t2)}
-  .main{padding:18px 22px;max-width:980px;margin:0 auto}
-  .sec{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:20px;margin-bottom:14px}
-  .stitle{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:18px}
-  .flow{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
-  .fn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px}
-  .ficon{font-size:22px;margin-bottom:2px}
-  .flb{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em}
-  .fv{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1}
-  .fu{font-size:12px;font-weight:400;color:var(--t2)}
-  .fs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:2px}
-  .arr{font-size:20px;color:var(--brd);flex-shrink:0;transition:color .5s}
-  .arr.a1{color:var(--pv1)}.arr.a2{color:var(--pv2)}.arr.ag{color:var(--grn)}
-  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
-  .card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:14px;position:relative;overflow:hidden}
-  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-  .c1::before{background:var(--pv1)}.c2::before{background:var(--pv2)}
-  .cg::before{background:var(--grn)}.cb::before{background:var(--blu)}.cc::before{background:var(--cyn)}
-  .clb{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
-  .cv{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1}
-  .cv .u{font-size:10px;color:var(--t2);font-weight:400}
-  .cs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px}
-  .bar{margin-top:7px;height:3px;background:var(--brd);border-radius:2px;overflow:hidden}
-  .bf{height:100%;border-radius:2px;transition:width .5s}
-  canvas{width:100%!important;display:block}
-  .chdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .leg{display:flex;gap:12px}
-  .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--t2)}
-  .ld{width:8px;height:8px;border-radius:50%}
-  #bnr{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--red);text-align:center}
+  return res;
+}
 
-  /* ── Historia energii — styl EcoFlow ── */
-  .etabs{display:flex;border-bottom:1px solid var(--brd);margin-bottom:18px}
-  .etab{flex:1;text-align:center;padding:10px 4px;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none}
-  .etab.active{color:var(--t1);border-bottom-color:var(--blu)}
-  .enav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px}
-  .enavarr{width:32px;height:32px;border-radius:50%;background:var(--brd);border:none;color:var(--t2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
-  .enavarr:hover{background:var(--blu);color:#fff}
-  .enavarr:disabled{opacity:.3;cursor:default}
-  .enavarr:disabled:hover{background:var(--brd);color:var(--t2)}
-  .enavlbl{font-family:var(--sans);font-size:14px;font-weight:600;min-width:200px;text-align:center}
-  .etotal{margin-bottom:18px}
-  .etotallbl{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-  .etotalval{font-family:var(--sans);font-size:44px;font-weight:600;line-height:1;color:var(--t1)}
-  .etotalunit{font-size:18px;font-weight:400;color:var(--t2);margin-left:4px}
-  .etotalch{font-family:var(--mono);font-size:11px;margin-left:8px}
-  .echartbox{position:relative;min-height:140px}
-  .echartloading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--t2)}
-  .estats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:18px;padding-top:18px;border-top:1px solid var(--brd)}
-  .estat{display:flex;flex-direction:column;gap:3px}
-  .estatlbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}
-  .estatval{font-family:var(--sans);font-size:18px;font-weight:600}
-  .estatunit{font-size:11px;font-weight:400;color:var(--t2)}
-  .estatsub{font-family:var(--mono);font-size:10px;margin-top:2px}
-  .egenby{margin-top:16px;padding:14px;background:rgba(255,255,255,.03);border-radius:6px;border:1px solid var(--brd)}
-  .egenbylbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
-  .egenbyrow{display:flex;align-items:center;gap:10px}
-  .egenbyicon{font-size:20px}
-  .egenbyname{font-family:var(--sans);font-size:13px;font-weight:600;flex:1}
-  .egenbyval{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--yel)}
-  .egenbybar{height:3px;background:var(--brd);border-radius:2px;margin-top:6px;overflow:hidden}
-  .egenbybarfill{height:100%;background:var(--yel);border-radius:2px;width:100%}
-  .enodatamsg{text-align:center;padding:30px;font-family:var(--mono);font-size:12px;color:var(--t2);opacity:.6}
+function makeSignedHeaders(accessKey, secretKey, bodyParams = {}) {
+  const nonce = String(100000 + Math.floor(Math.random() * 100000));
+  const timestamp = String(Date.now());
+  let dataStr = '';
+  if (Object.keys(bodyParams).length > 0) {
+    const flat = flattenKeys(bodyParams);
+    dataStr = Object.keys(flat).sort().map(k => `${k}=${flat[k]}`).join('&') + '&';
+  }
+  const sigStr = `${dataStr}accessKey=${accessKey}&nonce=${nonce}&timestamp=${timestamp}`;
+  const sign = crypto.createHmac('sha256', secretKey).update(sigStr).digest('hex');
+  return { 'Content-Type': 'application/json;charset=UTF-8', accessKey, nonce, timestamp, sign };
+}
 
-  @media(max-width:600px){.main{padding:10px}.fv{font-size:22px}.pgrid{grid-template-columns:repeat(2,1fr)}.etotalval{font-size:36px}.estats{grid-template-columns:repeat(2,1fr)}}
-</style>
-</head>
-<body>
+function makePrivateHeaders(token) {
+  const nonce = crypto.randomBytes(8).toString('hex');
+  const timestamp = String(Date.now());
+  const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
+  return {
+    'Authorization': `Bearer ${token}`, 'lang': 'en_US',
+    'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
+    'X-Appid': '9', 'platform': 'android', 'version': '6.10.5',
+    'content-type': 'application/json',
+  };
+}
 
-<div class="topbar">
-  <div class="tl">
-    <span class="logo">EcoFlow STREAM Easy</span>
-    <span class="did">BK01Z1SACH3L4901</span>
-    <div class="dot" id="dot"></div>
-  </div>
-  <div class="tr" id="ts">—</div>
-</div>
+async function ecoflowGet(url, queryParams = {}) {
+  const headers = makeSignedHeaders(ACCESS_KEY, SECRET_KEY, {});
+  const qs = Object.keys(queryParams).length > 0
+    ? '?' + Object.entries(queryParams).map(([k, v]) => `${k}=${v}`).join('&') : '';
+  const resp = await axios.get(`${API_HOST}${url}${qs}`, { headers, timeout: 10000 });
+  return resp.data;
+}
 
-<div class="main">
-  <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
-  <div id="bnr-offline" style="display:none;background:rgba(240,192,64,.08);border:1px solid rgba(240,192,64,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--yel);text-align:center">
-    ☀️ Inwenter offline — brak danych produkcji w czasie rzeczywistym. Dane historyczne poniżej.
-  </div>
+const PORT        = process.env.PORT           || 8080;
+const DEVICE_SN   = process.env.DEVICE_SN      || '';
+const ACCESS_KEY  = process.env.EF_ACCESS_KEY   || '';
+const SECRET_KEY  = process.env.EF_SECRET_KEY   || '';
+const EF_EMAIL    = process.env.EF_EMAIL        || '';
+const EF_PASSWORD = process.env.EF_PASSWORD     || '';
+const SPACE_ID    = process.env.EF_SPACE_ID     || '2042460095875207170';
+const API_HOST    = 'https://api-e.ecoflow.com';
+let   mainSn      = DEVICE_SN;
 
-  <!-- Przepływ energii real-time -->
-  <div class="sec">
-    <div class="stitle">// przepływ energii</div>
-    <div class="flow">
-      <div class="fn">
-        <div class="ficon">☀️</div>
-        <div class="flb" style="color:var(--pv1)">Panel PV1</div>
-        <div class="fv" id="pv1" style="color:var(--pv1)">–<span class="fu"> W</span></div>
-        <div class="fs" id="pv1s"></div>
-      </div>
-      <div class="arr" id="a1">+</div>
-      <div class="fn">
-        <div class="ficon">☀️</div>
-        <div class="flb" style="color:var(--pv2)">Panel PV2</div>
-        <div class="fv" id="pv2" style="color:var(--pv2)">–<span class="fu"> W</span></div>
-        <div class="fs" id="pv2s"></div>
-      </div>
-      <div class="arr" id="a2">→</div>
-      <div class="fn">
-        <div class="ficon">⚡</div>
-        <div class="flb">Feed-in</div>
-        <div class="fv" id="feed" style="color:var(--grn)">–<span class="fu"> W</span></div>
-        <div class="fs" id="feeds"></div>
-      </div>
-    </div>
-  </div>
+let deviceState = {
+  connected: false, lastUpdate: null,
+  pv1Power: 0, pv2Power: 0, pvPower: 0,
+  feedPower: 0, fromGrid: 0, gridPower: 0,
+  acVoltage: 0, acFreq: 0, acCurrent: 0,
+  pv1Voltage: 0, pv2Voltage: 0, pv1Current: 0, pv2Current: 0,
+  invTemp: 0, gridStatus: '',
+};
+let history = { feed: [], pv1: [], pv2: [], timestamps: [] };
+const MAX_HISTORY = 300;
 
-  <!-- Karty parametrów -->
-  <div class="pgrid">
-    <div class="card c1">
-      <div class="clb">PV1 napięcie</div>
-      <div class="cv" id="pv1v">–<span class="u"> V</span></div>
-      <div class="cs" id="pv1a"></div>
-    </div>
-    <div class="card c2">
-      <div class="clb">PV2 napięcie</div>
-      <div class="cv" id="pv2v">–<span class="u"> V</span></div>
-      <div class="cs" id="pv2a"></div>
-    </div>
-    <div class="card cg">
-      <div class="clb">Feed-in</div>
-      <div class="cv" id="feedcard">–<span class="u"> W</span></div>
-      <div class="bar"><div class="bf" id="feedbar" style="background:var(--grn)"></div></div>
-      <div class="cs">max 1020W</div>
-    </div>
-    <div class="card c1">
-      <div class="clb">PV razem</div>
-      <div class="cv" id="pvtot">–<span class="u"> W</span></div>
-      <div class="bar"><div class="bf" id="pvbar" style="background:linear-gradient(90deg,var(--pv1),var(--pv2))"></div></div>
-    </div>
-    <div class="card cc">
-      <div class="clb">Napięcie AC</div>
-      <div class="cv" id="acv">–<span class="u"> V</span></div>
-      <div class="cs" id="acf"></div>
-    </div>
-    <div class="card cb">
-      <div class="clb">Temp. inwertera</div>
-      <div class="cv" id="temp">–<span class="u"> °C</span></div>
-    </div>
-  </div>
+let energyCache = {};
+let privateToken = null;
+let tokenExpiry = 0;
 
-  <!-- Historia energii — styl EcoFlow -->
-  <div class="sec">
-    <div class="stitle">// produkcja energii</div>
+const app     = express();
+const server  = http.createServer(app);
+const WSServer = new WebSocket.Server({ server });
 
-    <!-- Zakładki -->
-    <div class="etabs">
-      <button class="etab active" data-period="day">Dzień</button>
-      <button class="etab" data-period="week">Tydzień</button>
-      <button class="etab" data-period="month">Miesiąc</button>
-      <button class="etab" data-period="year">Rok</button>
-    </div>
+app.use(express.static(path.join(__dirname, '../frontend/public')));
+app.get('/api/state',   (req, res) => res.json(deviceState));
+app.get('/api/history', (req, res) => res.json(history));
 
-    <!-- Nawigacja daty -->
-    <div class="enav">
-      <button class="enavarr" id="eprev">&#9664;</button>
-      <div class="enavlbl" id="enavlbl">ładowanie…</div>
-      <button class="enavarr" id="enext" disabled>&#9654;</button>
-    </div>
+// Endpoint historii energii: /api/energy?period=day&date=2026-04-15
+app.get('/api/energy', async (req, res) => {
+  const { period = 'day', date } = req.query;
+  const today = new Date().toISOString().slice(0, 10);
+  const refDate = date || today;
+  const cacheKey = `${period}:${refDate}`;
+  // Cache 1h dla historycznych, 10min dla dzisiejszych
+  const cacheTTL = refDate === today ? 10 * 60 * 1000 : 60 * 60 * 1000;
+  if (energyCache[cacheKey] && (Date.now() - energyCache[cacheKey].fetchedAt < cacheTTL)) {
+    return res.json(energyCache[cacheKey]);
+  }
+  try {
+    const data = await fetchEnergyForPeriod(period, refDate);
+    if (data) { energyCache[cacheKey] = { ...data, fetchedAt: Date.now() }; return res.json(energyCache[cacheKey]); }
+    res.json({ error: 'no_data' });
+  } catch(e) { res.json({ error: e.message }); }
+});
 
-    <!-- Total kWh -->
-    <div class="etotal">
-      <div class="etotallbl">Total</div>
-      <div>
-        <span class="etotalval" id="etotalval">–</span>
-        <span class="etotalunit">kWh</span>
-        <span class="etotalch" id="etotalch"></span>
-      </div>
-    </div>
+function broadcast(data) {
+  const msg = JSON.stringify(data);
+  WSServer.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
+}
 
-    <!-- Wykres słupkowy -->
-    <div class="echartbox">
-      <div class="echartloading" id="echartloading">ładowanie…</div>
-      <canvas id="echart" height="140" style="display:none"></canvas>
-    </div>
+function recordHistory() {
+  history.timestamps.push(new Date().toISOString());
+  history.feed.push(deviceState.feedPower);
+  history.pv1.push(deviceState.pv1Power);
+  history.pv2.push(deviceState.pv2Power);
+  if (history.timestamps.length > MAX_HISTORY)
+    ['timestamps','feed','pv1','pv2'].forEach(k => history[k].shift());
+}
 
-    <!-- Statystyki -->
-    <div class="estats" id="estats" style="display:none">
-      <div class="estat" id="estat-eff" style="display:none">
-        <div class="estatlbl">Efektywność</div>
-        <div class="estatval" id="eeff-val">–<span class="estatunit"> %</span></div>
-        <div class="estatsub" id="eeff-ch"></div>
-      </div>
-      <div class="estat" id="estat-earn" style="display:none">
-        <div class="estatlbl">Zyski</div>
-        <div class="estatval" id="eearn-val">–<span class="estatunit" id="eearn-unit"> zł</span></div>
-      </div>
-    </div>
+function applyParams(params) {
+  let updated = false;
+  const r1 = v => Math.round(v * 10) / 10;
+  const r2 = v => Math.round(v * 100) / 100;
+  const set = (key, field, fn) => {
+    if (params[key] !== undefined && params[key] !== null) {
+      const val = fn(params[key]);
+      if (deviceState[field] !== val) { deviceState[field] = val; updated = true; }
+    }
+  };
+  set('powGetPv',            'pv1Power',   r1);
+  set('powGetPv2',           'pv2Power',   r1);
+  set('gridConnectionPower', 'gridPower',  r1);
+  set('gridConnectionVol',   'acVoltage',  r1);
+  set('gridConnectionFreq',  'acFreq',     r2);
+  set('gridConnectionAmp',   'acCurrent',  r2);
+  set('plugInInfoPvVol',     'pv1Voltage', r1);
+  set('plugInInfoPv2Vol',    'pv2Voltage', r1);
+  set('plugInInfoPvAmp',     'pv1Current', r2);
+  set('plugInInfoPv2Amp',    'pv2Current', r2);
+  set('invNtcTemp3',         'invTemp',    v => v);
+  set('gridConnectionSta',   'gridStatus', v => v);
+  if (params['powGetPv'] !== undefined || params['powGetPv2'] !== undefined) {
+    deviceState.pvPower = r1((deviceState.pv1Power || 0) + (deviceState.pv2Power || 0));
+    updated = true;
+  }
+  if (params['gridConnectionPower'] !== undefined) {
+    const g = params['gridConnectionPower'];
+    deviceState.feedPower = g > 0 ? r1(g) : 0;
+    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
+    updated = true;
+  }
+  if (updated) {
+    deviceState.lastUpdate = new Date().toISOString();
+    recordHistory();
+    broadcast({ type: 'state', data: deviceState });
+    console.log(`📊 pv1=${deviceState.pv1Power}W pv2=${deviceState.pv2Power}W feed=${deviceState.feedPower}W`);
+  }
+  return updated;
+}
 
-    <!-- Wykres efektywności -->
-    <div id="eff-chart-sec" style="display:none;margin-top:16px">
-      <div class="stitle" style="margin-bottom:10px">// efektywność produkcji (%)</div>
-      <canvas id="effchart" height="80"></canvas>
-    </div>
+// ─── Prywatne API ─────────────────────────────────────────────────────────────
 
-    <!-- Generated by -->
-    <div class="egenby" id="egenby" style="display:none">
-      <div class="egenbylbl">Generated by</div>
-      <div class="egenbyrow">
-        <div class="egenbyicon">🔌</div>
-        <div class="egenbyname">System STREAM 4901</div>
-        <div class="egenbyval" id="egenbyval">– kWh</div>
-      </div>
-      <div class="egenbybar"><div class="egenbybarfill"></div></div>
-    </div>
-  </div>
+async function loginPrivateApi() {
+  if (!EF_EMAIL || !EF_PASSWORD) return false;
+  try {
+    const pwdB64 = Buffer.from(EF_PASSWORD).toString('base64');
+    const resp = await axios.post(`${API_HOST}/auth/login`,
+      { email: EF_EMAIL, password: pwdB64, scene: 'IOT_APP', userType: 'ECOFLOW' },
+      { headers: { 'lang': 'en_US', 'content-type': 'application/json' }, timeout: 10000 });
+    if (resp.data.code === '0' && resp.data.data?.token) {
+      privateToken = resp.data.data.token;
+      tokenExpiry = Date.now() + 25 * 24 * 60 * 60 * 1000;
+      console.log('✅ Login EcoFlow OK');
+      return true;
+    }
+    console.error('❌ Login failed:', resp.data.message);
+    return false;
+  } catch(e) { console.error('❌ Login error:', e.message); return false; }
+}
 
-  <!-- Historia sesji real-time -->
-  <div class="sec">
-    <div class="chdr">
-      <div class="stitle" style="margin:0">// historia sesji</div>
-      <div class="leg">
-        <div class="li"><div class="ld" style="background:var(--pv1)"></div>PV1</div>
-        <div class="li"><div class="ld" style="background:var(--pv2)"></div>PV2</div>
-        <div class="li"><div class="ld" style="background:var(--grn)"></div>Feed-in</div>
-      </div>
-    </div>
-    <canvas id="chart" height="100"></canvas>
-  </div>
-</div>
+async function ensureToken() {
+  if (!privateToken || Date.now() > tokenExpiry) return await loginPrivateApi();
+  return true;
+}
 
-<script>
-// ─── Stan ─────────────────────────────────────────────────────────────────────
-let cd = {pv1:[],pv2:[],feed:[],ts:[]};
-let deviceState = {};
-
-// Stan historii energii
-const PERIODS = ['day','week','month','year'];
-let curPeriod = 'day';
-let curOffset = 0;    // 0 = bieżący, -1 = poprzedni, itd.
-let curData   = null;
-let isLoading = false;
+async function privatePost(url, body) {
+  if (!await ensureToken()) return null;
+  try {
+    const resp = await axios.post(`${API_HOST}${url}`, body,
+      { headers: makePrivateHeaders(privateToken), timeout: 10000 });
+    return resp.data;
+  } catch(e) { console.error(`❌ API ${url}:`, e.message); return null; }
+}
 
 // ─── Logika dat ───────────────────────────────────────────────────────────────
 
-function offsetDate(period, offset) {
-  const now = new Date();
+function dateStr(d) { return d.toISOString().slice(0, 10); }
+
+function getPeriodRange(period, refDate) {
+  const ref = refDate ? new Date(refDate + 'T12:00:00') : new Date();
+
   if (period === 'day') {
-    now.setDate(now.getDate() + offset);
-    return now.toISOString().slice(0, 10);
+    const d = dateStr(ref);
+    return { begin: d, end: d, label: ref.toLocaleDateString('pl-PL', {day:'numeric',month:'long',year:'numeric'}) };
   }
   if (period === 'week') {
-    const dow = now.getDay();
-    now.setDate(now.getDate() - dow + offset * 7);
-    return now.toISOString().slice(0, 10); // data niedzieli tego tygodnia
+    const dow = ref.getDay();
+    const sun = new Date(ref); sun.setDate(ref.getDate() - dow);
+    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
+    const fmt = (d, opt) => d.toLocaleDateString('pl-PL', opt);
+    return {
+      begin: dateStr(sun), end: dateStr(sat),
+      label: `${fmt(sun,{day:'numeric',month:'short'})} – ${fmt(sat,{day:'numeric',month:'short',year:'numeric'})}`
+    };
   }
   if (period === 'month') {
-    now.setMonth(now.getMonth() + offset, 1);
-    return now.toISOString().slice(0, 10);
+    const y = ref.getFullYear(), m = ref.getMonth();
+    const begin = `${y}-${String(m+1).padStart(2,'0')}-01`;
+    const end = dateStr(new Date(y, m+1, 0));
+    return { begin, end, label: ref.toLocaleDateString('pl-PL', {month:'long',year:'numeric'}) };
   }
   if (period === 'year') {
-    now.setFullYear(now.getFullYear() + offset, 0, 1);
-    return now.toISOString().slice(0, 10);
+    const y = ref.getFullYear();
+    return { begin: `${y}-01-01`, end: `${y}-12-31`, label: String(y) };
   }
 }
 
-// ─── Wykres sesji ─────────────────────────────────────────────────────────────
-const cv = document.getElementById('chart'), cx = cv.getContext('2d');
+const VALUE_CODES = {
+  day: 'SPACE-APP-SOLAR-ENERGY-VALUE-DAY',
+  week: 'SPACE-APP-SOLAR-ENERGY-VALUE-WEEK',
+  month: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH',
+  year: 'SPACE-APP-SOLAR-ENERGY-VALUE-YEAR',
+};
+const BAR_CODES = {
+  day: 'SPACE-APP-SOLAR-ENERGY-BAR-DAY',
+  week: 'SPACE-APP-SOLAR-ENERGY-BAR-WEEK',
+  month: 'SPACE-APP-SOLAR-ENERGY-BAR-MONTH',
+  year: 'SPACE-APP-SOLAR-ENERGY-BAR-YEAR',
+};
 
-function drawChart() {
-  const dpr=window.devicePixelRatio||1, w=cv.offsetWidth, h=100;
-  cv.width=w*dpr; cv.height=h*dpr; cx.scale(dpr,dpr); cx.clearRect(0,0,w,h);
-  const all=[...cd.pv1,...cd.pv2,...cd.feed], mx=Math.max(...all,100), n=cd.feed.length;
-  if(n<2) return;
-  const p={t:6,b:16,l:40,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
-  cx.strokeStyle='rgba(255,255,255,.04)'; cx.lineWidth=1;
-  for(let i=0;i<=4;i++){
-    const y=p.t+(ch/4)*i;
-    cx.beginPath(); cx.moveTo(p.l,y); cx.lineTo(w-p.r,y); cx.stroke();
-    cx.fillStyle='rgba(125,133,144,.6)'; cx.font='9px IBM Plex Mono,monospace'; cx.textAlign='right';
-    cx.fillText(Math.round(mx*(1-i/4))+'W', p.l-4, y+3);
-  }
-  function line(data, color) {
-    cx.beginPath(); cx.strokeStyle=color; cx.lineWidth=1.5; cx.lineJoin='round';
-    for(let i=0;i<data.length;i++){
-      const x=p.l+(i/(n-1))*cw, y=p.t+ch-(data[i]/mx)*ch;
-      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
-    }
-    cx.stroke();
-  }
-  line(cd.feed,'#39d353'); line(cd.pv2,'#e05c1a'); line(cd.pv1,'#f5a623');
-}
+async function fetchEnergyForPeriod(period, refDate) {
+  if (!SPACE_ID || !EF_EMAIL) return null;
+  const range = getPeriodRange(period, refDate);
+  if (!range) return null;
 
-// ─── Wykres energii historycznej ──────────────────────────────────────────────
-const ec = document.getElementById('echart'), ectx = ec.getContext('2d');
-
-function drawEnergyChart(data) {
-  if (!data || !data.chart || data.chart.length === 0) {
-    ec.style.display = 'none';
-    document.getElementById('echartloading').textContent = 'Brak danych';
-    document.getElementById('echartloading').style.display = 'flex';
-    return;
-  }
-
-  document.getElementById('echartloading').style.display = 'none';
-  ec.style.display = 'block';
-
-  const dpr=window.devicePixelRatio||1, w=ec.offsetWidth, h=140;
-  ec.width=w*dpr; ec.height=h*dpr; ectx.scale(dpr,dpr); ectx.clearRect(0,0,w,h);
-
-  const chart = data.chart;
-  const vals = chart.map(d => d.wh);
-  const mx = Math.max(...vals, 1);
-  const n = vals.length;
-  const p = {t:10, b:24, l:42, r:8};
-  const cw = w-p.l-p.r, ch = h-p.t-p.b;
-  const bw = Math.max(3, Math.min(36, cw/n - 4));
-
-  // Etykiety osi Y
-  ectx.fillStyle='rgba(125,133,144,.7)'; ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='right';
-  for(let i=0;i<=3;i++){
-    const y=p.t+(ch/3)*i, val=mx*(1-i/3);
-    ectx.fillStyle='rgba(255,255,255,.04)'; ectx.fillRect(p.l, y, cw, .5);
-    ectx.fillStyle='rgba(125,133,144,.7)';
-    const label = val >= 1000 ? (val/1000).toFixed(1)+'k' : Math.round(val)+'';
-    ectx.fillText(label, p.l-4, y+3);
-  }
-
-  // Słupki
-  vals.forEach((v, i) => {
-    const bh = Math.max(2, (v/mx)*ch);
-    const x  = p.l + (i/n)*cw + (cw/n-bw)/2;
-    const y  = p.t + ch - bh;
-    const grad = ectx.createLinearGradient(0, y, 0, y+bh);
-    grad.addColorStop(0, '#f0c040cc');
-    grad.addColorStop(1, '#f0c04044');
-    ectx.fillStyle = grad;
-    if (ectx.roundRect) ectx.roundRect(x, y, bw, bh, [3,3,0,0]);
-    else { ectx.beginPath(); ectx.rect(x, y, bw, bh); }
-    ectx.fill();
-  });
-
-  // Etykiety osi X
-  ectx.fillStyle='rgba(125,133,144,.8)'; ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='center';
-  const step = Math.max(1, Math.ceil(n/8));
-  chart.forEach((d, i) => {
-    if (i % step !== 0 && i !== n-1) return;
-    const x = p.l + (i/n)*cw + (cw/n)/2;
-    let lb = '';
-    if (curPeriod === 'day')   lb = d.time.slice(11,16);
-    if (curPeriod === 'week')  lb = ['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
-    if (curPeriod === 'month') lb = new Date(d.time+'T12:00').getDate()+'';
-    if (curPeriod === 'year')  lb = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'][new Date(d.time+'T12:00').getMonth()];
-    ectx.fillText(lb, x, h-6);
-  });
-}
-
-// ─── Wykres efektywności ─────────────────────────────────────────────────────
-const efc = document.getElementById('effchart');
-const efctx = efc ? efc.getContext('2d') : null;
-
-function drawEfficiencyChart(chartData) {
-  if (!efctx || !chartData || chartData.length === 0) return;
-  const dpr=window.devicePixelRatio||1, w=efc.offsetWidth, h=80;
-  efc.width=w*dpr; efc.height=h*dpr; efctx.scale(dpr,dpr); efctx.clearRect(0,0,w,h);
-  const vals = chartData.map(d => d.pct);
-  const mx = Math.max(...vals, 50), mn = 0;
-  const n = vals.length;
-  const p = {t:6, b:20, l:34, r:6};
-  const cw = w-p.l-p.r, ch = h-p.t-p.b;
-
-  // Grid
-  for(let i=0;i<=2;i++){
-    const y=p.t+(ch/2)*i;
-    efctx.fillStyle='rgba(255,255,255,.04)'; efctx.fillRect(p.l,y,cw,0.5);
-    efctx.fillStyle='rgba(125,133,144,.6)'; efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='right';
-    efctx.fillText(Math.round(mx*(1-i/2))+'%', p.l-3, y+3);
-  }
-
-  // Linia efektywności
-  efctx.beginPath(); efctx.strokeStyle='#a78bfa'; efctx.lineWidth=1.5; efctx.lineJoin='round';
-  vals.forEach((v, i) => {
-    const x=p.l+(i/(Math.max(n-1,1)))*cw, y=p.t+ch-((v-mn)/(mx-mn))*ch;
-    i===0?efctx.moveTo(x,y):efctx.lineTo(x,y);
-  });
-  efctx.stroke();
-
-  // Fill pod linią
-  efctx.lineTo(p.l+cw, p.t+ch); efctx.lineTo(p.l, p.t+ch); efctx.closePath();
-  const grad = efctx.createLinearGradient(0,p.t,0,p.t+ch);
-  grad.addColorStop(0,'rgba(167,139,250,0.25)'); grad.addColorStop(1,'rgba(167,139,250,0)');
-  efctx.fillStyle=grad; efctx.fill();
-
-  // Etykiety X
-  efctx.fillStyle='rgba(125,133,144,.7)'; efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='center';
-  const step=Math.max(1,Math.ceil(n/6));
-  chartData.forEach((d,i) => {
-    if(i%step!==0 && i!==n-1) return;
-    const x=p.l+(i/(Math.max(n-1,1)))*cw;
-    let lb = curPeriod==='day' ? d.time.slice(11,16) : ['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
-    efctx.fillText(lb, x, h-4);
-  });
-}
-
-// ─── Załaduj dane historii ────────────────────────────────────────────────────
-
-async function loadEnergy(period, offset) {
-  if (isLoading) return;
-  isLoading = true;
-
-  // UI loading
-  document.getElementById('echartloading').textContent = 'ładowanie…';
-  document.getElementById('echartloading').style.display = 'flex';
-  ec.style.display = 'none';
-  document.getElementById('etotalval').textContent = '–';
-  document.getElementById('etotalch').textContent = '';
-  document.getElementById('estats').style.display = 'none';
-  document.getElementById('eff-chart-sec').style.display = 'none';
-  document.getElementById('egenby').style.display = 'none';
-
-  // Nawigacja strzałkami
-  document.getElementById('eprev').disabled = false;
-  document.getElementById('enext').disabled = offset >= 0;
-
-  const dateParam = offsetDate(period, offset);
-
-  try {
-    const resp = await fetch(`/api/energy?period=${period}&date=${dateParam}`);
-    const data = await resp.json();
-
-    if (data.error) {
-      document.getElementById('echartloading').textContent = 'Brak danych (skonfiguruj EF_EMAIL i EF_PASSWORD)';
-      isLoading = false;
-      return;
-    }
-
-    curData = data;
-
-    // Etykieta daty
-    document.getElementById('enavlbl').textContent = data.label || dateParam;
-
-    // Total kWh
-    const tv = document.getElementById('etotalval');
-    if (data.totalKwh != null) {
-      tv.textContent = data.totalKwh.toFixed(2);
-      document.getElementById('egenbyval').textContent = data.totalKwh.toFixed(2) + ' kWh';
-      document.getElementById('egenby').style.display = 'block';
-    } else {
-      tv.textContent = '–';
-    }
-
-    // Zmiana %
-    const ch = document.getElementById('etotalch');
-    if (data.changePercent != null) {
-      const sign = data.changePercent >= 0 ? '▲' : '▼';
-      ch.textContent = `${sign} ${Math.abs(data.changePercent)}%`;
-      ch.style.color = data.changePercent >= 0 ? 'var(--grn)' : 'var(--red)';
-    } else {
-      ch.textContent = '';
-    }
-
-    // Wykres
-    drawEnergyChart(data);
-
-    // Statystyki — efektywność
-    let hasStats = false;
-    if (data.efficiency != null) {
-      document.getElementById('eeff-val').innerHTML = `${data.efficiency.toFixed(1)}<span class="estatunit"> %</span>`;
-      const chEl = document.getElementById('eeff-ch');
-      if (data.efficiencyChange != null) {
-        const sign = data.efficiencyChange >= 0 ? '▲' : '▼';
-        chEl.textContent = `${sign} ${Math.abs(data.efficiencyChange).toFixed(1)}% vs poprzedni`;
-        chEl.style.color = data.efficiencyChange >= 0 ? 'var(--grn)' : 'var(--red)';
-      } else { chEl.textContent = ''; }
-      document.getElementById('estat-eff').style.display = 'flex';
-      hasStats = true;
-    } else { document.getElementById('estat-eff').style.display = 'none'; }
-
-    if (data.earnings != null) {
-      document.getElementById('eearn-val').innerHTML = `${data.earnings.toFixed(2)}<span class="estatunit"> ${data.currency||'zł'}</span>`;
-      document.getElementById('estat-earn').style.display = 'flex';
-      hasStats = true;
-    } else { document.getElementById('estat-earn').style.display = 'none'; }
-
-    if (hasStats) document.getElementById('estats').style.display = 'grid';
-
-    // Wykres efektywności
-    if (data.efficiencyChart && data.efficiencyChart.length > 0) {
-      document.getElementById('eff-chart-sec').style.display = 'block';
-      drawEfficiencyChart(data.efficiencyChart);
-    }
-
-    // Banner offline
-    document.getElementById('bnr-offline').style.display =
-      (!deviceState.connected && data.totalKwh != null) ? 'block' : 'none';
-
-  } catch(e) {
-    document.getElementById('echartloading').textContent = 'Błąd połączenia';
-  }
-
-  isLoading = false;
-}
-
-// ─── Zakładki i nawigacja ─────────────────────────────────────────────────────
-
-document.querySelectorAll('.etab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.etab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    curPeriod = btn.dataset.period;
-    curOffset = 0;
-    loadEnergy(curPeriod, curOffset);
-  });
-});
-
-document.getElementById('eprev').addEventListener('click', () => {
-  curOffset--;
-  loadEnergy(curPeriod, curOffset);
-});
-document.getElementById('enext').addEventListener('click', () => {
-  if (curOffset < 0) { curOffset++; loadEnergy(curPeriod, curOffset); }
-});
-
-// ─── Stan real-time ───────────────────────────────────────────────────────────
-
-function f(v, d=0) { return v > 0 ? (d > 0 ? v.toFixed(d) : Math.round(v)) : '–'; }
-
-function update(s) {
-  deviceState = s;
-  const pv1=s.pv1Power||0, pv2=s.pv2Power||0, pv=s.pvPower||(pv1+pv2), feed=s.feedPower||0;
-  const pct=Math.min(100,Math.round(pv/1020*100)), fpct=Math.min(100,Math.round(feed/1020*100));
-  document.getElementById('pv1').innerHTML=`${f(pv1)}<span class="fu"> W</span>`;
-  document.getElementById('pv2').innerHTML=`${f(pv2)}<span class="fu"> W</span>`;
-  document.getElementById('feed').innerHTML=`${f(feed)}<span class="fu"> W</span>`;
-  document.getElementById('feeds').textContent=feed>5?'do sieci ↑':'brak feed-in';
-  document.getElementById('pv1s').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
-  document.getElementById('pv2s').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
-  document.getElementById('a1').className=`arr${pv1>5?' a1':pv2>5?' a2':''}`;
-  document.getElementById('a2').className=`arr${feed>5?' ag':''}`;
-  document.getElementById('pv1v').innerHTML=s.pv1Voltage>0?`${s.pv1Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
-  document.getElementById('pv1a').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
-  document.getElementById('pv2v').innerHTML=s.pv2Voltage>0?`${s.pv2Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
-  document.getElementById('pv2a').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
-  document.getElementById('feedcard').innerHTML=`${f(feed)}<span class="u"> W</span>`;
-  document.getElementById('feedbar').style.width=fpct+'%';
-  document.getElementById('pvtot').innerHTML=`${f(pv)}<span class="u"> W</span>`;
-  document.getElementById('pvbar').style.width=pct+'%';
-  document.getElementById('acv').innerHTML=s.acVoltage>0?`${s.acVoltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
-  document.getElementById('acf').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
-  document.getElementById('temp').innerHTML=s.invTemp>0?`${s.invTemp}<span class="u"> °C</span>`:`–<span class="u"> °C</span>`;
-  if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
-}
-
-function setOn(on) {
-  document.getElementById('dot').classList.toggle('on', on);
-  document.getElementById('bnr').style.display=on?'none':'block';
-  document.getElementById('bnr-offline').style.display=(!on && curData)?'block':'none';
-}
-
-// ─── WebSocket ────────────────────────────────────────────────────────────────
-
-function connect() {
-  const proto = location.protocol==='https:'?'wss':'ws';
-  const ws = new WebSocket(`${proto}://${location.host}`);
-  ws.onopen = () => {
-    fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected)});
-    fetch('/api/history').then(r=>r.json()).then(h=>{
-      cd={pv1:h.pv1||[],pv2:h.pv2||[],feed:h.feed||[],ts:h.timestamps||[]};drawChart();
+  const callEnergy = async (code) => {
+    const r = await privatePost('/app/space/data/single/index/', {
+      code, spaceId: SPACE_ID,
+      params: { beginTime: range.begin, endTime: range.end },
     });
-    loadEnergy('day', 0);
+    return (r?.code === '0' && Array.isArray(r.data)) ? r.data : null;
   };
-  ws.onmessage = e => {
-    const m = JSON.parse(e.data);
-    if (m.type==='state') {
-      update(m.data); setOn(m.data.connected);
-      cd.pv1.push(m.data.pv1Power||0); cd.pv2.push(m.data.pv2Power||0); cd.feed.push(m.data.feedPower||0);
-      cd.ts.push(new Date().toISOString());
-      if(cd.feed.length>300)['pv1','pv2','feed','ts'].forEach(k=>cd[k].shift());
-      drawChart();
-    } else if(m.type==='status') { setOn(m.connected); }
-  };
-  ws.onclose = () => {setOn(false);setTimeout(connect,3000)};
+
+  const out = { period, label: range.label, begin: range.begin, end: range.end };
+
+  // Łączna produkcja kWh
+  const vd = await callEnergy(VALUE_CODES[period]);
+  if (vd) {
+    const m = vd.find(d => d.indexName === 'master_data');
+    const s = vd.find(d => d.indexName === 'sup_data');
+    out.totalKwh = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
+    out.changePercent = s?.indexValue != null ? Math.round(s.indexValue * 10) / 10 : null;
+  }
+
+  // Wykres słupkowy
+  const bd = await callEnergy(BAR_CODES[period]);
+  if (bd && bd.length > 0) {
+    out.chart = bd
+      .filter(d => d.indexName === 'chart_data' && d.time)
+      .map(d => ({ time: d.time, wh: Math.round(d.indexValue || 0) }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }
+
+  // Fallback dla dnia - BAR-DAY bywa pusty dla biezacego dnia
+  // W tym przypadku pobieramy BAR-WEEK i szukamy wpisu dla danego dnia
+  if (period === 'day' && (!out.chart || out.chart.length === 0)) {
+    const refDt  = new Date(range.begin + 'T12:00:00');
+    const dow    = refDt.getDay();
+    const wStart = new Date(refDt); wStart.setDate(refDt.getDate() - dow);
+    const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+    const wbd = await privatePost('/app/space/data/single/index/', {
+      code: 'SPACE-APP-SOLAR-ENERGY-BAR-WEEK', spaceId: SPACE_ID,
+      params: { beginTime: wStart.toISOString().slice(0,10), endTime: wEnd.toISOString().slice(0,10) },
+    });
+    if (wbd?.code === '0' && Array.isArray(wbd.data)) {
+      const dayEntry = wbd.data.find(d => d.indexName === 'chart_data' && d.time === range.begin);
+      if (dayEntry) out.chart = [{ time: range.begin, wh: Math.round(dayEntry.indexValue || 0) }];
+    }
+  }
+
+  // Zyski miesięczne
+  if (period === 'day' || period === 'month') {
+    const ed = await callEnergy('SPACE-APP-EARNINGS-MONEY-VALUE-MONTH');
+    if (ed) {
+      const m = ed.find(d => d.indexName === 'master_data');
+      out.earnings = m?.indexValue != null ? Math.round(m.indexValue * 100) / 100 : null;
+      out.currency = m?.unit || 'zł';
+    }
+  }
+
+  // Efektywność produkcji (%)
+  if (period !== 'year') {
+    // Dla dnia uzywamy MONTH-Sup_DATA (tak jak aplikacja EcoFlow)
+    // bo DAY-Sup_DATA nie ma danych dla biezacego dnia
+    const supKey = period === 'day' ? 'MONTH' : period === 'week' ? 'WEEK' : 'MONTH';
+    const chartKey = period === 'day' ? 'DAY' : period === 'week' ? 'WEEK' : 'MONTH';
+
+    // Glowna wartosc efektywnosci + zmiana + pv1/pv2
+    // Dla dnia: beginTime=today daje dzienna efektywnosc (26%), od poczatku miesiaca - miesieczna (68%)
+    const rs = await privatePost('/iot-service/index/common/query', {
+      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${supKey}-Sup_DATA`,
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+    });
+    if (rs?.code === '0' && Array.isArray(rs.data)) {
+      const master = rs.data.find(d => d.indexName === 'master_data');
+      const sup    = rs.data.find(d => d.indexName === 'sup_data');
+      const pv1    = rs.data.find(d => d.indexName === 'pv1');
+      const pv2    = rs.data.find(d => d.indexName === 'pv2');
+      out.efficiency       = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
+      out.efficiencyChange = sup?.indexValue    != null ? Math.round(sup.indexValue * 10)    / 10 : null;
+      out.efficiencyPv1    = pv1?.indexValue    != null ? Math.round(pv1.indexValue * 10)    / 10 : null;
+      out.efficiencyPv2    = pv2?.indexValue    != null ? Math.round(pv2.indexValue * 10)    / 10 : null;
+    }
+
+    // Wykres efektywnosci (punkty godzinowe/dzienne)
+    const rc = await privatePost('/iot-service/index/common/query', {
+      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${chartKey}-Chart_DATA`,
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+    });
+    if (rc?.code === '0' && Array.isArray(rc.data)) {
+      out.efficiencyChart = rc.data
+        .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
+        .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
+        .sort((a, b) => a.time.localeCompare(b.time));
+    }
+  }
+
+  return out;
 }
 
-window.addEventListener('resize', ()=>{drawChart();if(curData)drawEnergyChart(curData);if(curData?.efficiencyChart)drawEfficiencyChart(curData.efficiencyChart)});
-connect();
-</script>
-</body>
-</html>
+// ─── MQTT ─────────────────────────────────────────────────────────────────────
+
+async function getMainSn() {
+  try {
+    const data = await ecoflowGet('/iot-open/sign/device/system/main/sn', { sn: DEVICE_SN });
+    if (data.code === '0' && data.data?.sn) { mainSn = data.data.sn; }
+  } catch(e) {}
+}
+
+async function fetchAllQuotas() {
+  try {
+    const data = await ecoflowGet('/iot-open/sign/device/quota/all', { sn: mainSn });
+    if (data.code === '0' && data.data && Object.keys(data.data).length > 0) applyParams(data.data);
+  } catch(e) {}
+}
+
+async function startMqtt() {
+  if (!ACCESS_KEY || !SECRET_KEY) { startDemoMode(); return; }
+  await getMainSn();
+  let creds;
+  try {
+    const data = await ecoflowGet('/iot-open/sign/certification');
+    if (data.code !== '0') throw new Error(data.message);
+    creds = data.data;
+    console.log(`✅ MQTT OK — ${creds.certificateAccount}`);
+  } catch(e) { console.error('❌ MQTT creds:', e.message); setTimeout(startMqtt, 30000); return; }
+
+  const client = mqtt.connect(`mqtts://${creds.url}:${creds.port}`, {
+    clientId: `open-${uuidv4()}`, username: creds.certificateAccount,
+    password: creds.certificatePassword, rejectUnauthorized: false, reconnectPeriod: 5000,
+  });
+  const quotaTopic  = `/open/${creds.certificateAccount}/${mainSn}/quota`;
+  const statusTopic = `/open/${creds.certificateAccount}/${mainSn}/status`;
+
+  client.on('connect', () => {
+    deviceState.connected = true;
+    broadcast({ type: 'status', connected: true });
+    client.subscribe(quotaTopic); client.subscribe(statusTopic);
+    fetchAllQuotas();
+    setInterval(fetchAllQuotas, 30000);
+    console.log('✅ MQTT połączony!');
+  });
+  client.on('message', (topic, payload) => {
+    try {
+      const str = payload.toString('utf8');
+      if (!str.startsWith('{')) return;
+      const data = JSON.parse(str);
+      if (topic.endsWith('/status')) {
+        const online = data.params?.status === 1;
+        deviceState.connected = online;
+        broadcast({ type: 'status', connected: online });
+        return;
+      }
+      const params = data.params || data;
+      if (params && typeof params === 'object') applyParams(params);
+    } catch(e) {}
+  });
+  client.on('error', err => console.error('MQTT error:', err.message));
+  client.on('close', () => { deviceState.connected = false; broadcast({ type: 'status', connected: false }); });
+}
+
+function startDemoMode() {
+  console.log('🎭 Demo mode');
+  let t = 0;
+  setInterval(() => {
+    t += 0.1;
+    deviceState.pv1Power  = Math.round(300 + 200 * Math.sin(t) + Math.random() * 10);
+    deviceState.pv2Power  = Math.round(300 + 200 * Math.sin(t + 0.1) + Math.random() * 10);
+    deviceState.pvPower   = deviceState.pv1Power + deviceState.pv2Power;
+    deviceState.feedPower = deviceState.pvPower;
+    deviceState.acVoltage = 230; deviceState.acFreq = 50;
+    deviceState.pv1Voltage = 38.5; deviceState.pv2Voltage = 38.3;
+    deviceState.invTemp = 35; deviceState.connected = true;
+    deviceState.lastUpdate = new Date().toISOString();
+    recordHistory(); broadcast({ type: 'state', data: deviceState });
+  }, 2000);
+}
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+
+server.listen(PORT, async () => {
+  console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN||'?'}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
+  startMqtt();
+  if (EF_EMAIL && EF_PASSWORD) {
+    await loginPrivateApi();
+    const today = new Date().toISOString().slice(0, 10);
+    // Pre-cache dzisiejszych danych
+    for (const period of ['day', 'week', 'month']) {
+      try {
+        const data = await fetchEnergyForPeriod(period, today);
+        if (data) energyCache[`${period}:${today}`] = { ...data, fetchedAt: Date.now() };
+      } catch(e) {}
+    }
+    console.log('✅ Cache energii gotowy');
+    // Odświeżaj co godzinę
+    setInterval(async () => {
+      const t = new Date().toISOString().slice(0, 10);
+      for (const period of ['day', 'week', 'month']) {
+        try {
+          const data = await fetchEnergyForPeriod(period, t);
+          if (data) energyCache[`${period}:${t}`] = { ...data, fetchedAt: Date.now() };
+        } catch(e) {}
+      }
+    }, 60 * 60 * 1000);
+  }
+});
