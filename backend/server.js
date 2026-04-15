@@ -269,11 +269,28 @@ async function fetchEnergyForPeriod(period, refDate) {
 
   // Wykres słupkowy
   const bd = await callEnergy(BAR_CODES[period]);
-  if (bd) {
+  if (bd && bd.length > 0) {
     out.chart = bd
       .filter(d => d.indexName === 'chart_data' && d.time)
       .map(d => ({ time: d.time, wh: Math.round(d.indexValue || 0) }))
       .sort((a, b) => a.time.localeCompare(b.time));
+  }
+
+  // Fallback dla dnia - BAR-DAY bywa pusty dla biezacego dnia
+  // W tym przypadku pobieramy BAR-WEEK i szukamy wpisu dla danego dnia
+  if (period === 'day' && (!out.chart || out.chart.length === 0)) {
+    const refDt  = new Date(range.begin + 'T12:00:00');
+    const dow    = refDt.getDay();
+    const wStart = new Date(refDt); wStart.setDate(refDt.getDate() - dow);
+    const wEnd   = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+    const wbd = await privatePost('/app/space/data/single/index/', {
+      code: 'SPACE-APP-SOLAR-ENERGY-BAR-WEEK', spaceId: SPACE_ID,
+      params: { beginTime: wStart.toISOString().slice(0,10), endTime: wEnd.toISOString().slice(0,10) },
+    });
+    if (wbd?.code === '0' && Array.isArray(wbd.data)) {
+      const dayEntry = wbd.data.find(d => d.indexName === 'chart_data' && d.time === range.begin);
+      if (dayEntry) out.chart = [{ time: range.begin, wh: Math.round(dayEntry.indexValue || 0) }];
+    }
   }
 
   // Zyski miesięczne
@@ -288,12 +305,19 @@ async function fetchEnergyForPeriod(period, refDate) {
 
   // Efektywność produkcji (%)
   if (period !== 'year') {
-    const periodKey = period === 'day' ? 'DAY' : period === 'week' ? 'WEEK' : 'MONTH';
+    // Dla dnia uzywamy MONTH-Sup_DATA (tak jak aplikacja EcoFlow)
+    // bo DAY-Sup_DATA nie ma danych dla biezacego dnia
+    const supKey = period === 'day' ? 'MONTH' : period === 'week' ? 'WEEK' : 'MONTH';
+    const chartKey = period === 'day' ? 'DAY' : period === 'week' ? 'WEEK' : 'MONTH';
 
-    // Glowna wartosc + zmiana + pv1/pv2
+    // Dla miesiaca przy zapytaniu o dzien - pobierz dane od poczatku miesiaca
+    const monthStart = range.begin.slice(0, 7) + '-01';
+    const effBegin = period === 'day' ? monthStart : range.begin;
+
+    // Glowna wartosc efektywnosci + zmiana + pv1/pv2
     const rs = await privatePost('/iot-service/index/common/query', {
-      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Sup_DATA`,
-      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${supKey}-Sup_DATA`,
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: effBegin, endTime: range.end, timezone: 'Europe/Warsaw' },
     });
     if (rs?.code === '0' && Array.isArray(rs.data)) {
       const master = rs.data.find(d => d.indexName === 'master_data');
@@ -306,14 +330,20 @@ async function fetchEnergyForPeriod(period, refDate) {
       out.efficiencyPv2    = pv2?.indexValue    != null ? Math.round(pv2.indexValue * 10)    / 10 : null;
     }
 
-    // Wykres efektywnosci (punkty godzinowe/dzienne)
+    // Wykres efektywnosci - dla dnia pobierz ostatnie 7 dni zeby miec punkty
+    const chartBegin = period === 'day' ? monthStart : range.begin;
     const rc = await privatePost('/iot-service/index/common/query', {
-      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Chart_DATA`,
-      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${chartKey}-Chart_DATA`,
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: chartBegin, endTime: range.end, timezone: 'Europe/Warsaw' },
     });
     if (rc?.code === '0' && Array.isArray(rc.data)) {
-      out.efficiencyChart = rc.data
-        .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
+      // Dla widoku dnia filtruj tylko dzisiejsze punkty
+      const filtered = rc.data.filter(d => {
+        if (!d.time || d.indexValue == null || d.indexName !== 'chart_data') return false;
+        if (period === 'day') return d.time.startsWith(range.begin);
+        return true;
+      });
+      out.efficiencyChart = filtered
         .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
         .sort((a, b) => a.time.localeCompare(b.time));
     }
