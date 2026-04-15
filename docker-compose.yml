@@ -9,6 +9,9 @@ services:
       - DEVICE_SN=${DEVICE_SN}
       - EF_ACCESS_KEY=${EF_ACCESS_KEY}
       - EF_SECRET_KEY=${EF_SECRET_KEY}
+      - EF_EMAIL=${EF_EMAIL}
+      - EF_PASSWORD=${EF_PASSWORD}
+      - EF_SPACE_ID=${EF_SPACE_ID}
     restart: unless-stopped
 
   cloudflared:
