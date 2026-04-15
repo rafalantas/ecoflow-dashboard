@@ -14,7 +14,6 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh}
-
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;border-bottom:1px solid var(--brd);background:var(--sur)}
   .tl{display:flex;align-items:center;gap:10px}
   .logo{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;color:var(--pv1)}
@@ -22,12 +21,9 @@
   .dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .5s}
   .dot.on{background:var(--grn);box-shadow:0 0 6px var(--grn)}
   .tr{font-family:var(--mono);font-size:11px;color:var(--t2)}
-
   .main{padding:18px 22px;max-width:980px;margin:0 auto}
   .sec{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:20px;margin-bottom:14px}
   .stitle{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:18px}
-
-  /* Flow */
   .flow{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
   .fn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px}
   .ficon{font-size:22px;margin-bottom:2px}
@@ -37,8 +33,6 @@
   .fs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:2px}
   .arr{font-size:20px;color:var(--brd);flex-shrink:0;transition:color .5s}
   .arr.a1{color:var(--pv1)}.arr.a2{color:var(--pv2)}.arr.ag{color:var(--grn)}
-
-  /* Cards */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
   .card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:14px;position:relative;overflow:hidden}
   .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -50,21 +44,16 @@
   .cs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px}
   .bar{margin-top:7px;height:3px;background:var(--brd);border-radius:2px;overflow:hidden}
   .bf{height:100%;border-radius:2px;transition:width .5s}
-
-  /* Chart */
   canvas{width:100%!important;display:block}
   .chdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
   .leg{display:flex;gap:12px}
   .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--t2)}
   .ld{width:8px;height:8px;border-radius:50%}
-
   #bnr{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--red);text-align:center}
-
   @media(max-width:600px){.main{padding:10px}.fv{font-size:22px}.grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
-
 <div class="topbar">
   <div class="tl">
     <span class="logo">EcoFlow STREAM Easy</span>
@@ -74,15 +63,9 @@
   <div class="tr" id="ts">—</div>
 </div>
 
-<div class="tabs">
-  <div class="tab active" onclick="showTab('live')">Na żywo</div>
-  <div class="tab" onclick="showTab('hist')">Historia</div>
-</div>
-<div id="tlive" class="tc active">
 <div class="main">
   <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
 
-  <!-- Przepływ -->
   <div class="sec">
     <div class="stitle">// przepływ energii</div>
     <div class="flow">
@@ -109,7 +92,6 @@
     </div>
   </div>
 
-  <!-- Karty -->
   <div class="grid">
     <div class="card c1">
       <div class="clb">PV1 napięcie</div>
@@ -143,7 +125,6 @@
     </div>
   </div>
 
-  <!-- Wykres -->
   <div class="sec">
     <div class="chdr">
       <div class="stitle" style="margin:0">// historia sesji</div>
@@ -169,44 +150,30 @@ function drawChart(){
   const p={t:6,b:16,l:40,r:6},cw=w-p.l-p.r,ch=h-p.t-p.b;
   cx.strokeStyle='rgba(255,255,255,.04)';cx.lineWidth=1;
   for(let i=0;i<=4;i++){
-    const y=p.t+(ch/4)*i;
-    cx.beginPath();cx.moveTo(p.l,y);cx.lineTo(w-p.r,y);cx.stroke();
+    const y=p.t+(ch/4)*i;cx.beginPath();cx.moveTo(p.l,y);cx.lineTo(w-p.r,y);cx.stroke();
     cx.fillStyle='rgba(125,133,144,.6)';cx.font='9px IBM Plex Mono,monospace';cx.textAlign='right';
     cx.fillText(Math.round(mx*(1-i/4))+'W',p.l-4,y+3);
   }
   function line(data,color){
     cx.beginPath();cx.strokeStyle=color;cx.lineWidth=1.5;cx.lineJoin='round';
-    for(let i=0;i<data.length;i++){
-      const x=p.l+(i/(n-1))*cw,y=p.t+ch-(data[i]/mx)*ch;
-      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
-    }cx.stroke();
+    for(let i=0;i<data.length;i++){const x=p.l+(i/(n-1))*cw,y=p.t+ch-(data[i]/mx)*ch;i===0?cx.moveTo(x,y):cx.lineTo(x,y);}cx.stroke();
   }
-  line(cd.feed,'#39d353');
-  line(cd.pv2,'#e05c1a');
-  line(cd.pv1,'#f5a623');
+  line(cd.feed,'#39d353');line(cd.pv2,'#e05c1a');line(cd.pv1,'#f5a623');
 }
 
 function f(v,d=0){return v>0?(d>0?v.toFixed(d):Math.round(v)):'–'}
 
 function update(s){
-  const pv1=s.pv1Power||0,pv2=s.pv2Power||0;
-  const pv=s.pvPower||(pv1+pv2);
-  const feed=s.feedPower||0;
-  const pct=Math.min(100,Math.round(pv/1020*100));
-  const fpct=Math.min(100,Math.round(feed/1020*100));
-
+  const pv1=s.pv1Power||0,pv2=s.pv2Power||0,pv=s.pvPower||(pv1+pv2),feed=s.feedPower||0;
+  const pct=Math.min(100,Math.round(pv/1020*100)),fpct=Math.min(100,Math.round(feed/1020*100));
   document.getElementById('pv1').innerHTML=`${f(pv1)}<span class="fu"> W</span>`;
   document.getElementById('pv2').innerHTML=`${f(pv2)}<span class="fu"> W</span>`;
   document.getElementById('feed').innerHTML=`${f(feed)}<span class="fu"> W</span>`;
   document.getElementById('feeds').textContent=feed>5?'do sieci ↑':'brak feed-in';
   document.getElementById('pv1s').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
   document.getElementById('pv2s').textContent=s.pv2Current>0?`${s.pv2Current.toFixed(2)} A`:'';
-
-  // Strzałki
   document.getElementById('a1').className=`arr${pv1>5?' a1':pv2>5?' a2':''}`;
   document.getElementById('a2').className=`arr${feed>5?' ag':''}`;
-
-  // Karty
   document.getElementById('pv1v').innerHTML=s.pv1Voltage>0?`${s.pv1Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('pv1a').textContent=s.pv1Current>0?`${s.pv1Current.toFixed(2)} A`:'';
   document.getElementById('pv2v').innerHTML=s.pv2Voltage>0?`${s.pv2Voltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
@@ -218,7 +185,6 @@ function update(s){
   document.getElementById('acv').innerHTML=s.acVoltage>0?`${s.acVoltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('acf').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
   document.getElementById('temp').innerHTML=s.invTemp>0?`${s.invTemp}<span class="u"> °C</span>`:`–<span class="u"> °C</span>`;
-
   if(s.lastUpdate)document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 }
 
@@ -240,9 +206,7 @@ function connect(){
     const m=JSON.parse(e.data);
     if(m.type==='state'){
       update(m.data);setOn(m.data.connected);
-      cd.pv1.push(m.data.pv1Power||0);
-      cd.pv2.push(m.data.pv2Power||0);
-      cd.feed.push(m.data.feedPower||0);
+      cd.pv1.push(m.data.pv1Power||0);cd.pv2.push(m.data.pv2Power||0);cd.feed.push(m.data.feedPower||0);
       cd.ts.push(new Date().toISOString());
       if(cd.feed.length>300)['pv1','pv2','feed','ts'].forEach(k=>cd[k].shift());
       drawChart();
@@ -253,89 +217,6 @@ function connect(){
 
 window.addEventListener('resize',drawChart);
 connect();
-</script>
-</div><!-- /tlive -->
-
-<div id="thist" class="tc">
-<div class="main">
-  <div class="sec">
-    <div class="stitle">// historia energii</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-      <select id="hper" style="background:var(--brd);border:1px solid var(--brd);color:var(--t1);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:6px;outline:none">
-        <option value="day">Dzień</option>
-        <option value="month">Miesiąc</option>
-      </select>
-      <input type="date" id="hdate" style="background:var(--brd);border:1px solid var(--brd);color:var(--t1);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:6px;outline:none">
-      <button onclick="loadHist()" style="background:var(--pv1);color:#000;font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 16px;border:none;border-radius:6px;cursor:pointer" id="hbtn">Wczytaj</button>
-    </div>
-    <div id="hresult"></div>
-  </div>
-</div>
-</div>
-
-<style>
-.tabs{display:flex;background:var(--sur);border-bottom:1px solid var(--brd);padding:0 22px}
-.tab{font-family:var(--mono);font-size:11px;padding:10px 14px;cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.08em}
-.tab.active{color:var(--pv1);border-bottom-color:var(--pv1)}
-.tc{display:none}.tc.active{display:block}
-</style>
-
-<script>
-function showTab(n){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['live','hist'][i]===n));
-  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
-  document.getElementById('t'+n).classList.add('active');
-}
-
-// Init date to today
-document.getElementById('hdate').value = new Date().toISOString().split('T')[0];
-
-document.getElementById('hper').addEventListener('change', function(){
-  const inp = document.getElementById('hdate');
-  inp.type = this.value === 'month' ? 'month' : 'date';
-});
-
-async function loadHist(){
-  const period = document.getElementById('hper').value;
-  const date   = document.getElementById('hdate').value;
-  if(!date){ alert('Wybierz datę'); return; }
-  const btn = document.getElementById('hbtn');
-  btn.disabled = true; btn.textContent = 'Ładuję...';
-  document.getElementById('hresult').innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--t2);padding:20px">⏳ Pobieranie danych...</div>';
-  try {
-    const r = await fetch(`/api/historical?period=${period}&date=${date}`);
-    const d = await r.json();
-    if(d.error){
-      document.getElementById('hresult').innerHTML = `<div style="font-family:var(--mono);font-size:12px;color:var(--red);padding:14px;background:rgba(255,107,107,.05);border:1px solid rgba(255,107,107,.2);border-radius:6px">⚠ ${d.error}</div>`;
-      return;
-    }
-    const pvKwh   = (d.pvWh/1000).toFixed(2);
-    const feedKwh = (d.feedWh/1000).toFixed(2);
-    const selfPct = d.pvWh > 0 ? Math.min(100, ((1 - d.feedWh/d.pvWh)*100)).toFixed(1) : '–';
-    document.getElementById('hresult').innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
-        <div style="background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:15px;border-top:2px solid var(--pv1)">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Energia PV</div>
-          <div style="font-family:var(--mono);font-size:24px;font-weight:600">${pvKwh}<span style="font-size:11px;color:var(--t2);font-weight:400"> kWh</span></div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px">wyprodukowano</div>
-        </div>
-        <div style="background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:15px;border-top:2px solid var(--grn)">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Feed-in</div>
-          <div style="font-family:var(--mono);font-size:24px;font-weight:600">${feedKwh}<span style="font-size:11px;color:var(--t2);font-weight:400"> kWh</span></div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px">oddano do sieci</div>
-        </div>
-        <div style="background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:15px;border-top:2px solid var(--grn)">
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Autokonsumpcja</div>
-          <div style="font-family:var(--mono);font-size:24px;font-weight:600">${selfPct}<span style="font-size:11px;color:var(--t2);font-weight:400"> %</span></div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px">PV zużyte lokalnie</div>
-        </div>
-      </div>`;
-  } catch(e) {
-    document.getElementById('hresult').innerHTML = `<div style="font-family:var(--mono);font-size:12px;color:var(--red)">Błąd: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false; btn.textContent = 'Wczytaj';
-  }
-}
 </script>
 </body>
 </html>
