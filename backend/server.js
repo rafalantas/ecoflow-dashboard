@@ -140,38 +140,58 @@ app.get('/api/state',   (req, res) => res.json(deviceState));
 app.get('/api/all-keys', (req, res) => res.json(allReceivedKeys));
 app.get('/api/history', (req, res) => res.json(history));
 
-// Historia lokalna
-app.get('/api/historical', (req, res) => {
+// Historia z API EcoFlow (BK621 kody działają dla BK01Z)
+async function ecoflowPost(url, body = {}) {
+  const headers = makeSignedHeaders(ACCESS_KEY, SECRET_KEY, body);
+  const resp = await axios.post(`${API_HOST}${url}`, body, { headers, timeout: 10000 });
+  return resp.data;
+}
+
+app.get('/api/historical', async (req, res) => {
   const { period, date } = req.query;
-  accumulateEnergy();
-  if (period === 'month') {
-    const data = energyData.monthly[date] || { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
-    const days = Object.keys(energyData.daily).filter(d => d.startsWith(date)).length;
-    res.json({ period, date, ...roundEnergy(data), days });
-  } else {
-    const data = energyData.daily[date] || { pv1Wh:0, pv2Wh:0, pvWh:0, feedWh:0 };
-    res.json({ period, date, ...roundEnergy(data) });
+  if (!mainSn || !ACCESS_KEY) return res.json({ error: 'brak konfiguracji' });
+
+  try {
+    let beginTime, endTime;
+    if (period === 'month') {
+      const [y, m] = date.split('-');
+      beginTime = `${y}-${m}-01 00:00:00`;
+      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+      endTime = `${y}-${m}-${lastDay} 23:59:59`;
+    } else {
+      beginTime = `${date} 00:00:00`;
+      endTime   = `${date} 23:59:59`;
+    }
+
+    const pvResp = await ecoflowPost('/iot-open/sign/device/quota/data', {
+      sn: mainSn,
+      params: { beginTime, endTime, code: 'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA' }
+    });
+
+    const gridResp = await ecoflowPost('/iot-open/sign/device/quota/data', {
+      sn: mainSn,
+      params: { beginTime, endTime, code: 'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA' }
+    });
+
+    console.log('📅 PV resp:', JSON.stringify(pvResp).substring(0, 200));
+    console.log('📅 Grid resp:', JSON.stringify(gridResp).substring(0, 200));
+
+    if (pvResp.code === '8516') {
+      return res.json({ error: 'Urządzenie offline (noc) — brak danych', code: '8516' });
+    }
+
+    const pvData   = pvResp.data?.data   || [];
+    const gridData = gridResp.data?.data || [];
+    const pvWh     = parseFloat(Array.isArray(pvData)   ? pvData[0]?.indexValue   || 0 : 0);
+    const feedWh   = parseFloat(Array.isArray(gridData) ? gridData.find(d => d.extra === '2')?.indexValue || 0 : 0);
+    const fromWh   = parseFloat(Array.isArray(gridData) ? gridData.find(d => d.extra === '1')?.indexValue || 0 : 0);
+
+    res.json({ period, date, beginTime, endTime, pvWh, feedWh, fromGridWh: fromWh });
+  } catch(e) {
+    console.error('Historical error:', e.message);
+    res.json({ error: e.message });
   }
 });
-
-// Wszystkie dostępne dni — do kalendarza
-app.get('/api/energy-days', (req, res) => {
-  accumulateEnergy();
-  const days = {};
-  Object.entries(energyData.daily).forEach(([d, v]) => {
-    days[d] = { pvKwh: +(v.pvWh/1000).toFixed(3), feedKwh: +(v.feedWh/1000).toFixed(3) };
-  });
-  res.json(days);
-});
-
-function roundEnergy(e) {
-  return {
-    pv1Wh:  Math.round(e.pv1Wh),
-    pv2Wh:  Math.round(e.pv2Wh),
-    pvWh:   Math.round(e.pvWh),
-    feedWh: Math.round(e.feedWh),
-  };
-}
 
 function broadcast(data) {
   const msg = JSON.stringify(data);
