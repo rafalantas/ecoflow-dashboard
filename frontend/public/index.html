@@ -207,14 +207,6 @@
         <div class="estatval" id="eeff-val">–<span class="estatunit"> %</span></div>
         <div class="estatsub" id="eeff-ch"></div>
       </div>
-      <div class="estat" id="estat-pv1" style="display:none">
-        <div class="estatlbl">Efektywność PV1</div>
-        <div class="estatval" id="eeff-pv1">–<span class="estatunit"> %</span></div>
-      </div>
-      <div class="estat" id="estat-pv2" style="display:none">
-        <div class="estatlbl">Efektywność PV2</div>
-        <div class="estatval" id="eeff-pv2">–<span class="estatunit"> %</span></div>
-      </div>
       <div class="estat" id="estat-earn" style="display:none">
         <div class="estatlbl">Zyski</div>
         <div class="estatval" id="eearn-val">–<span class="estatunit" id="eearn-unit"> zł</span></div>
@@ -499,18 +491,6 @@ async function loadEnergy(period, offset) {
       document.getElementById('estat-eff').style.display = 'flex';
       hasStats = true;
     } else { document.getElementById('estat-eff').style.display = 'none'; }
-
-    if (data.efficiencyPv1 != null) {
-      document.getElementById('eeff-pv1').innerHTML = `${data.efficiencyPv1.toFixed(1)}<span class="estatunit"> %</span>`;
-      document.getElementById('estat-pv1').style.display = 'flex';
-      hasStats = true;
-    } else { document.getElementById('estat-pv1').style.display = 'none'; }
-
-    if (data.efficiencyPv2 != null) {
-      document.getElementById('eeff-pv2').innerHTML = `${data.efficiencyPv2.toFixed(1)}<span class="estatunit"> %</span>`;
-      document.getElementById('estat-pv2').style.display = 'flex';
-      hasStats = true;
-    } else { document.getElementById('estat-pv2').style.display = 'none'; }
 
     if (data.earnings != null) {
       document.getElementById('eearn-val').innerHTML = `${data.earnings.toFixed(2)}<span class="estatunit"> ${data.currency||'zł'}</span>`;
