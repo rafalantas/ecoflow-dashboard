@@ -8,7 +8,7 @@
 <style>
   :root{
     --bg:#0a0e14;--sur:#111820;--brd:#1e2d3d;
-    --pv1:#f5a623;--pv2:#e05c1a;--grn:#39d353;--blu:#58a6ff;--red:#ff6b6b;--cyn:#56d0e0;
+    --pv1:#f5a623;--pv2:#e05c1a;--grn:#39d353;--blu:#58a6ff;--red:#ff6b6b;--cyn:#56d0e0;--yel:#f0c040;
     --t1:#e6edf3;--t2:#7d8590;
     --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
   }
@@ -33,7 +33,7 @@
   .fs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:2px}
   .arr{font-size:20px;color:var(--brd);flex-shrink:0;transition:color .5s}
   .arr.a1{color:var(--pv1)}.arr.a2{color:var(--pv2)}.arr.ag{color:var(--grn)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px;margin-bottom:14px}
   .card{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:14px;position:relative;overflow:hidden}
   .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
   .c1::before{background:var(--pv1)}.c2::before{background:var(--pv2)}
@@ -50,10 +50,44 @@
   .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--t2)}
   .ld{width:8px;height:8px;border-radius:50%}
   #bnr{display:none;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);border-radius:6px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:12px;color:var(--red);text-align:center}
-  @media(max-width:600px){.main{padding:10px}.fv{font-size:22px}.grid{grid-template-columns:repeat(2,1fr)}}
+
+  /* ── Historia energii — styl EcoFlow ── */
+  .etabs{display:flex;border-bottom:1px solid var(--brd);margin-bottom:18px}
+  .etab{flex:1;text-align:center;padding:10px 4px;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none}
+  .etab.active{color:var(--t1);border-bottom-color:var(--blu)}
+  .enav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px}
+  .enavarr{width:32px;height:32px;border-radius:50%;background:var(--brd);border:none;color:var(--t2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .enavarr:hover{background:var(--blu);color:#fff}
+  .enavarr:disabled{opacity:.3;cursor:default}
+  .enavarr:disabled:hover{background:var(--brd);color:var(--t2)}
+  .enavlbl{font-family:var(--sans);font-size:14px;font-weight:600;min-width:200px;text-align:center}
+  .etotal{margin-bottom:18px}
+  .etotallbl{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+  .etotalval{font-family:var(--sans);font-size:44px;font-weight:600;line-height:1;color:var(--t1)}
+  .etotalunit{font-size:18px;font-weight:400;color:var(--t2);margin-left:4px}
+  .etotalch{font-family:var(--mono);font-size:11px;margin-left:8px}
+  .echartbox{position:relative;min-height:140px}
+  .echartloading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--t2)}
+  .estats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:18px;padding-top:18px;border-top:1px solid var(--brd)}
+  .estat{display:flex;flex-direction:column;gap:3px}
+  .estatlbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}
+  .estatval{font-family:var(--sans);font-size:18px;font-weight:600}
+  .estatunit{font-size:11px;font-weight:400;color:var(--t2)}
+  .egenby{margin-top:16px;padding:14px;background:rgba(255,255,255,.03);border-radius:6px;border:1px solid var(--brd)}
+  .egenbylbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+  .egenbyrow{display:flex;align-items:center;gap:10px}
+  .egenbyicon{font-size:20px}
+  .egenbyname{font-family:var(--sans);font-size:13px;font-weight:600;flex:1}
+  .egenbyval{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--yel)}
+  .egenbybar{height:3px;background:var(--brd);border-radius:2px;margin-top:6px;overflow:hidden}
+  .egenbybarfill{height:100%;background:var(--yel);border-radius:2px;width:100%}
+  .enodatamsg{text-align:center;padding:30px;font-family:var(--mono);font-size:12px;color:var(--t2);opacity:.6}
+
+  @media(max-width:600px){.main{padding:10px}.fv{font-size:22px}.pgrid{grid-template-columns:repeat(2,1fr)}.etotalval{font-size:36px}.estats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
+
 <div class="topbar">
   <div class="tl">
     <span class="logo">EcoFlow STREAM Easy</span>
@@ -66,6 +100,7 @@
 <div class="main">
   <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
 
+  <!-- Przepływ energii real-time -->
   <div class="sec">
     <div class="stitle">// przepływ energii</div>
     <div class="flow">
@@ -92,7 +127,8 @@
     </div>
   </div>
 
-  <div class="grid">
+  <!-- Karty parametrów -->
+  <div class="pgrid">
     <div class="card c1">
       <div class="clb">PV1 napięcie</div>
       <div class="cv" id="pv1v">–<span class="u"> V</span></div>
@@ -125,6 +161,66 @@
     </div>
   </div>
 
+  <!-- Historia energii — styl EcoFlow -->
+  <div class="sec">
+    <div class="stitle">// produkcja energii</div>
+
+    <!-- Zakładki -->
+    <div class="etabs">
+      <button class="etab active" data-period="day">Dzień</button>
+      <button class="etab" data-period="week">Tydzień</button>
+      <button class="etab" data-period="month">Miesiąc</button>
+      <button class="etab" data-period="year">Rok</button>
+    </div>
+
+    <!-- Nawigacja daty -->
+    <div class="enav">
+      <button class="enavarr" id="eprev">&#9664;</button>
+      <div class="enavlbl" id="enavlbl">ładowanie…</div>
+      <button class="enavarr" id="enext" disabled>&#9654;</button>
+    </div>
+
+    <!-- Total kWh -->
+    <div class="etotal">
+      <div class="etotallbl">Total</div>
+      <div>
+        <span class="etotalval" id="etotalval">–</span>
+        <span class="etotalunit">kWh</span>
+        <span class="etotalch" id="etotalch"></span>
+      </div>
+    </div>
+
+    <!-- Wykres słupkowy -->
+    <div class="echartbox">
+      <div class="echartloading" id="echartloading">ładowanie…</div>
+      <canvas id="echart" height="140" style="display:none"></canvas>
+    </div>
+
+    <!-- Statystyki -->
+    <div class="estats" id="estats" style="display:none">
+      <div class="estat" id="estat-eff" style="display:none">
+        <div class="estatlbl">Efektywność</div>
+        <div class="estatval" id="eeff-val">–<span class="estatunit"> %</span></div>
+      </div>
+      <div class="estat" id="estat-earn" style="display:none">
+        <div class="estatlbl">Zyski</div>
+        <div class="estatval" id="eearn-val">–<span class="estatunit" id="eearn-unit"> zł</span></div>
+      </div>
+    </div>
+
+    <!-- Generated by -->
+    <div class="egenby" id="egenby" style="display:none">
+      <div class="egenbylbl">Generated by</div>
+      <div class="egenbyrow">
+        <div class="egenbyicon">🔌</div>
+        <div class="egenbyname">System STREAM 4901</div>
+        <div class="egenbyval" id="egenbyval">– kWh</div>
+      </div>
+      <div class="egenbybar"><div class="egenbybarfill"></div></div>
+    </div>
+  </div>
+
+  <!-- Historia sesji real-time -->
   <div class="sec">
     <div class="chdr">
       <div class="stitle" style="margin:0">// historia sesji</div>
@@ -139,33 +235,241 @@
 </div>
 
 <script>
-let cd={pv1:[],pv2:[],feed:[],ts:[]};
-const cv=document.getElementById('chart'),cx=cv.getContext('2d');
+// ─── Stan ─────────────────────────────────────────────────────────────────────
+let cd = {pv1:[],pv2:[],feed:[],ts:[]};
 
-function drawChart(){
-  const dpr=window.devicePixelRatio||1,w=cv.offsetWidth,h=100;
-  cv.width=w*dpr;cv.height=h*dpr;cx.scale(dpr,dpr);cx.clearRect(0,0,w,h);
-  const all=[...cd.pv1,...cd.pv2,...cd.feed],mx=Math.max(...all,100),n=cd.feed.length;
-  if(n<2)return;
-  const p={t:6,b:16,l:40,r:6},cw=w-p.l-p.r,ch=h-p.t-p.b;
-  cx.strokeStyle='rgba(255,255,255,.04)';cx.lineWidth=1;
-  for(let i=0;i<=4;i++){
-    const y=p.t+(ch/4)*i;cx.beginPath();cx.moveTo(p.l,y);cx.lineTo(w-p.r,y);cx.stroke();
-    cx.fillStyle='rgba(125,133,144,.6)';cx.font='9px IBM Plex Mono,monospace';cx.textAlign='right';
-    cx.fillText(Math.round(mx*(1-i/4))+'W',p.l-4,y+3);
+// Stan historii energii
+const PERIODS = ['day','week','month','year'];
+let curPeriod = 'day';
+let curOffset = 0;    // 0 = bieżący, -1 = poprzedni, itd.
+let curData   = null;
+let isLoading = false;
+
+// ─── Logika dat ───────────────────────────────────────────────────────────────
+
+function offsetDate(period, offset) {
+  const now = new Date();
+  if (period === 'day') {
+    now.setDate(now.getDate() + offset);
+    return now.toISOString().slice(0, 10);
   }
-  function line(data,color){
-    cx.beginPath();cx.strokeStyle=color;cx.lineWidth=1.5;cx.lineJoin='round';
-    for(let i=0;i<data.length;i++){const x=p.l+(i/(n-1))*cw,y=p.t+ch-(data[i]/mx)*ch;i===0?cx.moveTo(x,y):cx.lineTo(x,y);}cx.stroke();
+  if (period === 'week') {
+    const dow = now.getDay();
+    now.setDate(now.getDate() - dow + offset * 7);
+    return now.toISOString().slice(0, 10); // data niedzieli tego tygodnia
   }
-  line(cd.feed,'#39d353');line(cd.pv2,'#e05c1a');line(cd.pv1,'#f5a623');
+  if (period === 'month') {
+    now.setMonth(now.getMonth() + offset, 1);
+    return now.toISOString().slice(0, 10);
+  }
+  if (period === 'year') {
+    now.setFullYear(now.getFullYear() + offset, 0, 1);
+    return now.toISOString().slice(0, 10);
+  }
 }
 
-function f(v,d=0){return v>0?(d>0?v.toFixed(d):Math.round(v)):'–'}
+// ─── Wykres sesji ─────────────────────────────────────────────────────────────
+const cv = document.getElementById('chart'), cx = cv.getContext('2d');
 
-function update(s){
-  const pv1=s.pv1Power||0,pv2=s.pv2Power||0,pv=s.pvPower||(pv1+pv2),feed=s.feedPower||0;
-  const pct=Math.min(100,Math.round(pv/1020*100)),fpct=Math.min(100,Math.round(feed/1020*100));
+function drawChart() {
+  const dpr=window.devicePixelRatio||1, w=cv.offsetWidth, h=100;
+  cv.width=w*dpr; cv.height=h*dpr; cx.scale(dpr,dpr); cx.clearRect(0,0,w,h);
+  const all=[...cd.pv1,...cd.pv2,...cd.feed], mx=Math.max(...all,100), n=cd.feed.length;
+  if(n<2) return;
+  const p={t:6,b:16,l:40,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
+  cx.strokeStyle='rgba(255,255,255,.04)'; cx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=p.t+(ch/4)*i;
+    cx.beginPath(); cx.moveTo(p.l,y); cx.lineTo(w-p.r,y); cx.stroke();
+    cx.fillStyle='rgba(125,133,144,.6)'; cx.font='9px IBM Plex Mono,monospace'; cx.textAlign='right';
+    cx.fillText(Math.round(mx*(1-i/4))+'W', p.l-4, y+3);
+  }
+  function line(data, color) {
+    cx.beginPath(); cx.strokeStyle=color; cx.lineWidth=1.5; cx.lineJoin='round';
+    for(let i=0;i<data.length;i++){
+      const x=p.l+(i/(n-1))*cw, y=p.t+ch-(data[i]/mx)*ch;
+      i===0?cx.moveTo(x,y):cx.lineTo(x,y);
+    }
+    cx.stroke();
+  }
+  line(cd.feed,'#39d353'); line(cd.pv2,'#e05c1a'); line(cd.pv1,'#f5a623');
+}
+
+// ─── Wykres energii historycznej ──────────────────────────────────────────────
+const ec = document.getElementById('echart'), ectx = ec.getContext('2d');
+
+function drawEnergyChart(data) {
+  if (!data || !data.chart || data.chart.length === 0) {
+    ec.style.display = 'none';
+    document.getElementById('echartloading').textContent = 'Brak danych';
+    document.getElementById('echartloading').style.display = 'flex';
+    return;
+  }
+
+  document.getElementById('echartloading').style.display = 'none';
+  ec.style.display = 'block';
+
+  const dpr=window.devicePixelRatio||1, w=ec.offsetWidth, h=140;
+  ec.width=w*dpr; ec.height=h*dpr; ectx.scale(dpr,dpr); ectx.clearRect(0,0,w,h);
+
+  const chart = data.chart;
+  const vals = chart.map(d => d.wh);
+  const mx = Math.max(...vals, 1);
+  const n = vals.length;
+  const p = {t:10, b:24, l:42, r:8};
+  const cw = w-p.l-p.r, ch = h-p.t-p.b;
+  const bw = Math.max(3, Math.min(36, cw/n - 4));
+
+  // Etykiety osi Y
+  ectx.fillStyle='rgba(125,133,144,.7)'; ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='right';
+  for(let i=0;i<=3;i++){
+    const y=p.t+(ch/3)*i, val=mx*(1-i/3);
+    ectx.fillStyle='rgba(255,255,255,.04)'; ectx.fillRect(p.l, y, cw, .5);
+    ectx.fillStyle='rgba(125,133,144,.7)';
+    const label = val >= 1000 ? (val/1000).toFixed(1)+'k' : Math.round(val)+'';
+    ectx.fillText(label, p.l-4, y+3);
+  }
+
+  // Słupki
+  vals.forEach((v, i) => {
+    const bh = Math.max(2, (v/mx)*ch);
+    const x  = p.l + (i/n)*cw + (cw/n-bw)/2;
+    const y  = p.t + ch - bh;
+    const grad = ectx.createLinearGradient(0, y, 0, y+bh);
+    grad.addColorStop(0, '#f0c040cc');
+    grad.addColorStop(1, '#f0c04044');
+    ectx.fillStyle = grad;
+    if (ectx.roundRect) ectx.roundRect(x, y, bw, bh, [3,3,0,0]);
+    else { ectx.beginPath(); ectx.rect(x, y, bw, bh); }
+    ectx.fill();
+  });
+
+  // Etykiety osi X
+  ectx.fillStyle='rgba(125,133,144,.8)'; ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='center';
+  const step = Math.max(1, Math.ceil(n/8));
+  chart.forEach((d, i) => {
+    if (i % step !== 0 && i !== n-1) return;
+    const x = p.l + (i/n)*cw + (cw/n)/2;
+    let lb = '';
+    if (curPeriod === 'day')   lb = d.time.slice(11,16);
+    if (curPeriod === 'week')  lb = ['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
+    if (curPeriod === 'month') lb = new Date(d.time+'T12:00').getDate()+'';
+    if (curPeriod === 'year')  lb = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'][new Date(d.time+'T12:00').getMonth()];
+    ectx.fillText(lb, x, h-6);
+  });
+}
+
+// ─── Załaduj dane historii ────────────────────────────────────────────────────
+
+async function loadEnergy(period, offset) {
+  if (isLoading) return;
+  isLoading = true;
+
+  // UI loading
+  document.getElementById('echartloading').textContent = 'ładowanie…';
+  document.getElementById('echartloading').style.display = 'flex';
+  ec.style.display = 'none';
+  document.getElementById('etotalval').textContent = '–';
+  document.getElementById('etotalch').textContent = '';
+  document.getElementById('estats').style.display = 'none';
+  document.getElementById('egenby').style.display = 'none';
+
+  // Nawigacja strzałkami
+  document.getElementById('eprev').disabled = false;
+  document.getElementById('enext').disabled = offset >= 0;
+
+  const dateParam = offsetDate(period, offset);
+
+  try {
+    const resp = await fetch(`/api/energy?period=${period}&date=${dateParam}`);
+    const data = await resp.json();
+
+    if (data.error) {
+      document.getElementById('echartloading').textContent = 'Brak danych (skonfiguruj EF_EMAIL i EF_PASSWORD)';
+      isLoading = false;
+      return;
+    }
+
+    curData = data;
+
+    // Etykieta daty
+    document.getElementById('enavlbl').textContent = data.label || dateParam;
+
+    // Total kWh
+    const tv = document.getElementById('etotalval');
+    if (data.totalKwh != null) {
+      tv.textContent = data.totalKwh.toFixed(2);
+      document.getElementById('egenbyval').textContent = data.totalKwh.toFixed(2) + ' kWh';
+      document.getElementById('egenby').style.display = 'block';
+    } else {
+      tv.textContent = '–';
+    }
+
+    // Zmiana %
+    const ch = document.getElementById('etotalch');
+    if (data.changePercent != null) {
+      const sign = data.changePercent >= 0 ? '▲' : '▼';
+      ch.textContent = `${sign} ${Math.abs(data.changePercent)}%`;
+      ch.style.color = data.changePercent >= 0 ? 'var(--grn)' : 'var(--red)';
+    } else {
+      ch.textContent = '';
+    }
+
+    // Wykres
+    drawEnergyChart(data);
+
+    // Statystyki
+    let hasStats = false;
+    if (data.efficiency != null) {
+      document.getElementById('eeff-val').innerHTML = `${data.efficiency.toFixed(1)}<span class="estatunit"> %</span>`;
+      document.getElementById('estat-eff').style.display = 'flex';
+      hasStats = true;
+    } else {
+      document.getElementById('estat-eff').style.display = 'none';
+    }
+    if (data.earnings != null) {
+      document.getElementById('eearn-val').innerHTML = `${data.earnings.toFixed(2)}<span class="estatunit" id="eearn-unit"> ${data.currency||'zł'}</span>`;
+      document.getElementById('estat-earn').style.display = 'flex';
+      hasStats = true;
+    } else {
+      document.getElementById('estat-earn').style.display = 'none';
+    }
+    if (hasStats) document.getElementById('estats').style.display = 'grid';
+
+  } catch(e) {
+    document.getElementById('echartloading').textContent = 'Błąd połączenia';
+  }
+
+  isLoading = false;
+}
+
+// ─── Zakładki i nawigacja ─────────────────────────────────────────────────────
+
+document.querySelectorAll('.etab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.etab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    curPeriod = btn.dataset.period;
+    curOffset = 0;
+    loadEnergy(curPeriod, curOffset);
+  });
+});
+
+document.getElementById('eprev').addEventListener('click', () => {
+  curOffset--;
+  loadEnergy(curPeriod, curOffset);
+});
+document.getElementById('enext').addEventListener('click', () => {
+  if (curOffset < 0) { curOffset++; loadEnergy(curPeriod, curOffset); }
+});
+
+// ─── Stan real-time ───────────────────────────────────────────────────────────
+
+function f(v, d=0) { return v > 0 ? (d > 0 ? v.toFixed(d) : Math.round(v)) : '–'; }
+
+function update(s) {
+  const pv1=s.pv1Power||0, pv2=s.pv2Power||0, pv=s.pvPower||(pv1+pv2), feed=s.feedPower||0;
+  const pct=Math.min(100,Math.round(pv/1020*100)), fpct=Math.min(100,Math.round(feed/1020*100));
   document.getElementById('pv1').innerHTML=`${f(pv1)}<span class="fu"> W</span>`;
   document.getElementById('pv2').innerHTML=`${f(pv2)}<span class="fu"> W</span>`;
   document.getElementById('feed').innerHTML=`${f(feed)}<span class="fu"> W</span>`;
@@ -185,37 +489,40 @@ function update(s){
   document.getElementById('acv').innerHTML=s.acVoltage>0?`${s.acVoltage.toFixed(1)}<span class="u"> V</span>`:`–<span class="u"> V</span>`;
   document.getElementById('acf').textContent=s.acFreq>0?`${s.acFreq.toFixed(2)} Hz`:'';
   document.getElementById('temp').innerHTML=s.invTemp>0?`${s.invTemp}<span class="u"> °C</span>`:`–<span class="u"> °C</span>`;
-  if(s.lastUpdate)document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
+  if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 }
 
-function setOn(on){
-  document.getElementById('dot').classList.toggle('on',on);
+function setOn(on) {
+  document.getElementById('dot').classList.toggle('on', on);
   document.getElementById('bnr').style.display=on?'none':'block';
 }
 
-function connect(){
-  const proto=location.protocol==='https:'?'wss':'ws';
-  const ws=new WebSocket(`${proto}://${location.host}`);
-  ws.onopen=()=>{
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+
+function connect() {
+  const proto = location.protocol==='https:'?'wss':'ws';
+  const ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onopen = () => {
     fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected)});
     fetch('/api/history').then(r=>r.json()).then(h=>{
       cd={pv1:h.pv1||[],pv2:h.pv2||[],feed:h.feed||[],ts:h.timestamps||[]};drawChart();
     });
+    loadEnergy('day', 0);
   };
-  ws.onmessage=e=>{
-    const m=JSON.parse(e.data);
-    if(m.type==='state'){
-      update(m.data);setOn(m.data.connected);
-      cd.pv1.push(m.data.pv1Power||0);cd.pv2.push(m.data.pv2Power||0);cd.feed.push(m.data.feedPower||0);
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type==='state') {
+      update(m.data); setOn(m.data.connected);
+      cd.pv1.push(m.data.pv1Power||0); cd.pv2.push(m.data.pv2Power||0); cd.feed.push(m.data.feedPower||0);
       cd.ts.push(new Date().toISOString());
       if(cd.feed.length>300)['pv1','pv2','feed','ts'].forEach(k=>cd[k].shift());
       drawChart();
-    }else if(m.type==='status')setOn(m.connected);
+    } else if(m.type==='status') { setOn(m.connected); }
   };
-  ws.onclose=()=>{setOn(false);setTimeout(connect,3000)};
+  ws.onclose = () => {setOn(false);setTimeout(connect,3000)};
 }
 
-window.addEventListener('resize',drawChart);
+window.addEventListener('resize', ()=>{drawChart();if(curData)drawEnergyChart(curData)});
 connect();
 </script>
 </body>
