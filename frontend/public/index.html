@@ -74,6 +74,11 @@
   <div class="tr" id="ts">—</div>
 </div>
 
+<div class="tabs">
+  <div class="tab active" onclick="showTab('live')">Na żywo</div>
+  <div class="tab" onclick="showTab('hist')">Historia</div>
+</div>
+<div id="tlive" class="tc active">
 <div class="main">
   <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
 
@@ -248,6 +253,89 @@ function connect(){
 
 window.addEventListener('resize',drawChart);
 connect();
+</script>
+</div><!-- /tlive -->
+
+<div id="thist" class="tc">
+<div class="main">
+  <div class="sec">
+    <div class="stitle">// historia energii</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+      <select id="hper" style="background:var(--brd);border:1px solid var(--brd);color:var(--t1);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:6px;outline:none">
+        <option value="day">Dzień</option>
+        <option value="month">Miesiąc</option>
+      </select>
+      <input type="date" id="hdate" style="background:var(--brd);border:1px solid var(--brd);color:var(--t1);font-family:var(--mono);font-size:12px;padding:7px 10px;border-radius:6px;outline:none">
+      <button onclick="loadHist()" style="background:var(--pv1);color:#000;font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 16px;border:none;border-radius:6px;cursor:pointer" id="hbtn">Wczytaj</button>
+    </div>
+    <div id="hresult"></div>
+  </div>
+</div>
+</div>
+
+<style>
+.tabs{display:flex;background:var(--sur);border-bottom:1px solid var(--brd);padding:0 22px}
+.tab{font-family:var(--mono);font-size:11px;padding:10px 14px;cursor:pointer;color:var(--t2);border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.08em}
+.tab.active{color:var(--pv1);border-bottom-color:var(--pv1)}
+.tc{display:none}.tc.active{display:block}
+</style>
+
+<script>
+function showTab(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['live','hist'][i]===n));
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  document.getElementById('t'+n).classList.add('active');
+}
+
+// Init date to today
+document.getElementById('hdate').value = new Date().toISOString().split('T')[0];
+
+document.getElementById('hper').addEventListener('change', function(){
+  const inp = document.getElementById('hdate');
+  inp.type = this.value === 'month' ? 'month' : 'date';
+});
+
+async function loadHist(){
+  const period = document.getElementById('hper').value;
+  const date   = document.getElementById('hdate').value;
+  if(!date){ alert('Wybierz datę'); return; }
+  const btn = document.getElementById('hbtn');
+  btn.disabled = true; btn.textContent = 'Ładuję...';
+  document.getElementById('hresult').innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--t2);padding:20px">⏳ Pobieranie danych...</div>';
+  try {
+    const r = await fetch(`/api/historical?period=${period}&date=${date}`);
+    const d = await r.json();
+    if(d.error){
+      document.getElementById('hresult').innerHTML = `<div style="font-family:var(--mono);font-size:12px;color:var(--red);padding:14px;background:rgba(255,107,107,.05);border:1px solid rgba(255,107,107,.2);border-radius:6px">⚠ ${d.error}</div>`;
+      return;
+    }
+    const pvKwh   = (d.pvWh/1000).toFixed(2);
+    const feedKwh = (d.feedWh/1000).toFixed(2);
+    const selfPct = d.pvWh > 0 ? Math.min(100, ((1 - d.feedWh/d.pvWh)*100)).toFixed(1) : '–';
+    document.getElementById('hresult').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+        <div style="background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:15px;border-top:2px solid var(--pv1)">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Energia PV</div>
+          <div style="font-family:var(--mono);font-size:24px;font-weight:600">${pvKwh}<span style="font-size:11px;color:var(--t2);font-weight:400"> kWh</span></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px">wyprodukowano</div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:15px;border-top:2px solid var(--grn)">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Feed-in</div>
+          <div style="font-family:var(--mono);font-size:24px;font-weight:600">${feedKwh}<span style="font-size:11px;color:var(--t2);font-weight:400"> kWh</span></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px">oddano do sieci</div>
+        </div>
+        <div style="background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:15px;border-top:2px solid var(--grn)">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;margin-bottom:6px">Autokonsumpcja</div>
+          <div style="font-family:var(--mono);font-size:24px;font-weight:600">${selfPct}<span style="font-size:11px;color:var(--t2);font-weight:400"> %</span></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px">PV zużyte lokalnie</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('hresult').innerHTML = `<div style="font-family:var(--mono);font-size:12px;color:var(--red)">Błąd: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Wczytaj';
+  }
+}
 </script>
 </body>
 </html>
