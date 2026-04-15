@@ -286,18 +286,36 @@ async function fetchEnergyForPeriod(period, refDate) {
     }
   }
 
-  // Efektywność
-  if (period === 'day' || period === 'month' || period === 'week') {
-    const effCode = period === 'day'
-      ? 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-DAY-Chart_DATA'
-      : 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-MONTH-Sup_DATA';
-    const r = await privatePost('/iot-service/index/common/query', {
-      code: effCode,
+  // Efektywność produkcji (%)
+  if (period !== 'year') {
+    const periodKey = period === 'day' ? 'DAY' : period === 'week' ? 'WEEK' : 'MONTH';
+
+    // Glowna wartosc + zmiana + pv1/pv2
+    const rs = await privatePost('/iot-service/index/common/query', {
+      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Sup_DATA`,
       params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
     });
-    if (r?.code === '0' && Array.isArray(r.data)) {
-      const m = r.data.find(d => d.indexName === 'master_data');
-      out.efficiency = m?.indexValue != null ? Math.round(m.indexValue * 10) / 10 : null;
+    if (rs?.code === '0' && Array.isArray(rs.data)) {
+      const master = rs.data.find(d => d.indexName === 'master_data');
+      const sup    = rs.data.find(d => d.indexName === 'sup_data');
+      const pv1    = rs.data.find(d => d.indexName === 'pv1');
+      const pv2    = rs.data.find(d => d.indexName === 'pv2');
+      out.efficiency       = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
+      out.efficiencyChange = sup?.indexValue    != null ? Math.round(sup.indexValue * 10)    / 10 : null;
+      out.efficiencyPv1    = pv1?.indexValue    != null ? Math.round(pv1.indexValue * 10)    / 10 : null;
+      out.efficiencyPv2    = pv2?.indexValue    != null ? Math.round(pv2.indexValue * 10)    / 10 : null;
+    }
+
+    // Wykres efektywnosci (punkty godzinowe/dzienne)
+    const rc = await privatePost('/iot-service/index/common/query', {
+      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Chart_DATA`,
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+    });
+    if (rc?.code === '0' && Array.isArray(rc.data)) {
+      out.efficiencyChart = rc.data
+        .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
+        .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
+        .sort((a, b) => a.time.localeCompare(b.time));
     }
   }
 
