@@ -310,14 +310,11 @@ async function fetchEnergyForPeriod(period, refDate) {
     const supKey = period === 'day' ? 'MONTH' : period === 'week' ? 'WEEK' : 'MONTH';
     const chartKey = period === 'day' ? 'DAY' : period === 'week' ? 'WEEK' : 'MONTH';
 
-    // Dla miesiaca przy zapytaniu o dzien - pobierz dane od poczatku miesiaca
-    const monthStart = range.begin.slice(0, 7) + '-01';
-    const effBegin = period === 'day' ? monthStart : range.begin;
-
     // Glowna wartosc efektywnosci + zmiana + pv1/pv2
+    // Dla dnia: beginTime=today daje dzienna efektywnosc (26%), od poczatku miesiaca - miesieczna (68%)
     const rs = await privatePost('/iot-service/index/common/query', {
       code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${supKey}-Sup_DATA`,
-      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: effBegin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
     });
     if (rs?.code === '0' && Array.isArray(rs.data)) {
       const master = rs.data.find(d => d.indexName === 'master_data');
@@ -330,20 +327,14 @@ async function fetchEnergyForPeriod(period, refDate) {
       out.efficiencyPv2    = pv2?.indexValue    != null ? Math.round(pv2.indexValue * 10)    / 10 : null;
     }
 
-    // Wykres efektywnosci - dla dnia pobierz ostatnie 7 dni zeby miec punkty
-    const chartBegin = period === 'day' ? monthStart : range.begin;
+    // Wykres efektywnosci (punkty godzinowe/dzienne)
     const rc = await privatePost('/iot-service/index/common/query', {
       code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${chartKey}-Chart_DATA`,
-      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: chartBegin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
     });
     if (rc?.code === '0' && Array.isArray(rc.data)) {
-      // Dla widoku dnia filtruj tylko dzisiejsze punkty
-      const filtered = rc.data.filter(d => {
-        if (!d.time || d.indexValue == null || d.indexName !== 'chart_data') return false;
-        if (period === 'day') return d.time.startsWith(range.begin);
-        return true;
-      });
-      out.efficiencyChart = filtered
+      out.efficiencyChart = rc.data
+        .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
         .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
         .sort((a, b) => a.time.localeCompare(b.time));
     }
