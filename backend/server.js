@@ -97,33 +97,47 @@ let energyCache = {};
 let dailySnapshots = {};
 
 function recordDailySnapshot(date, totalWh) {
-  const hour = new Date().getHours();
   if (!dailySnapshots[date]) dailySnapshots[date] = [];
   const snaps = dailySnapshots[date];
-  // Zastap lub dodaj wpis dla tej godziny
-  const idx = snaps.findIndex(s => s.hour === hour);
-  if (idx >= 0) snaps[idx].wh = totalWh;
-  else snaps.push({ hour, wh: totalWh });
-  snaps.sort((a, b) => a.hour - b.hour);
+  const now = Date.now();
+  // Dodaj nowy snapshot tylko jesli wartosc sie zmienila
+  const last = snaps[snaps.length - 1];
+  if (!last || last.wh !== totalWh) {
+    snaps.push({ ts: now, wh: totalWh });
+  }
 }
 
 function buildHourlyChart(date) {
   const snaps = dailySnapshots[date];
   if (!snaps || snaps.length < 2) return [];
-  // Oblicz roznice miedzy kolejnymi odczytami
+  // Grupuj snapshoty po godzinach - bierz ostatni snapshot z kazdej godziny
+  const byHour = {};
+  snaps.forEach(s => {
+    const d = new Date(s.ts);
+    const hour = d.getHours();
+    byHour[hour] = s.wh; // ostatnia wartosc w tej godzinie
+  });
+  const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+  if (hours.length < 2) return [];
+  // Oblicz roznice miedzy kolejnymi godzinami
   const chart = [];
-  for (let i = 1; i < snaps.length; i++) {
-    const diff = snaps[i].wh - snaps[i-1].wh;
+  for (let i = 1; i < hours.length; i++) {
+    const diff = byHour[hours[i]] - byHour[hours[i-1]];
     if (diff > 0) {
-      const timeStr = date + ' ' + String(snaps[i-1].hour).padStart(2,'0') + ':00:00';
+      const timeStr = date + ' ' + String(hours[i-1]).padStart(2,'0') + ':00:00';
       chart.push({ time: timeStr, wh: Math.round(diff) });
     }
   }
-  // Dodaj biezaca godzine (od ostatniego snapshotu do teraz)
-  const last = snaps[snaps.length - 1];
+  // Ostatnia godzina - od ostatniego snapshotu poprzedniej godziny do teraz
   const curHour = new Date().getHours();
-  if (last.hour === curHour && snaps.length >= 2) {
-    // juz jest w chart
+  const prevHour = hours[hours.length - 1];
+  if (prevHour < curHour && byHour[prevHour] != null) {
+    const lastSnap = snaps[snaps.length - 1];
+    const diff = lastSnap.wh - byHour[prevHour];
+    if (diff > 0) {
+      const timeStr = date + ' ' + String(prevHour).padStart(2,'0') + ':00:00';
+      chart.push({ time: timeStr, wh: Math.round(diff) });
+    }
   }
   return chart;
 }
