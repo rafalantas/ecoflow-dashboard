@@ -493,6 +493,13 @@ async function loadEnergy(period, offset) {
     } else { document.getElementById('estat-eff').style.display = 'none'; }
 
     if (data.earnings != null) {
+      const earnLabel = document.querySelector('#estat-earn .estatlbl');
+      if (earnLabel) {
+        if (curPeriod === 'day') earnLabel.textContent = 'Zyski (dziś)';
+        else if (curPeriod === 'week') earnLabel.textContent = 'Zyski (tydz.)';
+        else if (curPeriod === 'month') earnLabel.textContent = 'Zyski (mies.)';
+        else earnLabel.textContent = 'Zyski (rok)';
+      }
       document.getElementById('eearn-val').innerHTML = `${data.earnings.toFixed(2)}<span class="estatunit"> ${data.currency||'zł'}</span>`;
       document.getElementById('estat-earn').style.display = 'flex';
       hasStats = true;
