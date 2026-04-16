@@ -92,6 +92,42 @@ let history = { feed: [], pv1: [], pv2: [], timestamps: [] };
 const MAX_HISTORY = 300;
 
 let energyCache = {};
+// Historia godzinowych odczytow API - do budowania wykresu dziennego
+// Format: { 'YYYY-MM-DD': [{hour: 9, wh: 592}, {hour: 10, wh: 1260}, ...] }
+let dailySnapshots = {};
+
+function recordDailySnapshot(date, totalWh) {
+  const hour = new Date().getHours();
+  if (!dailySnapshots[date]) dailySnapshots[date] = [];
+  const snaps = dailySnapshots[date];
+  // Zastap lub dodaj wpis dla tej godziny
+  const idx = snaps.findIndex(s => s.hour === hour);
+  if (idx >= 0) snaps[idx].wh = totalWh;
+  else snaps.push({ hour, wh: totalWh });
+  snaps.sort((a, b) => a.hour - b.hour);
+}
+
+function buildHourlyChart(date) {
+  const snaps = dailySnapshots[date];
+  if (!snaps || snaps.length < 2) return [];
+  // Oblicz roznice miedzy kolejnymi odczytami
+  const chart = [];
+  for (let i = 1; i < snaps.length; i++) {
+    const diff = snaps[i].wh - snaps[i-1].wh;
+    if (diff > 0) {
+      const timeStr = date + ' ' + String(snaps[i-1].hour).padStart(2,'0') + ':00:00';
+      chart.push({ time: timeStr, wh: Math.round(diff) });
+    }
+  }
+  // Dodaj biezaca godzine (od ostatniego snapshotu do teraz)
+  const last = snaps[snaps.length - 1];
+  const curHour = new Date().getHours();
+  if (last.hour === curHour && snaps.length >= 2) {
+    // juz jest w chart
+  }
+  return chart;
+}
+
 let privateToken = null;
 let tokenExpiry = 0;
 
@@ -110,8 +146,9 @@ app.get('/api/energy', async (req, res) => {
   const refDate = date || today;
   const cacheKey = `${period}:${refDate}`;
   // Cache 1h dla historycznych, 10min dla dzisiejszych
-  const cacheTTL = refDate === today ? 2 * 60 * 1000 : 60 * 60 * 1000; // 2min dla dzis, 1h dla historii
-  if (energyCache[cacheKey] && (Date.now() - energyCache[cacheKey].fetchedAt < cacheTTL)) {
+  // Dla dzisiejszego dnia - brak cache (zawsze swiezo z API)
+  // Dla poprzednich dni - cache 1h
+  if (refDate !== today && energyCache[cacheKey] && (Date.now() - energyCache[cacheKey].fetchedAt < 60 * 60 * 1000)) {
     return res.json(energyCache[cacheKey]);
   }
   try {
@@ -278,6 +315,10 @@ async function fetchEnergyForPeriod(period, refDate) {
     const s = vd.find(d => d.indexName === 'sup_data');
     out.totalKwh = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
     out.changePercent = s?.indexValue != null ? Math.round(s.indexValue * 10) / 10 : null;
+    // Zapisz godzinowy snapshot dla wykresu dziennego
+    if (period === 'day' && m?.indexValue != null) {
+      recordDailySnapshot(range.begin, Math.round(m.indexValue));
+    }
   }
 
   // Wykres słupkowy
@@ -340,6 +381,15 @@ async function fetchEnergyForPeriod(period, refDate) {
       } else {
         out.earnings = monthEarnings;
       }
+    }
+  }
+
+  // Wykres godzinowy z snapshots (gdy BAR-DAY pusty)
+  if (period === 'day' && (!out.chart || out.chart.length <= 1)) {
+    const hourlyChart = buildHourlyChart(range.begin);
+    if (hourlyChart.length > 0) {
+      out.chart = hourlyChart;
+      console.log('Wykres godzinowy z ' + hourlyChart.length + ' snapshots');
     }
   }
 
