@@ -11,6 +11,17 @@
     --pv1:#f5a623;--pv2:#e05c1a;--grn:#39d353;--blu:#58a6ff;--red:#ff6b6b;--cyn:#56d0e0;--yel:#f0c040;
     --t1:#e6edf3;--t2:#7d8590;
     --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+    --shadow:rgba(0,0,0,.3);
+    --egenby-bg:rgba(255,255,255,.03);
+  }
+  @media(prefers-color-scheme:light){
+    :root{
+      --bg:#f0f2f5;--sur:#ffffff;--brd:#d0d7de;
+      --t1:#1c2128;--t2:#57606a;
+      --blu:#0969da;--grn:#1a7f37;--red:#cf222e;--cyn:#0550ae;
+      --shadow:rgba(0,0,0,.08);
+      --egenby-bg:rgba(0,0,0,.03);
+    }
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh}
@@ -74,7 +85,7 @@
   .estatval{font-family:var(--sans);font-size:18px;font-weight:600}
   .estatunit{font-size:11px;font-weight:400;color:var(--t2)}
   .estatsub{font-family:var(--mono);font-size:10px;margin-top:2px}
-  .egenby{margin-top:16px;padding:14px;background:rgba(255,255,255,.03);border-radius:6px;border:1px solid var(--brd)}
+  .egenby{margin-top:16px;padding:14px;background:var(--egenby-bg);border-radius:6px;border:1px solid var(--brd)}
   .egenbylbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
   .egenbyrow{display:flex;align-items:center;gap:10px}
   .egenbyicon{font-size:20px}
@@ -251,6 +262,18 @@
 <script>
 // ─── Stan ─────────────────────────────────────────────────────────────────────
 let cd = {pv1:[],pv2:[],feed:[],ts:[]};
+
+// Pobierz aktualny kolor CSS variable (działa z dark/light mode)
+function getColor(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Nasłuchuj zmiany motywu systemowego i odśwież wykresy
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  drawChart();
+  if (curData) drawEnergyChart(curData);
+  if (curData?.efficiencyChart) drawEfficiencyChart(curData.efficiencyChart);
+});
 let deviceState = {};
 
 // Stan historii energii
@@ -292,11 +315,11 @@ function drawChart() {
   const all=[...cd.pv1,...cd.pv2,...cd.feed], mx=Math.max(...all,100), n=cd.feed.length;
   if(n<2) return;
   const p={t:6,b:16,l:40,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
-  cx.strokeStyle='rgba(255,255,255,.04)'; cx.lineWidth=1;
+  cx.strokeStyle=getColor('--brd'); cx.lineWidth=1;
   for(let i=0;i<=4;i++){
     const y=p.t+(ch/4)*i;
     cx.beginPath(); cx.moveTo(p.l,y); cx.lineTo(w-p.r,y); cx.stroke();
-    cx.fillStyle='rgba(125,133,144,.6)'; cx.font='9px IBM Plex Mono,monospace'; cx.textAlign='right';
+    cx.fillStyle=getColor('--t2'); cx.font='9px IBM Plex Mono,monospace'; cx.textAlign='right';
     cx.fillText(Math.round(mx*(1-i/4))+'W', p.l-4, y+3);
   }
   function line(data, color) {
@@ -340,8 +363,8 @@ function drawEnergyChart(data) {
   ectx.fillStyle='rgba(125,133,144,.7)'; ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='right';
   for(let i=0;i<=3;i++){
     const y=p.t+(ch/3)*i, val=mx*(1-i/3);
-    ectx.fillStyle='rgba(255,255,255,.04)'; ectx.fillRect(p.l, y, cw, .5);
-    ectx.fillStyle='rgba(125,133,144,.7)';
+    ectx.fillStyle=getColor('--brd'); ectx.fillRect(p.l, y, cw, .5);
+    ectx.fillStyle=getColor('--t2');
     const label = val >= 1000 ? (val/1000).toFixed(1)+'k' : Math.round(val)+'';
     ectx.fillText(label, p.l-4, y+3);
   }
@@ -361,7 +384,7 @@ function drawEnergyChart(data) {
   });
 
   // Etykiety osi X
-  ectx.fillStyle='rgba(125,133,144,.8)'; ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='center';
+  ectx.fillStyle=getColor('--t2'); ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='center';
   const step = Math.max(1, Math.ceil(n/8));
   chart.forEach((d, i) => {
     if (i % step !== 0 && i !== n-1) return;
@@ -446,8 +469,8 @@ function drawEfficiencyChart(chartData) {
   // Grid
   for(let i=0;i<=2;i++){
     const y=p.t+(ch/2)*i;
-    efctx.fillStyle='rgba(255,255,255,.04)'; efctx.fillRect(p.l,y,cw,0.5);
-    efctx.fillStyle='rgba(125,133,144,.6)'; efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='right';
+    efctx.fillStyle=getColor('--brd'); efctx.fillRect(p.l,y,cw,0.5);
+    efctx.fillStyle=getColor('--t2'); efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='right';
     efctx.fillText(Math.round(mx*(1-i/2))+'%', p.l-3, y+3);
   }
 
@@ -466,7 +489,7 @@ function drawEfficiencyChart(chartData) {
   efctx.fillStyle=grad; efctx.fill();
 
   // Etykiety X
-  efctx.fillStyle='rgba(125,133,144,.7)'; efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='center';
+  efctx.fillStyle=getColor('--t2'); efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='center';
   const step=Math.max(1,Math.ceil(n/6));
   chartData.forEach((d,i) => {
     if(i%step!==0 && i!==n-1) return;
