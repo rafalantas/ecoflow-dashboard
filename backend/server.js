@@ -110,7 +110,7 @@ app.get('/api/energy', async (req, res) => {
   const refDate = date || today;
   const cacheKey = `${period}:${refDate}`;
   // Cache 1h dla historycznych, 10min dla dzisiejszych
-  const cacheTTL = refDate === today ? 10 * 60 * 1000 : 60 * 60 * 1000;
+  const cacheTTL = refDate === today ? 2 * 60 * 1000 : 60 * 60 * 1000; // 2min dla dzis, 1h dla historii
   if (energyCache[cacheKey] && (Date.now() - energyCache[cacheKey].fetchedAt < cacheTTL)) {
     return res.json(energyCache[cacheKey]);
   }
