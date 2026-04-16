@@ -346,22 +346,17 @@ async function fetchEnergyForPeriod(period, refDate) {
   // Efektywność produkcji (%)
   if (period !== 'year') {
     if (period === 'day') {
-      // Dla dnia: srednia z punktow godzinowych DAY-Chart_DATA
-      const rc = await privatePost('/iot-service/index/common/query', {
-        code: 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-DAY-Chart_DATA',
+      // MONTH-Sup_DATA z beginTime=today zwraca dzienna efektywnosc
+      const rs = await privatePost('/iot-service/index/common/query', {
+        code: 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-MONTH-Sup_DATA',
         params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
       });
-      if (rc?.code === '0' && Array.isArray(rc.data)) {
-        const pts = rc.data.filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null);
-        if (pts.length > 0) {
-          const avg = pts.reduce((s, d) => s + d.indexValue, 0) / pts.length;
-          out.efficiency = Math.round(avg * 10) / 10;
-          out.efficiencyChart = pts
-            .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
-            .sort((a, b) => a.time.localeCompare(b.time));
-        }
+      if (rs?.code === '0' && Array.isArray(rs.data)) {
+        const master = rs.data.find(d => d.indexName === 'master_data');
+        out.efficiency = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
+        console.log('Efektywnosc dnia: ' + out.efficiency + '%');
       }
-    } else {
+        } else {
       // Dla tygodnia/miesiaca: Sup_DATA
       const periodKey = period === 'week' ? 'WEEK' : 'MONTH';
       const rs = await privatePost('/iot-service/index/common/query', {
