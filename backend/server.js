@@ -519,6 +519,24 @@ server.listen(PORT, async () => {
   console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN||'?'}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
   startMqtt();
   if (EF_EMAIL && EF_PASSWORD) {
+    // Co 5 minut pobieraj dzisiejsze dane zeby budowac wykres godzinowy
+    const autoRefreshDay = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const data = await fetchEnergyForPeriod('day', today);
+        if (data) {
+          energyCache['day:' + today] = { ...data, fetchedAt: Date.now() };
+          console.log('Auto-refresh: ' + (data.totalKwh || 0) + ' kWh, snapshots: ' + (dailySnapshots[today]?.length || 0));
+        }
+      } catch(e) {}
+    };
+    // Uruchom po 10s (po logowaniu) i powtarzaj co 5 minut
+    setTimeout(async () => {
+      await autoRefreshDay();
+      setInterval(autoRefreshDay, 5 * 60 * 1000);
+    }, 10000);
+  }
+  if (EF_EMAIL && EF_PASSWORD) {
     await loginPrivateApi();
     const today = new Date().toISOString().slice(0, 10);
     // Pre-cache dzisiejszych danych
