@@ -293,13 +293,43 @@ async function fetchEnergyForPeriod(period, refDate) {
     }
   }
 
-  // Zyski miesięczne
-  if (period === 'day' || period === 'month') {
-    const ed = await callEnergy('SPACE-APP-EARNINGS-MONEY-VALUE-MONTH');
-    if (ed) {
-      const m = ed.find(d => d.indexName === 'master_data');
-      out.earnings = m?.indexValue != null ? Math.round(m.indexValue * 100) / 100 : null;
-      out.currency = m?.unit || 'zł';
+  // Zyski
+  const earningsCode = (period === 'year') ? 'SPACE-APP-EARNINGS-MONEY-VALUE-YEAR' : 'SPACE-APP-EARNINGS-MONEY-VALUE-MONTH';
+  const monthBegin = range.begin.slice(0, 7) + '-01';
+  const earningsBegin = (period === 'year') ? range.begin : monthBegin;
+  const ed = await privatePost('/app/space/data/single/index/', {
+    code: earningsCode, spaceId: SPACE_ID,
+    params: { beginTime: earningsBegin, endTime: range.end },
+  });
+  if (ed?.code === '0' && Array.isArray(ed.data)) {
+    const m = ed.data.find(d => d.indexName === 'master_data');
+    if (m?.indexValue != null) {
+      const monthEarnings = Math.round(m.indexValue * 100) / 100;
+      out.currency = m.unit || 'zł';
+
+      if (period === 'day') {
+        // Oblicz dzienny zysk: monthEarnings * (todayKwh / monthKwh)
+        const monthData = await callEnergy('SPACE-APP-SOLAR-ENERGY-VALUE-MONTH');
+        const monthKwh = monthData ? (monthData.find(d => d.indexName === 'master_data')?.indexValue || 0) / 1000 : 0;
+        if (monthKwh > 0 && out.totalKwh != null) {
+          out.earnings = Math.round((monthEarnings * out.totalKwh / monthKwh) * 100) / 100;
+        } else {
+          out.earnings = null;
+        }
+        out.earningsMonth = monthEarnings; // miesięczne w tle
+      } else if (period === 'week') {
+        // Oblicz tygodniowy zysk: monthEarnings * (weekKwh / monthKwh)
+        const monthData = await callEnergy('SPACE-APP-SOLAR-ENERGY-VALUE-MONTH');
+        const monthKwh = monthData ? (monthData.find(d => d.indexName === 'master_data')?.indexValue || 0) / 1000 : 0;
+        if (monthKwh > 0 && out.totalKwh != null) {
+          out.earnings = Math.round((monthEarnings * out.totalKwh / monthKwh) * 100) / 100;
+        } else {
+          out.earnings = null;
+        }
+        out.earningsMonth = monthEarnings;
+      } else {
+        out.earnings = monthEarnings;
+      }
     }
   }
 
