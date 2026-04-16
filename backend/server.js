@@ -307,21 +307,18 @@ async function fetchEnergyForPeriod(period, refDate) {
       const monthEarnings = Math.round(m.indexValue * 100) / 100;
       out.currency = m.unit || 'zł';
 
-      if (period === 'day') {
-        // Oblicz dzienny zysk: monthEarnings * (todayKwh / monthKwh)
-        const monthData = await callEnergy('SPACE-APP-SOLAR-ENERGY-VALUE-MONTH');
-        const monthKwh = monthData ? (monthData.find(d => d.indexName === 'master_data')?.indexValue || 0) / 1000 : 0;
-        if (monthKwh > 0 && out.totalKwh != null) {
-          out.earnings = Math.round((monthEarnings * out.totalKwh / monthKwh) * 100) / 100;
-        } else {
-          out.earnings = null;
-        }
-        out.earningsMonth = monthEarnings; // miesięczne w tle
-      } else if (period === 'week') {
-        // Oblicz tygodniowy zysk: monthEarnings * (weekKwh / monthKwh)
-        const monthData = await callEnergy('SPACE-APP-SOLAR-ENERGY-VALUE-MONTH');
-        const monthKwh = monthData ? (monthData.find(d => d.indexName === 'master_data')?.indexValue || 0) / 1000 : 0;
-        if (monthKwh > 0 && out.totalKwh != null) {
+      if (period === 'day' || period === 'week') {
+        // Pobierz miesiezny kWh osobno zeby wyliczyc proporcje
+        const mBegin = range.begin.slice(0, 7) + '-01';
+        const mEnd   = range.end;
+        const mResp  = await privatePost('/app/space/data/single/index/', {
+          code: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH', spaceId: SPACE_ID,
+          params: { beginTime: mBegin, endTime: mEnd },
+        });
+        const mData   = (mResp?.code === '0' && Array.isArray(mResp.data)) ? mResp.data : [];
+        const monthWh = mData.find(d => d.indexName === 'master_data')?.indexValue || 0;
+        const monthKwh = monthWh / 1000;
+        if (monthKwh > 0 && out.totalKwh != null && out.totalKwh > 0) {
           out.earnings = Math.round((monthEarnings * out.totalKwh / monthKwh) * 100) / 100;
         } else {
           out.earnings = null;
