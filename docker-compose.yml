@@ -6,6 +6,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - TZ=Europe/Warsaw
       - DEVICE_SN=${DEVICE_SN}
       - EF_ACCESS_KEY=${EF_ACCESS_KEY}
       - EF_SECRET_KEY=${EF_SECRET_KEY}
