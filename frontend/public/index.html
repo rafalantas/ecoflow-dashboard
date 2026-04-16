@@ -197,7 +197,10 @@
     <!-- Wykres słupkowy -->
     <div class="echartbox">
       <div class="echartloading" id="echartloading">ładowanie…</div>
-      <canvas id="echart" height="140" style="display:none"></canvas>
+      <div style="position:relative">
+        <canvas id="echart" height="140" style="display:none"></canvas>
+        <div id="echart-tooltip" style="display:none;position:absolute;background:rgba(17,24,32,.95);border:1px solid #1e2d3d;border-radius:6px;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e6edf3;pointer-events:none;white-space:nowrap;z-index:10"></div>
+      </div>
     </div>
 
     <!-- Statystyki -->
@@ -311,6 +314,7 @@ function drawChart() {
 const ec = document.getElementById('echart'), ectx = ec.getContext('2d');
 
 function drawEnergyChart(data) {
+  ecChartData = data;
   if (!data || !data.chart || data.chart.length === 0) {
     ec.style.display = 'none';
     document.getElementById('echartloading').textContent = 'Brak danych';
@@ -369,6 +373,60 @@ function drawEnergyChart(data) {
     if (curPeriod === 'year')  lb = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'][new Date(d.time+'T12:00').getMonth()];
     ectx.fillText(lb, x, h-6);
   });
+}
+
+// ─── Tooltip wykresu energii ──────────────────────────────────────────────
+
+let ecChartData = null; // aktualne dane wykresu
+
+function setupEnergyChartTooltip() {
+  const tooltip = document.getElementById('echart-tooltip');
+  if (!ec || !tooltip) return;
+
+  ec.addEventListener('mousemove', (e) => {
+    if (!ecChartData || !ecChartData.chart || ecChartData.chart.length === 0) return;
+    const rect = ec.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const chart = ecChartData.chart;
+    const n = chart.length;
+    const p = {t:10, b:24, l:42, r:8};
+    const cw = ec.offsetWidth - p.l - p.r;
+    const bw = Math.max(3, Math.min(36, cw/n - 4));
+
+    // Znajdz najblizszy slupek
+    let closest = -1, minDist = Infinity;
+    chart.forEach((d, i) => {
+      const cx = p.l + (i/n)*cw + (cw/n)/2;
+      const dist = Math.abs(mx - cx);
+      if (dist < minDist) { minDist = dist; closest = i; }
+    });
+
+    if (closest < 0 || minDist > cw/n) { tooltip.style.display = 'none'; return; }
+
+    const d = chart[closest];
+    const bx = p.l + (closest/n)*cw + (cw/n)/2;
+
+    // Etykieta daty
+    let dateLb = '';
+    if (curPeriod === 'day')   dateLb = d.time.slice(11,16);
+    if (curPeriod === 'week')  dateLb = ['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'][new Date(d.time+'T12:00').getDay()] + ' ' + new Date(d.time+'T12:00').getDate() + '.' + String(new Date(d.time+'T12:00').getMonth()+1).padStart(2,'0');
+    if (curPeriod === 'month') dateLb = new Date(d.time+'T12:00').toLocaleDateString('pl-PL',{day:'numeric',month:'long'});
+    if (curPeriod === 'year')  dateLb = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'][new Date(d.time+'T12:00').getMonth()];
+
+    const kwh = (d.wh / 1000).toFixed(2);
+    tooltip.innerHTML = `<span style="color:#7d8590">${dateLb}</span><br><span style="color:#f0c040;font-size:14px;font-weight:600">${kwh}</span><span style="color:#7d8590"> kWh</span>`;
+    tooltip.style.display = 'block';
+
+    // Pozycja tooltip
+    const tw = tooltip.offsetWidth;
+    let tx = bx - tw/2;
+    if (tx < 0) tx = 4;
+    if (tx + tw > ec.offsetWidth) tx = ec.offsetWidth - tw - 4;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = '4px';
+  });
+
+  ec.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 }
 
 // ─── Wykres efektywności ─────────────────────────────────────────────────────
@@ -605,6 +663,7 @@ function connect() {
   ws.onclose = () => {setOn(false);setTimeout(connect,3000)};
 }
 
+setupEnergyChartTooltip();
 window.addEventListener('resize', ()=>{drawChart();if(curData)drawEnergyChart(curData);if(curData?.efficiencyChart)drawEfficiencyChart(curData.efficiencyChart)});
 connect();
 </script>
