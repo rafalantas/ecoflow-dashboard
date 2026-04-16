@@ -68,13 +68,26 @@ const API_HOST    = 'https://api-e.ecoflow.com';
 let   mainSn      = DEVICE_SN;
 
 let deviceState = {
-  connected: false, lastUpdate: null,
+  connected: false, lastUpdate: null, lastMqttData: null,
   pv1Power: 0, pv2Power: 0, pvPower: 0,
   feedPower: 0, fromGrid: 0, gridPower: 0,
   acVoltage: 0, acFreq: 0, acCurrent: 0,
   pv1Voltage: 0, pv2Voltage: 0, pv1Current: 0, pv2Current: 0,
   invTemp: 0, gridStatus: '',
 };
+
+// Jesli przez 5 minut nie ma danych MQTT - oznacz jako offline
+const MQTT_TIMEOUT_MS = 5 * 60 * 1000;
+setInterval(() => {
+  if (deviceState.connected && deviceState.lastMqttData) {
+    const age = Date.now() - deviceState.lastMqttData;
+    if (age > MQTT_TIMEOUT_MS) {
+      console.log(`⚠️  Brak danych MQTT przez ${Math.round(age/60000)} min - oznaczam offline`);
+      deviceState.connected = false;
+      broadcast({ type: 'status', connected: false });
+    }
+  }
+}, 60 * 1000);
 let history = { feed: [], pv1: [], pv2: [], timestamps: [] };
 const MAX_HISTORY = 300;
 
@@ -332,42 +345,49 @@ async function fetchEnergyForPeriod(period, refDate) {
 
   // Efektywność produkcji (%)
   if (period !== 'year') {
-    // Dla dnia uzywamy MONTH-Sup_DATA (tak jak aplikacja EcoFlow)
-    // bo DAY-Sup_DATA nie ma danych dla biezacego dnia
-    const supKey = period === 'day' ? 'MONTH' : period === 'week' ? 'WEEK' : 'MONTH';
-    const chartKey = period === 'day' ? 'DAY' : period === 'week' ? 'WEEK' : 'MONTH';
-
-    // Glowna wartosc efektywnosci + zmiana + pv1/pv2
-    // Dla dnia: beginTime=today daje dzienna efektywnosc (26%), od poczatku miesiaca - miesieczna (68%)
-    const rs = await privatePost('/iot-service/index/common/query', {
-      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${supKey}-Sup_DATA`,
-      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-    });
-    if (rs?.code === '0' && Array.isArray(rs.data)) {
-      const master = rs.data.find(d => d.indexName === 'master_data');
-      const sup    = rs.data.find(d => d.indexName === 'sup_data');
-      const pv1    = rs.data.find(d => d.indexName === 'pv1');
-      const pv2    = rs.data.find(d => d.indexName === 'pv2');
-      out.efficiency       = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
-      out.efficiencyChange = sup?.indexValue    != null ? Math.round(sup.indexValue * 10)    / 10 : null;
-      out.efficiencyPv1    = pv1?.indexValue    != null ? Math.round(pv1.indexValue * 10)    / 10 : null;
-      out.efficiencyPv2    = pv2?.indexValue    != null ? Math.round(pv2.indexValue * 10)    / 10 : null;
-    }
-
-    // Wykres efektywnosci (punkty godzinowe/dzienne)
-    const rc = await privatePost('/iot-service/index/common/query', {
-      code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${chartKey}-Chart_DATA`,
-      params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-    });
-    if (rc?.code === '0' && Array.isArray(rc.data)) {
-      out.efficiencyChart = rc.data
-        .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
-        .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
-        .sort((a, b) => a.time.localeCompare(b.time));
+    if (period === 'day') {
+      // Dla dnia: srednia z punktow godzinowych DAY-Chart_DATA
+      const rc = await privatePost('/iot-service/index/common/query', {
+        code: 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-DAY-Chart_DATA',
+        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      });
+      if (rc?.code === '0' && Array.isArray(rc.data)) {
+        const pts = rc.data.filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null);
+        if (pts.length > 0) {
+          const avg = pts.reduce((s, d) => s + d.indexValue, 0) / pts.length;
+          out.efficiency = Math.round(avg * 10) / 10;
+          out.efficiencyChart = pts
+            .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
+            .sort((a, b) => a.time.localeCompare(b.time));
+        }
+      }
+    } else {
+      // Dla tygodnia/miesiaca: Sup_DATA
+      const periodKey = period === 'week' ? 'WEEK' : 'MONTH';
+      const rs = await privatePost('/iot-service/index/common/query', {
+        code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Sup_DATA`,
+        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      });
+      if (rs?.code === '0' && Array.isArray(rs.data)) {
+        const master = rs.data.find(d => d.indexName === 'master_data');
+        const sup    = rs.data.find(d => d.indexName === 'sup_data');
+        out.efficiency       = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
+        out.efficiencyChange = sup?.indexValue    != null ? Math.round(sup.indexValue * 10)    / 10 : null;
+      }
+      const rc = await privatePost('/iot-service/index/common/query', {
+        code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Chart_DATA`,
+        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
+      });
+      if (rc?.code === '0' && Array.isArray(rc.data)) {
+        out.efficiencyChart = rc.data
+          .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
+          .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
+          .sort((a, b) => a.time.localeCompare(b.time));
+      }
     }
   }
 
-  return out;
+    return out;
 }
 
 // ─── MQTT ─────────────────────────────────────────────────────────────────────
