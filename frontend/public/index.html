@@ -126,6 +126,21 @@
   .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--t2)}
   .ld{width:8px;height:8px;border-radius:50%}
 
+  /* Zużycie */
+  .consrow{display:flex;gap:8px;flex-wrap:wrap}
+  .conscard{flex:1;min-width:130px;padding:12px;border-radius:8px;border:1px solid var(--brd);background:var(--sur2)}
+  .conscard-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .conscard-val{font-family:var(--mono);font-size:20px;font-weight:600}
+  .conscard-val .u{font-size:10px;font-weight:400;color:var(--t2)}
+  .consbar{height:4px;border-radius:2px;margin-top:8px;background:var(--brd);overflow:hidden}
+  .consbar-fill{height:100%;border-radius:2px;transition:width .5s}
+  /* Bateria health */
+  .batextra{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)}
+  .batex{padding:10px 12px;border-radius:6px;background:var(--sur2);border:1px solid var(--brd)}
+  .batex-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+  .batex-val{font-family:var(--mono);font-size:16px;font-weight:600}
+  .batex-val .u{font-size:10px;font-weight:400;color:var(--t2)}
+
   @media(max-width:600px){
     .flow{grid-template-columns:1fr 1fr;gap:8px}
     .farr{display:none}
@@ -231,6 +246,24 @@
         <div class="batcells" id="bat-cells"></div>
       </div>
     </div>
+    <div class="batextra">
+      <div class="batex">
+        <div class="batex-lbl">Zdrowie (SOH)</div>
+        <div class="batex-val" id="bat-soh">–<span class="u"> %</span></div>
+      </div>
+      <div class="batex">
+        <div class="batex-lbl">Cykle</div>
+        <div class="batex-val" id="bat-cycles">–<span class="u"> x</span></div>
+      </div>
+      <div class="batex">
+        <div class="batex-lbl">Naładowano łącznie</div>
+        <div class="batex-val" id="bat-chg-total">–<span class="u"> Wh</span></div>
+      </div>
+      <div class="batex">
+        <div class="batex-lbl">Rozładowano łącznie</div>
+        <div class="batex-val" id="bat-dsg-total">–<span class="u"> Wh</span></div>
+      </div>
+    </div>
   </div>
 
   <!-- Sieć -->
@@ -256,6 +289,33 @@
       <div class="gridcard">
         <div class="gridcard-lbl">Status</div>
         <div class="gridcard-val" style="font-size:12px" id="g-status">–</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zużycie domu -->
+  <div class="sec">
+    <div class="stitle">// źródła zasilania domu</div>
+    <div class="consrow">
+      <div class="conscard" style="border-top:2px solid var(--pv)">
+        <div class="conscard-lbl">Z paneli PV</div>
+        <div class="conscard-val" id="cons-pv">–<span class="u"> W</span></div>
+        <div class="consbar"><div class="consbar-fill" id="cons-pv-bar" style="background:var(--pv)"></div></div>
+      </div>
+      <div class="conscard" style="border-top:2px solid var(--bat)">
+        <div class="conscard-lbl">Z baterii</div>
+        <div class="conscard-val" id="cons-bat">–<span class="u"> W</span></div>
+        <div class="consbar"><div class="consbar-fill" id="cons-bat-bar" style="background:var(--bat)"></div></div>
+      </div>
+      <div class="conscard" style="border-top:2px solid var(--red)">
+        <div class="conscard-lbl">Z sieci</div>
+        <div class="conscard-val" id="cons-grid">–<span class="u"> W</span></div>
+        <div class="consbar"><div class="consbar-fill" id="cons-grid-bar" style="background:var(--red)"></div></div>
+      </div>
+      <div class="conscard" style="border-top:2px solid var(--load)">
+        <div class="conscard-lbl">Razem dom</div>
+        <div class="conscard-val" id="cons-total">–<span class="u"> W</span></div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:6px" id="cons-pct"></div>
       </div>
     </div>
   </div>
@@ -409,6 +469,30 @@ function update(s) {
     document.getElementById('bat-cells').innerHTML = s.cellVol.map((v,i) =>
       `<span class="cell">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
   }
+
+  // Zużycie domu
+  const load = s.sysLoad || 0;
+  const fromPv  = s.loadFromPv  || 0;
+  const fromBat = s.loadFromBat || 0;
+  const fromGrd = s.loadFromGrid|| 0;
+  const maxLoad = Math.max(load, 1);
+  document.getElementById('cons-pv').innerHTML   = `${Math.round(fromPv)}<span class="u"> W</span>`;
+  document.getElementById('cons-bat').innerHTML  = `${Math.round(fromBat)}<span class="u"> W</span>`;
+  document.getElementById('cons-grid').innerHTML = `${Math.round(fromGrd)}<span class="u"> W</span>`;
+  document.getElementById('cons-total').innerHTML= `${Math.round(load)}<span class="u"> W</span>`;
+  document.getElementById('cons-pv-bar').style.width   = Math.min(100, fromPv/maxLoad*100)  + '%';
+  document.getElementById('cons-bat-bar').style.width  = Math.min(100, fromBat/maxLoad*100) + '%';
+  document.getElementById('cons-grid-bar').style.width = Math.min(100, fromGrd/maxLoad*100) + '%';
+  if (load > 0) {
+    const pvPct = Math.round(fromPv/load*100), batPct = Math.round(fromBat/load*100), grdPct = Math.round(fromGrd/load*100);
+    document.getElementById('cons-pct').textContent = `PV ${pvPct}% | Bat ${batPct}% | Sieć ${grdPct}%`;
+  }
+
+  // Bateria — zdrowie
+  if (s.battSoh != null) document.getElementById('bat-soh').innerHTML   = `${s.battSoh.toFixed(1)}<span class="u"> %</span>`;
+  if (s.battCycles != null) document.getElementById('bat-cycles').innerHTML = `${s.battCycles}<span class="u"> x</span>`;
+  if (s.accuChgEnergy != null) document.getElementById('bat-chg-total').innerHTML = `${s.accuChgEnergy}<span class="u"> Wh</span>`;
+  if (s.accuDsgEnergy != null) document.getElementById('bat-dsg-total').innerHTML = `${s.accuDsgEnergy}<span class="u"> Wh</span>`;
 
   // Sieć
   document.getElementById('g-feed').innerHTML  = feed > 0 ? `${fmt(feed)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
