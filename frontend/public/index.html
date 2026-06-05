@@ -736,27 +736,49 @@ function setupTooltip() {
 }
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
+let wsConnected = false;
+
+function pollState() {
+  fetch('/api/state').then(r=>r.json()).then(s=>{
+    update(s); setOn(s.connected);
+    cd.pv.push(s.pvTotal||0); cd.feed.push(s.feedPower||0); cd.soc.push(s.soc||0);
+    cd.ts.push(new Date().toISOString());
+    if(cd.ts.length>300) ['pv','feed','soc','ts'].forEach(k=>cd[k].shift());
+    drawChart();
+  }).catch(()=>{});
+}
+
 function connect() {
-  const proto = location.protocol==='https:'?'wss':'ws';
-  const ws = new WebSocket(`${proto}://${location.host}`);
+  // Najpierw zaladuj dane HTTP
+  fetch('/api/state').then(r=>r.json()).then(s=>{ update(s); setOn(s.connected); });
+  fetch('/api/history').then(r=>r.json()).then(h=>{
+    cd={ pv:h.pv||[], feed:h.feed||[], soc:h.soc||[], ts:h.timestamps||[] };
+    drawChart();
+  });
+  loadEnergy();
 
-  ws.onopen = () => {
-    fetch('/api/state').then(r=>r.json()).then(s=>{ update(s); setOn(s.connected); });
-    fetch('/api/history').then(r=>r.json()).then(h=>{
-      cd={ pv:h.pv||[], feed:h.feed||[], soc:h.soc||[], ts:h.timestamps||[] };
-      drawChart();
-    });
-    loadEnergy();
-  };
+  // Sprobuj WebSocket
+  try {
+    const proto = location.protocol==='https:'?'wss':'ws';
+    const ws = new WebSocket(`${proto}://${location.host}`);
 
-  ws.onmessage = e => {
-    const m = JSON.parse(e.data);
-    if (m.type === 'state')  { update(m.data); setOn(m.data.connected); drawChart(); }
-    if (m.type === 'status') { setOn(m.connected); }
-    if (m.type === 'energy') { curData = m.data; updateEnergy(m.data); }
-  };
+    ws.onopen = () => { wsConnected = true; console.log('WS connected'); };
 
-  ws.onclose = () => { setOn(false); setTimeout(connect, 3000); };
+    ws.onmessage = e => {
+      try {
+        const m = JSON.parse(e.data);
+        if (m.type === 'state')  { update(m.data); setOn(m.data.connected); drawChart(); }
+        if (m.type === 'status') { setOn(m.connected); }
+        if (m.type === 'energy') { curData = m.data; updateEnergy(m.data); }
+      } catch(err) {}
+    };
+
+    ws.onclose = () => { wsConnected = false; setTimeout(connect, 5000); };
+    ws.onerror = () => { wsConnected = false; };
+  } catch(e) { console.log('WS failed, using polling only'); }
+
+  // Polling co 3s jako fallback gdy brak WS
+  setInterval(() => { if (!wsConnected) pollState(); }, 3000);
 }
 
 window.addEventListener('resize', () => {
