@@ -494,8 +494,11 @@ function update(s) {
   if (s.accuDsgEnergy != null) document.getElementById('bat-dsg-total').innerHTML = `${s.accuDsgEnergy}<span class="u"> Wh</span>`;
 
   // Sieć
-  document.getElementById('g-feed').innerHTML  = feed > 0 ? `${fmt(feed)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
-  document.getElementById('g-from').innerHTML  = from > 0 ? `${fmt(from)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
+  // Pobor z sieci - uzyj loadFromGrid jako fallback gdy fromGrid=0
+  const displayFrom = from > 0 ? from : (s.loadFromGrid || 0);
+  const displayFeed = feed > 0 ? feed : 0;
+  document.getElementById('g-feed').innerHTML  = displayFeed > 0 ? `${fmt(displayFeed)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
+  document.getElementById('g-from').innerHTML  = displayFrom > 0 ? `${fmt(displayFrom)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
   document.getElementById('g-vol').innerHTML   = `${fmt(s.gridVol||0,1)}<span class="u"> V</span>`;
   document.getElementById('g-freq').innerHTML  = `${fmt(s.gridFreq||0,2)}<span class="u"> Hz</span>`;
   const statusMap = { 'PANEL_FEED_GRID':'↑ Feed-in', 'PANEL_GRID_IN':'↓ Pobór', 'DISCONNECT':'Rozłączono' };
