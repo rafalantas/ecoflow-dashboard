@@ -8,7 +8,7 @@ const axios     = require('axios');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT       = process.env.PORT          || 8080;
-const DEVICE_SN  = process.env.DEVICE_SN     || 'BK61ZE1B2J3H0094';
+const DEVICE_SN  = process.env.DEVICE_SN     || '';
 const ACCESS_KEY = process.env.EF_ACCESS_KEY || '';
 const SECRET_KEY = process.env.EF_SECRET_KEY || '';
 const EF_EMAIL   = process.env.EF_EMAIL      || '';
