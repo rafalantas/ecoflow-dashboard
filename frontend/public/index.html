@@ -1,503 +1,690 @@
-const express   = require('express');
-const http      = require('http');
-const WebSocket = require('ws');
-const mqtt      = require('mqtt');
-const path      = require('path');
-const crypto    = require('crypto');
-const axios     = require('axios');
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-const PORT       = process.env.PORT          || 8080;
-const DEVICE_SN  = process.env.DEVICE_SN     || 'BK61ZE1B2J3H0094';
-const ACCESS_KEY = process.env.EF_ACCESS_KEY || '';
-const SECRET_KEY = process.env.EF_SECRET_KEY || '';
-const EF_EMAIL   = process.env.EF_EMAIL      || '';
-const EF_PASSWORD= process.env.EF_PASSWORD   || '';
-const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
-const API_HOST   = 'https://api-e.ecoflow.com';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function uuidv4() {
-  return crypto.randomUUID ? crypto.randomUUID() :
-    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = Math.random() * 16 | 0;
-      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-}
-
-function hmacSign(params = {}) {
-  const nonce = String(100000 + Math.floor(Math.random() * 900000));
-  const timestamp = String(Date.now());
-  const items = Object.entries({ ...params, accessKey: ACCESS_KEY, nonce, timestamp })
-    .sort(([a], [b]) => a.localeCompare(b));
-  const signStr = items.map(([k, v]) => `${k}=${v}`).join('&');
-  const sign = crypto.createHmac('sha256', SECRET_KEY).update(signStr).digest('hex');
-  return { 'Content-Type': 'application/json', accessKey: ACCESS_KEY, nonce, timestamp, sign };
-}
-
-function md5Sign(token) {
-  const nonce = crypto.randomBytes(8).toString('hex');
-  const timestamp = String(Date.now());
-  const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
-  return {
-    'Authorization': `Bearer ${token}`, 'lang': 'en_US',
-    'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
-    'X-Appid': '9', 'platform': 'android', 'version': '6.10.5',
-    'content-type': 'application/json',
-  };
-}
-
-// ─── State ────────────────────────────────────────────────────────────────────
-let deviceState = {
-  connected: false, lastUpdate: null, lastMqttData: null,
-  // PV
-  pv1Power: 0, pv2Power: 0, pv3Power: 0, pv4Power: 0, pvTotal: 0,
-  pv1Vol: 0, pv2Vol: 0, pv3Vol: 0, pv4Vol: 0,
-  pv1Amp: 0, pv2Amp: 0, pv3Amp: 0, pv4Amp: 0,
-  pv1Active: false, pv2Active: false, pv3Active: false, pv4Active: false,
-  // Bateria
-  soc: 0, socExact: 0, battPower: 0,
-  chgRemTime: 0, dsgRemTime: 0,
-  chgDsgState: 0, // 0=idle 1=dsg 2=chg
-  cellTemp: [], cellVol: [], maxCellTemp: 0, minCellTemp: 0,
-  // Sieć
-  gridPower: 0, gridVol: 0, gridFreq: 0,
-  feedPower: 0, fromGrid: 0, gridStatus: '',
-  // Zużycie
-  sysLoad: 0, loadFromPv: 0, loadFromGrid: 0, loadFromBat: 0,
-  // Inne
-  invTemp: 0, maxChgSoc: 95, minDsgSoc: 20,
-};
-
-// Historia real-time sesji
-let history = { pv: [], feed: [], soc: [], ts: [] };
-const MAX_HIST = 300;
-
-// Snapshoty godzinowe do wykresu dziennego
-let dailySnapshots = {};
-
-// Cache energii
-let energyCache = {};
-
-// Token prywatnego API
-let privateToken = null;
-let tokenExpiry = 0;
-
-// ─── Server ───────────────────────────────────────────────────────────────────
-const app    = express();
-const server = http.createServer(app);
-const wss    = new WebSocket.Server({ server });
-
-app.use(express.static(path.join(__dirname, '../frontend/public')));
-app.get('/api/state',   (_, res) => res.json(deviceState));
-app.get('/api/history', (_, res) => res.json(history));
-
-app.get('/api/energy', async (req, res) => {
-  const period  = req.query.period || 'day';
-  const today   = new Date().toISOString().slice(0, 10);
-  const refDate = req.query.date || today;
-  const cacheKey = `${period}:${refDate}`;
-  if (refDate !== today && energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < 3600000) {
-    return res.json(energyCache[cacheKey]);
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoFlow STREAM Ultra X</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e14; --sur:#111820; --brd:#1e2d3d;
+    --pv:#f5a623; --bat:#56d0e0; --grid:#39d353; --load:#a78bfa;
+    --red:#ff6b6b; --yel:#f0c040; --blu:#58a6ff;
+    --t1:#e6edf3; --t2:#7d8590;
+    --shadow:rgba(0,0,0,.3); --sur2:rgba(255,255,255,.03);
+    --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans',sans-serif;
   }
-  try {
-    const data = await fetchEnergyForPeriod(period, refDate);
-    if (data) {
-      energyCache[cacheKey] = { ...data, fetchedAt: Date.now() };
-      return res.json(energyCache[cacheKey]);
-    }
-    res.json({ error: 'no_data' });
-  } catch(e) { res.json({ error: e.message }); }
+  @media(prefers-color-scheme:light){:root{
+    --bg:#f0f2f5; --sur:#fff; --brd:#d0d7de;
+    --t1:#1c2128; --t2:#57606a; --shadow:rgba(0,0,0,.08); --sur2:rgba(0,0,0,.03);
+  }}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh}
+
+  /* Topbar */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--brd);background:var(--sur)}
+  .tl{display:flex;align-items:center;gap:10px}
+  .logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--pv);letter-spacing:.08em}
+  .sn{font-family:var(--mono);font-size:10px;color:var(--t2);background:var(--brd);padding:2px 7px;border-radius:3px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background .5s}
+  .dot.on{background:var(--grid);box-shadow:0 0 6px var(--grid)}
+  .ts{font-family:var(--mono);font-size:11px;color:var(--t2)}
+
+  /* Layout */
+  .main{padding:16px 20px;max-width:1000px;margin:0 auto}
+  .sec{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:18px;margin-bottom:12px}
+  .stitle{font-family:var(--mono);font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.15em;margin-bottom:16px}
+
+  /* Baner offline */
+  #bnr{display:none;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.25);border-radius:6px;padding:9px 16px;margin-bottom:12px;font-family:var(--mono);font-size:11px;color:var(--red);text-align:center}
+
+  /* Przepływ energii */
+  .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:8px;align-items:center}
+  .fnode{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px;border-radius:8px;border:1px solid var(--brd);background:var(--sur2);min-width:0}
+  .fnode-pv  {border-color:rgba(245,166,35,.3)}
+  .fnode-bat {border-color:rgba(86,208,224,.3)}
+  .fnode-load{border-color:rgba(167,139,250,.3)}
+  .fnode-grid{border-color:rgba(57,211,83,.3)}
+  .ficon{font-size:20px}
+  .flabel{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}
+  .fval{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1}
+  .funit{font-size:10px;font-weight:400;color:var(--t2)}
+  .fsub{font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:1px}
+  .farr{font-size:18px;color:var(--brd);transition:color .4s;text-align:center;flex-shrink:0}
+  .farr.active-pv   {color:var(--pv)}
+  .farr.active-bat  {color:var(--bat)}
+  .farr.active-grid {color:var(--grid)}
+
+  /* Panele PV */
+  .pvgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+  .pvcard{background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:12px;border-top:2px solid var(--pv);position:relative;overflow:hidden}
+  .pvcard.inactive{opacity:.45;border-top-color:var(--brd)}
+  .pvlbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+  .pvval{font-family:var(--mono);font-size:18px;font-weight:600}
+  .pvval .u{font-size:10px;font-weight:400;color:var(--t2)}
+  .pvsub{font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:3px}
+  .pvbar{margin-top:6px;height:2px;background:var(--brd);border-radius:1px;overflow:hidden}
+  .pvbar-fill{height:100%;border-radius:1px;background:var(--pv);transition:width .5s}
+
+  /* Bateria */
+  .batrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .batsoc{flex-shrink:0}
+  .batsoc-val{font-family:var(--mono);font-size:48px;font-weight:600;line-height:1;color:var(--bat)}
+  .batsoc-unit{font-size:16px;font-weight:400;color:var(--t2)}
+  .batbar{width:100%;height:8px;background:var(--brd);border-radius:4px;overflow:hidden;margin:6px 0}
+  .batbar-fill{height:100%;border-radius:4px;background:var(--bat);transition:width .8s}
+  .batinfo{flex:1;min-width:160px}
+  .batstat{font-family:var(--mono);font-size:11px;margin-bottom:4px}
+  .batstat .lbl{color:var(--t2)}
+  .batstat .val{color:var(--t1);font-weight:600}
+  .batcells{display:flex;gap:3px;margin-top:8px;flex-wrap:wrap}
+  .cell{font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:3px;background:var(--brd);color:var(--t2)}
+
+  /* Sieć */
+  .gridrow{display:flex;gap:12px;flex-wrap:wrap}
+  .gridcard{flex:1;min-width:120px;background:var(--sur2);border-radius:6px;padding:12px;border:1px solid var(--brd)}
+  .gridcard-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .gridcard-val{font-family:var(--mono);font-size:18px;font-weight:600}
+  .gridcard-val .u{font-size:10px;font-weight:400;color:var(--t2)}
+
+  /* Historia energii */
+  .etabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--brd);padding-bottom:0}
+  .etab{font-family:var(--mono);font-size:11px;padding:7px 16px;border:none;background:transparent;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s}
+  .etab.active{color:var(--t1);border-bottom-color:var(--blu)}
+  .enavrow{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px}
+  .earr{background:var(--brd);border:none;border-radius:50%;width:28px;height:28px;color:var(--t1);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+  .earr:hover{background:var(--blu)}
+  .edate{font-family:var(--mono);font-size:13px;color:var(--t1);min-width:200px;text-align:center}
+  .etotal-row{margin-bottom:16px}
+  .etotal-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+  .etotal-val{font-family:var(--mono);font-size:44px;font-weight:600;line-height:1}
+  .etotal-unit{font-size:14px;font-weight:400;color:var(--t2)}
+  .etotal-ch{font-family:var(--mono);font-size:11px;margin-left:12px;padding:2px 8px;border-radius:12px}
+  .etotal-ch.up{background:rgba(57,211,83,.15);color:var(--grid)}
+  .etotal-ch.dn{background:rgba(255,107,107,.15);color:var(--red)}
+  .echart-wrap{position:relative;margin-bottom:14px}
+  .echart-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--t2)}
+  .no-data{font-family:var(--mono);font-size:11px;color:var(--t2);text-align:center;padding:24px;opacity:.6}
+  #echart-tooltip{display:none;position:absolute;background:var(--sur);border:1px solid var(--brd);border-radius:6px;padding:7px 12px;font-family:var(--mono);font-size:11px;color:var(--t1);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:0 2px 8px var(--shadow)}
+  .estats{display:none;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+  .estat{flex-direction:column;padding:10px 12px;border-radius:6px;background:var(--sur2);border:1px solid var(--brd)}
+  .estatlbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+  .estatval{font-family:var(--mono);font-size:18px;font-weight:600}
+  .estatunit{font-size:10px;font-weight:400;color:var(--t2)}
+  .estatsub{font-family:var(--mono);font-size:9px;margin-top:2px}
+  .egenby{margin-top:14px;padding:12px;background:var(--sur2);border-radius:6px;border:1px solid var(--brd)}
+  .egenby-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+  .egenby-row{display:flex;align-items:center;gap:10px}
+  .egenby-name{font-family:var(--mono);font-size:12px;color:var(--t2);flex:1}
+  .egenby-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--pv)}
+  .egenby-bar{height:3px;background:var(--brd);border-radius:2px;margin-top:6px;overflow:hidden}
+  .egenby-bar-fill{height:100%;background:var(--pv);border-radius:2px}
+  .eff-chart-sec{display:none;margin-top:14px}
+
+  /* Historia sesji */
+  .hist-legend{display:flex;gap:12px}
+  .li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--t2)}
+  .ld{width:8px;height:8px;border-radius:50%}
+
+  @media(max-width:600px){
+    .flow{grid-template-columns:1fr 1fr;gap:8px}
+    .farr{display:none}
+    .pvgrid{grid-template-columns:repeat(2,1fr)}
+    .etabs .etab{padding:7px 10px;font-size:10px}
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="tl">
+    <span class="logo">STREAM Ultra X</span>
+    <span class="sn" id="sn-display">BK61ZE1B2J3H0094</span>
+    <div class="dot" id="dot"></div>
+  </div>
+  <div class="ts" id="ts">—</div>
+</div>
+
+<div class="main">
+  <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
+
+  <!-- Przepływ energii -->
+  <div class="sec">
+    <div class="stitle">// przepływ energii</div>
+    <div class="flow">
+      <!-- PV -->
+      <div class="fnode fnode-pv">
+        <div class="ficon">☀️</div>
+        <div class="flabel" style="color:var(--pv)">Panele</div>
+        <div class="fval" id="f-pv" style="color:var(--pv)">–<span class="funit"> W</span></div>
+        <div class="fsub" id="f-pv-sub"></div>
+      </div>
+      <div class="farr" id="arr-pv-bat">→</div>
+      <!-- Bateria -->
+      <div class="fnode fnode-bat">
+        <div class="ficon">🔋</div>
+        <div class="flabel" style="color:var(--bat)">Bateria</div>
+        <div class="fval" id="f-bat-soc" style="color:var(--bat)">–<span class="funit"> %</span></div>
+        <div class="fsub" id="f-bat-pwr"></div>
+      </div>
+      <div class="farr" id="arr-bat-load">→</div>
+      <!-- Dom -->
+      <div class="fnode fnode-load">
+        <div class="ficon">🏠</div>
+        <div class="flabel" style="color:var(--load)">Dom</div>
+        <div class="fval" id="f-load" style="color:var(--load)">–<span class="funit"> W</span></div>
+        <div class="fsub" id="f-load-sub"></div>
+      </div>
+      <div class="farr" id="arr-load-grid">→</div>
+      <!-- Sieć -->
+      <div class="fnode fnode-grid">
+        <div class="ficon">⚡</div>
+        <div class="flabel" style="color:var(--grid)">Sieć</div>
+        <div class="fval" id="f-grid" style="color:var(--grid)">–<span class="funit"> W</span></div>
+        <div class="fsub" id="f-grid-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panele PV -->
+  <div class="pvgrid">
+    <div class="pvcard" id="pv1card">
+      <div class="pvlbl">Panel PV1</div>
+      <div class="pvval" id="pv1val">–<span class="u"> W</span></div>
+      <div class="pvsub" id="pv1sub"></div>
+      <div class="pvbar"><div class="pvbar-fill" id="pv1bar"></div></div>
+    </div>
+    <div class="pvcard" id="pv2card">
+      <div class="pvlbl">Panel PV2</div>
+      <div class="pvval" id="pv2val">–<span class="u"> W</span></div>
+      <div class="pvsub" id="pv2sub"></div>
+      <div class="pvbar"><div class="pvbar-fill" id="pv2bar"></div></div>
+    </div>
+    <div class="pvcard" id="pv3card">
+      <div class="pvlbl">Panel PV3</div>
+      <div class="pvval" id="pv3val">–<span class="u"> W</span></div>
+      <div class="pvsub" id="pv3sub"></div>
+      <div class="pvbar"><div class="pvbar-fill" id="pv3bar"></div></div>
+    </div>
+    <div class="pvcard" id="pv4card">
+      <div class="pvlbl">Panel PV4</div>
+      <div class="pvval" id="pv4val">–<span class="u"> W</span></div>
+      <div class="pvsub" id="pv4sub"></div>
+      <div class="pvbar"><div class="pvbar-fill" id="pv4bar"></div></div>
+    </div>
+  </div>
+
+  <!-- Bateria -->
+  <div class="sec">
+    <div class="stitle">// bateria</div>
+    <div class="batrow">
+      <div class="batsoc">
+        <div class="batsoc-val" id="bat-soc">–<span class="batsoc-unit">%</span></div>
+        <div class="batbar" style="width:180px"><div class="batbar-fill" id="batbar-fill"></div></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2)" id="bat-lim"></div>
+      </div>
+      <div class="batinfo">
+        <div class="batstat"><span class="lbl">Stan: </span><span class="val" id="bat-state">–</span></div>
+        <div class="batstat"><span class="lbl">Moc: </span><span class="val" id="bat-pwr">–</span></div>
+        <div class="batstat"><span class="lbl">Do pełna: </span><span class="val" id="bat-chg-rem">–</span></div>
+        <div class="batstat"><span class="lbl">Do pustej: </span><span class="val" id="bat-dsg-rem">–</span></div>
+        <div class="batstat"><span class="lbl">Temp. cel: </span><span class="val" id="bat-temp">–</span></div>
+        <div class="batcells" id="bat-cells"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sieć -->
+  <div class="sec">
+    <div class="stitle">// sieć</div>
+    <div class="gridrow">
+      <div class="gridcard">
+        <div class="gridcard-lbl">Feed-in do sieci</div>
+        <div class="gridcard-val" id="g-feed">–<span class="u"> W</span></div>
+      </div>
+      <div class="gridcard">
+        <div class="gridcard-lbl">Pobór z sieci</div>
+        <div class="gridcard-val" id="g-from">–<span class="u"> W</span></div>
+      </div>
+      <div class="gridcard">
+        <div class="gridcard-lbl">Napięcie</div>
+        <div class="gridcard-val" id="g-vol">–<span class="u"> V</span></div>
+      </div>
+      <div class="gridcard">
+        <div class="gridcard-lbl">Częstotliwość</div>
+        <div class="gridcard-val" id="g-freq">–<span class="u"> Hz</span></div>
+      </div>
+      <div class="gridcard">
+        <div class="gridcard-lbl">Status</div>
+        <div class="gridcard-val" style="font-size:12px" id="g-status">–</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Produkcja energii -->
+  <div class="sec">
+    <div class="stitle">// produkcja energii</div>
+    <div class="etabs">
+      <button class="etab active" onclick="switchPeriod('day',this)">Dzień</button>
+      <button class="etab" onclick="switchPeriod('week',this)">Tydzień</button>
+      <button class="etab" onclick="switchPeriod('month',this)">Miesiąc</button>
+      <button class="etab" onclick="switchPeriod('year',this)">Rok</button>
+    </div>
+    <div class="enavrow">
+      <button class="earr" onclick="navigate(-1)">◄</button>
+      <div class="edate" id="edate">—</div>
+      <button class="earr" onclick="navigate(+1)" id="earr-next">►</button>
+    </div>
+    <div class="etotal-row">
+      <div class="etotal-lbl">TOTAL</div>
+      <div>
+        <span class="etotal-val" id="etotal">–</span>
+        <span class="etotal-unit"> kWh</span>
+        <span class="etotal-ch" id="etotal-ch" style="display:none"></span>
+      </div>
+    </div>
+    <div class="echart-wrap">
+      <div id="echart-loading" class="echart-loading">ładowanie…</div>
+      <canvas id="echart" height="140" style="display:none"></canvas>
+      <div id="echart-tooltip"></div>
+    </div>
+    <div class="no-data" id="no-data" style="display:none">Brak danych</div>
+    <div class="estats" id="estats">
+      <div class="estat" id="estat-eff" style="display:none">
+        <div class="estatlbl">Efektywność</div>
+        <div class="estatval" id="eeff-val">–<span class="estatunit"> %</span></div>
+        <div class="estatsub" id="eeff-ch"></div>
+      </div>
+      <div class="estat" id="estat-earn" style="display:none">
+        <div class="estatlbl" id="earn-lbl">Zyski</div>
+        <div class="estatval" id="eearn-val">–<span class="estatunit"> zł</span></div>
+      </div>
+    </div>
+    <div class="eff-chart-sec" id="eff-chart-sec">
+      <div class="stitle" style="margin-bottom:8px">// efektywność produkcji (%)</div>
+      <canvas id="effchart" height="70"></canvas>
+    </div>
+    <div class="egenby" id="egenby" style="display:none">
+      <div class="egenby-lbl">Generated by</div>
+      <div class="egenby-row">
+        <span style="font-size:18px">🔆</span>
+        <span class="egenby-name">System STREAM Ultra X</span>
+        <span class="egenby-val" id="egenby-val">–</span>
+      </div>
+      <div class="egenby-bar"><div class="egenby-bar-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <!-- Historia sesji -->
+  <div class="sec">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="stitle" style="margin:0">// historia sesji</div>
+      <div class="hist-legend">
+        <div class="li"><div class="ld" style="background:var(--pv)"></div>PV</div>
+        <div class="li"><div class="ld" style="background:var(--grid)"></div>Feed-in</div>
+        <div class="li"><div class="ld" style="background:var(--bat)"></div>SOC%×10</div>
+      </div>
+    </div>
+    <canvas id="chart" height="100"></canvas>
+  </div>
+</div>
+
+<script>
+// ─── Stan ─────────────────────────────────────────────────────────────────────
+let ds = {};
+let cd = { pv:[], feed:[], soc:[], ts:[] };
+let curPeriod = 'day';
+let curDate   = new Date().toISOString().slice(0,10);
+let curData   = null;
+let ecChartData = null;
+
+function getColor(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => {
+  drawChart(); if(curData) drawEnergyChart(curData);
+  if(curData?.efficiencyChart) drawEfficiencyChart(curData.efficiencyChart);
 });
 
-function broadcast(data) {
-  const msg = JSON.stringify(data);
-  wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
+// ─── Aktualizacja UI ──────────────────────────────────────────────────────────
+function fmt(v, d=0) { return v != null && v > 0 ? (d > 0 ? v.toFixed(d) : Math.round(v)) : '–'; }
+function fmtTime(min) {
+  if (!min || min <= 0) return '–';
+  const h = Math.floor(min/60), m = min%60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-// ─── MQTT timeout ─────────────────────────────────────────────────────────────
-const MQTT_TIMEOUT = 5 * 60 * 1000;
-setInterval(() => {
-  if (deviceState.connected && deviceState.lastMqttData) {
-    if (Date.now() - deviceState.lastMqttData > MQTT_TIMEOUT) {
-      deviceState.connected = false;
-      broadcast({ type: 'status', connected: false });
-      console.log('⚠️  MQTT timeout — offline');
-    }
-  }
-}, 60000);
+function update(s) {
+  ds = s;
+  const pv = s.pvTotal || 0, feed = s.feedPower || 0, from = s.fromGrid || 0;
+  const load = s.sysLoad || 0, soc = s.soc || 0;
+  const batPwr = s.battPower || 0, chg = s.chgDsgState;
 
-// ─── History ──────────────────────────────────────────────────────────────────
-function recordHistory() {
-  history.ts.push(new Date().toISOString());
-  history.pv.push(deviceState.pvTotal);
-  history.feed.push(deviceState.feedPower);
-  history.soc.push(deviceState.soc);
-  if (history.ts.length > MAX_HIST) {
-    ['ts','pv','feed','soc'].forEach(k => history[k].shift());
-  }
-}
+  // Topbar
+  if (s.lastUpdate) document.getElementById('ts').textContent = new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 
-// ─── Daily snapshots ──────────────────────────────────────────────────────────
-function recordSnapshot(date, totalWh) {
-  if (!dailySnapshots[date]) dailySnapshots[date] = [];
-  const snaps = dailySnapshots[date];
-  const last = snaps[snaps.length - 1];
-  if (!last || last.wh !== totalWh) snaps.push({ ts: Date.now(), wh: totalWh });
-}
+  // Przepływ
+  document.getElementById('f-pv').innerHTML = `${fmt(pv)}<span class="funit"> W</span>`;
+  document.getElementById('f-pv-sub').textContent = pv > 5 ? `${s.pv3Power?.toFixed(0)||0}+${s.pv4Power?.toFixed(0)||0} W` : '';
+  document.getElementById('f-bat-soc').innerHTML = `${soc}<span class="funit"> %</span>`;
+  document.getElementById('f-bat-pwr').textContent = chg === 2 ? `↑ ${Math.round(Math.abs(batPwr))}W` : chg === 1 ? `↓ ${Math.round(Math.abs(batPwr))}W` : 'idle';
+  document.getElementById('f-load').innerHTML = `${fmt(load)}<span class="funit"> W</span>`;
+  document.getElementById('f-load-sub').textContent = load > 0 ? `PV: ${Math.round(s.loadFromPv||0)}W` : '';
+  document.getElementById('f-grid').innerHTML = feed > 0 ? `${fmt(feed)}<span class="funit"> W</span>` : from > 0 ? `${fmt(from)}<span class="funit"> W</span>` : `–<span class="funit"> W</span>`;
+  document.getElementById('f-grid-sub').textContent = feed > 0 ? '↑ feed-in' : from > 0 ? '↓ pobór' : '';
 
-function buildHourlyChart(date) {
-  const snaps = dailySnapshots[date];
-  if (!snaps || snaps.length < 2) return [];
-  const byHour = {};
-  snaps.forEach(s => { byHour[new Date(s.ts).getHours()] = s.wh; });
-  const hours = Object.keys(byHour).map(Number).sort((a, b) => a - b);
-  if (hours.length < 2) return [];
-  return hours.slice(1).map((h, i) => {
-    const diff = byHour[h] - byHour[hours[i]];
-    return diff > 0 ? { time: `${date} ${String(hours[i]).padStart(2,'0')}:00:00`, wh: Math.round(diff) } : null;
-  }).filter(Boolean);
-}
+  const fgEl = document.getElementById('f-grid');
+  fgEl.style.color = feed > 0 ? 'var(--grid)' : from > 0 ? 'var(--red)' : 'var(--t2)';
 
-// ─── Apply MQTT params ────────────────────────────────────────────────────────
-function applyParams(params) {
-  let updated = false;
-  const r1 = v => Math.round(v * 10) / 10;
-  const r2 = v => Math.round(v * 100) / 100;
+  document.getElementById('arr-pv-bat').className  = `farr ${pv > 10 ? 'active-pv' : ''}`;
+  document.getElementById('arr-bat-load').className = `farr ${load > 10 ? 'active-bat' : ''}`;
+  document.getElementById('arr-load-grid').className= `farr ${feed > 10 ? 'active-grid' : ''}`;
 
-  const set = (key, field, fn = r1) => {
-    if (params[key] !== undefined && params[key] !== null) {
-      const val = fn(params[key]);
-      if (deviceState[field] !== val) { deviceState[field] = val; updated = true; }
-    }
-  };
-
-  // PV
-  set('powGetPv',   'pv1Power'); set('powGetPv2',  'pv2Power');
-  set('powGetPv3',  'pv3Power'); set('powGetPv4',  'pv4Power');
-  set('powGetPvSum','pvTotal');
-  set('plugInInfoPvVol',  'pv1Vol'); set('plugInInfoPv2Vol', 'pv2Vol');
-  set('plugInInfoPv3Vol', 'pv3Vol'); set('plugInInfoPv4Vol', 'pv4Vol');
-  set('plugInInfoPvAmp',  'pv1Amp', r2); set('plugInInfoPv2Amp', 'pv2Amp', r2);
-  set('plugInInfoPv3Amp', 'pv3Amp', r2); set('plugInInfoPv4Amp', 'pv4Amp', r2);
-  if (params.plugInInfoPvFlag  !== undefined) { deviceState.pv1Active = !!params.plugInInfoPvFlag;  updated = true; }
-  if (params.plugInInfoPv2Flag !== undefined) { deviceState.pv2Active = !!params.plugInInfoPv2Flag; updated = true; }
-  if (params.plugInInfoPv3Flag !== undefined) { deviceState.pv3Active = !!params.plugInInfoPv3Flag; updated = true; }
-  if (params.plugInInfoPv4Flag !== undefined) { deviceState.pv4Active = !!params.plugInInfoPv4Flag; updated = true; }
+  // Panele
+  const pvs = [
+    [1, s.pv1Power, s.pv1Vol, s.pv1Amp, s.pv1Active],
+    [2, s.pv2Power, s.pv2Vol, s.pv2Amp, s.pv2Active],
+    [3, s.pv3Power, s.pv3Vol, s.pv3Amp, s.pv3Active],
+    [4, s.pv4Power, s.pv4Vol, s.pv4Amp, s.pv4Active],
+  ];
+  pvs.forEach(([n, pw, vol, amp, active]) => {
+    const pct = Math.min(100, Math.round((pw||0)/510*100));
+    document.getElementById(`pv${n}card`).className = `pvcard ${active ? '' : 'inactive'}`;
+    document.getElementById(`pv${n}val`).innerHTML  = `${fmt(pw||0)}<span class="u"> W</span>`;
+    document.getElementById(`pv${n}sub`).textContent= vol > 5 ? `${vol?.toFixed(1)}V  ${amp?.toFixed(2)}A` : '';
+    document.getElementById(`pv${n}bar`).style.width= pct + '%';
+  });
 
   // Bateria
-  set('bmsBattSoc',   'soc',      v => Math.round(v));
-  set('f32ShowSoc',   'socExact', r1);
-  set('powGetBpCms',  'battPower', r1);
-  set('cmsChgRemTime','chgRemTime', v => v);
-  set('cmsDsgRemTime','dsgRemTime', v => v);
-  set('bmsChgDsgState','chgDsgState', v => v);
-  set('bmsMaxCellTemp','maxCellTemp', v => v);
-  set('bmsMinCellTemp','minCellTemp', v => v);
-  if (params.cellTemp) { deviceState.cellTemp = params.cellTemp; updated = true; }
-  if (params.cellVol)  { deviceState.cellVol  = params.cellVol;  updated = true; }
+  document.getElementById('bat-soc').innerHTML = `${soc}<span class="batsoc-unit">%</span>`;
+  document.getElementById('batbar-fill').style.width = soc + '%';
+  const batBarEl = document.getElementById('batbar-fill');
+  batBarEl.style.background = soc > 70 ? 'var(--bat)' : soc > 30 ? 'var(--yel)' : 'var(--red)';
+  document.getElementById('bat-lim').textContent = `${s.minDsgSoc||20}% – ${s.maxChgSoc||95}%`;
+  document.getElementById('bat-state').textContent = chg === 2 ? '⚡ Ładowanie' : chg === 1 ? '↓ Rozładowanie' : '· Idle';
+  document.getElementById('bat-state').style.color = chg === 2 ? 'var(--bat)' : chg === 1 ? 'var(--pv)' : 'var(--t2)';
+  document.getElementById('bat-pwr').textContent = batPwr > 0 ? `+${Math.round(batPwr)}W` : batPwr < 0 ? `${Math.round(batPwr)}W` : '0W';
+  document.getElementById('bat-chg-rem').textContent = chg === 2 ? fmtTime(s.chgRemTime) : '–';
+  document.getElementById('bat-dsg-rem').textContent = chg === 1 ? fmtTime(s.dsgRemTime) : '–';
+  document.getElementById('bat-temp').textContent = s.maxCellTemp ? `${s.minCellTemp}–${s.maxCellTemp} °C` : '–';
+  if (s.cellVol?.length > 0) {
+    document.getElementById('bat-cells').innerHTML = s.cellVol.map((v,i) =>
+      `<span class="cell">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
+  }
 
   // Sieć
-  set('gridConnectionVol',  'gridVol',  r1);
-  set('gridConnectionFreq', 'gridFreq', r2);
-  if (params.gridConnectionSta !== undefined) { deviceState.gridStatus = params.gridConnectionSta; updated = true; }
-  if (params.gridConnectionPower !== undefined) {
-    const g = params.gridConnectionPower;
-    deviceState.feedPower = g > 0 ? r1(g) : 0;
-    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
-    deviceState.gridPower = r1(g);
-    updated = true;
+  document.getElementById('g-feed').innerHTML  = feed > 0 ? `${fmt(feed)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
+  document.getElementById('g-from').innerHTML  = from > 0 ? `${fmt(from)}<span class="u"> W</span>` : `–<span class="u"> W</span>`;
+  document.getElementById('g-vol').innerHTML   = `${fmt(s.gridVol||0,1)}<span class="u"> V</span>`;
+  document.getElementById('g-freq').innerHTML  = `${fmt(s.gridFreq||0,2)}<span class="u"> Hz</span>`;
+  const statusMap = { 'PANEL_FEED_GRID':'↑ Feed-in', 'PANEL_GRID_IN':'↓ Pobór', 'DISCONNECT':'Rozłączono' };
+  document.getElementById('g-status').textContent = statusMap[s.gridStatus] || s.gridStatus || '–';
+}
+
+function setOn(on) {
+  document.getElementById('dot').classList.toggle('on', on);
+  document.getElementById('bnr').style.display = on ? 'none' : 'block';
+}
+
+// ─── Historia sesji ───────────────────────────────────────────────────────────
+const cv = document.getElementById('chart'), cx = cv.getContext('2d');
+function drawChart() {
+  const dpr=window.devicePixelRatio||1, w=cv.offsetWidth, h=100;
+  cv.width=w*dpr; cv.height=h*dpr; cx.scale(dpr,dpr); cx.clearRect(0,0,w,h);
+  const n=cd.pv.length; if(n<2) return;
+  const mx=Math.max(...cd.pv,...cd.feed, ...cd.soc.map(s=>s*10), 100);
+  const p={t:6,b:16,l:40,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
+  for(let i=0;i<=4;i++){
+    const y=p.t+(ch/4)*i;
+    cx.fillStyle=getColor('--brd'); cx.fillRect(p.l,y,cw,.5);
+    cx.fillStyle=getColor('--t2'); cx.font='9px IBM Plex Mono,monospace'; cx.textAlign='right';
+    cx.fillText(Math.round(mx*(1-i/4))+'', p.l-4, y+3);
   }
+  const line=(data,color)=>{
+    cx.beginPath(); cx.strokeStyle=color; cx.lineWidth=1.5; cx.lineJoin='round';
+    data.forEach((v,i)=>{const x=p.l+(i/(n-1))*cw,y=p.t+ch-(v/mx)*ch; i?cx.lineTo(x,y):cx.moveTo(x,y)});
+    cx.stroke();
+  };
+  line(cd.soc.map(s=>s*10), getColor('--bat'));
+  line(cd.feed, getColor('--grid'));
+  line(cd.pv,   getColor('--pv'));
+}
 
-  // Zużycie
-  set('powGetSysLoad',         'sysLoad',     r1);
-  set('powGetSysLoadFromPv',   'loadFromPv',  r1);
-  set('powGetSysLoadFromGrid', 'loadFromGrid',r1);
-  set('powGetSysLoadFromBp',   'loadFromBat', r1);
+// ─── Energia historyczna ──────────────────────────────────────────────────────
+const ec = document.getElementById('echart'), ectx = ec.getContext('2d');
 
-  // Inne
-  set('invTempNtc',   'invTemp', v => v);
-  set('cmsMaxChgSoc', 'maxChgSoc', v => v);
-  set('cmsMinDsgSoc', 'minDsgSoc', v => v);
+function offsetDate(period, offset) {
+  const d = new Date(curDate + 'T12:00:00');
+  if (period === 'day')   { d.setDate(d.getDate() + offset); }
+  if (period === 'week')  { d.setDate(d.getDate() - d.getDay() + offset*7); }
+  if (period === 'month') { d.setDate(1); d.setMonth(d.getMonth() + offset); }
+  if (period === 'year')  { d.setFullYear(d.getFullYear() + offset, 0, 1); }
+  return d.toISOString().slice(0,10);
+}
 
-  if (updated) {
-    deviceState.lastUpdate   = new Date().toISOString();
-    deviceState.lastMqttData = Date.now();
-    recordHistory();
-    broadcast({ type: 'state', data: deviceState });
-    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${deviceState.feedPower>0?'+':''}${deviceState.gridPower.toFixed(0)}W`);
+function switchPeriod(p, btn) {
+  curPeriod = p;
+  curDate = offsetDate(p, 0);
+  document.querySelectorAll('.etab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadEnergy();
+}
+
+function navigate(dir) {
+  curDate = offsetDate(curPeriod, dir);
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('earr-next').disabled = curDate >= today;
+  loadEnergy();
+}
+
+async function loadEnergy() {
+  document.getElementById('echart-loading').style.display = 'flex';
+  document.getElementById('echart-loading').textContent = 'ładowanie…';
+  ec.style.display = 'none';
+  document.getElementById('no-data').style.display = 'none';
+  document.getElementById('etotal').textContent = '–';
+  document.getElementById('etotal-ch').style.display = 'none';
+  document.getElementById('estats').style.display = 'none';
+  document.getElementById('eff-chart-sec').style.display = 'none';
+  document.getElementById('egenby').style.display = 'none';
+
+  try {
+    const r = await fetch(`/api/energy?period=${curPeriod}&date=${curDate}`);
+    const data = await r.json();
+    curData = data;
+    if (data.error) { document.getElementById('echart-loading').textContent = 'Brak danych (skonfiguruj EF_EMAIL i EF_PASSWORD)'; return; }
+    updateEnergy(data);
+  } catch(e) {
+    document.getElementById('echart-loading').textContent = 'Błąd ładowania';
   }
 }
 
-// ─── Private API ──────────────────────────────────────────────────────────────
-async function loginPrivateApi() {
-  if (!EF_EMAIL || !EF_PASSWORD) return false;
-  try {
-    const pwdB64 = Buffer.from(EF_PASSWORD).toString('base64');
-    const resp = await axios.post(`${API_HOST}/auth/login`, {
-      email: EF_EMAIL, password: pwdB64, scene: 'IOT_APP', userType: 'ECOFLOW',
-    }, { headers: { 'lang': 'en_US', 'content-type': 'application/json' }, timeout: 10000 });
-    if (resp.data.code === '0' && resp.data.data?.token) {
-      privateToken = resp.data.data.token;
-      tokenExpiry  = Date.now() + 25 * 24 * 3600 * 1000;
-      console.log('✅ Login EcoFlow OK');
-      return true;
+function updateEnergy(data) {
+  document.getElementById('edate').textContent = data.label || curDate;
+
+  // Total
+  if (data.totalKwh != null) {
+    document.getElementById('etotal').textContent = data.totalKwh.toFixed(2);
+    const chEl = document.getElementById('etotal-ch');
+    if (data.changePercent != null) {
+      const up = data.changePercent >= 0;
+      chEl.textContent = `${up?'▲':'▼'} ${Math.abs(data.changePercent).toFixed(1)}%`;
+      chEl.className = `etotal-ch ${up?'up':'dn'}`;
+      chEl.style.display = 'inline';
     }
-    return false;
-  } catch(e) { console.error('❌ Login:', e.message); return false; }
-}
-
-async function ensureToken() {
-  if (!privateToken || Date.now() > tokenExpiry) return loginPrivateApi();
-  return true;
-}
-
-async function privatePost(url, body) {
-  if (!await ensureToken()) return null;
-  try {
-    const resp = await axios.post(`${API_HOST}${url}`, body,
-      { headers: md5Sign(privateToken), timeout: 10000 });
-    return resp.data;
-  } catch(e) { console.error(`❌ API ${url}:`, e.message); return null; }
-}
-
-// ─── Energy API ───────────────────────────────────────────────────────────────
-const VALUE_CODES = {
-  day:   'SPACE-APP-SOLAR-ENERGY-VALUE-DAY',
-  week:  'SPACE-APP-SOLAR-ENERGY-VALUE-WEEK',
-  month: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH',
-  year:  'SPACE-APP-SOLAR-ENERGY-VALUE-YEAR',
-};
-const BAR_CODES = {
-  day:   'SPACE-APP-SOLAR-ENERGY-BAR-DAY',
-  week:  'SPACE-APP-SOLAR-ENERGY-BAR-WEEK',
-  month: 'SPACE-APP-SOLAR-ENERGY-BAR-MONTH',
-  year:  'SPACE-APP-SOLAR-ENERGY-BAR-YEAR',
-};
-
-function getDateRange(period, refDate) {
-  const d = new Date(refDate + 'T12:00:00');
-  const fmt = d => d.toISOString().slice(0,10);
-  if (period === 'day')   return { begin: refDate, end: refDate, label: d.toLocaleDateString('pl-PL', {day:'numeric',month:'long',year:'numeric'}) };
-  if (period === 'week')  {
-    const sun = new Date(d); sun.setDate(d.getDate() - d.getDay());
-    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
-    return { begin: fmt(sun), end: fmt(sat), label: `${fmt(sun).slice(5).replace('-','.')} – ${fmt(sat).slice(5).replace('-','.')} ${sat.getFullYear()}` };
+    // Generated by
+    document.getElementById('egenby-val').textContent = data.totalKwh.toFixed(2) + ' kWh';
+    document.getElementById('egenby').style.display = 'block';
   }
-  if (period === 'month') {
-    const begin = refDate.slice(0,7) + '-01';
-    const end   = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
-    return { begin, end, label: d.toLocaleDateString('pl-PL', {month:'long', year:'numeric'}) };
+
+  // Wykres
+  document.getElementById('echart-loading').style.display = 'none';
+  if (data.chart && data.chart.length > 0) {
+    ec.style.display = 'block';
+    drawEnergyChart(data);
+  } else {
+    document.getElementById('no-data').style.display = 'block';
   }
-  const begin = `${d.getFullYear()}-01-01`, end = `${d.getFullYear()}-12-31`;
-  return { begin, end, label: String(d.getFullYear()) };
+
+  // Statystyki
+  let hasStats = false;
+  if (data.efficiency != null) {
+    document.getElementById('eeff-val').innerHTML = `${data.efficiency.toFixed(1)}<span class="estatunit"> %</span>`;
+    const chEl = document.getElementById('eeff-ch');
+    if (data.efficiencyChange != null) {
+      const sign = data.efficiencyChange >= 0 ? '▲' : '▼';
+      chEl.textContent = `${sign} ${Math.abs(data.efficiencyChange).toFixed(1)}%`;
+      chEl.style.color = data.efficiencyChange >= 0 ? 'var(--grid)' : 'var(--red)';
+    }
+    document.getElementById('estat-eff').style.display = 'flex';
+    hasStats = true;
+  } else { document.getElementById('estat-eff').style.display = 'none'; }
+
+  if (data.earnings != null) {
+    const lbl = { day:'Zyski (dziś)', week:'Zyski (tydz.)', month:'Zyski (mies.)', year:'Zyski (rok)' };
+    document.getElementById('earn-lbl').textContent = lbl[curPeriod] || 'Zyski';
+    document.getElementById('eearn-val').innerHTML = `${data.earnings.toFixed(2)}<span class="estatunit"> ${data.currency||'zł'}</span>`;
+    document.getElementById('estat-earn').style.display = 'flex';
+    hasStats = true;
+  } else { document.getElementById('estat-earn').style.display = 'none'; }
+
+  if (hasStats) document.getElementById('estats').style.display = 'grid';
+
+  if (data.efficiencyChart?.length > 0) {
+    document.getElementById('eff-chart-sec').style.display = 'block';
+    drawEfficiencyChart(data.efficiencyChart);
+  }
 }
 
-async function fetchEnergyForPeriod(period, refDate) {
-  if (!SPACE_ID || !privateToken) return null;
-  const range = getDateRange(period, refDate);
-  const out   = { period, label: range.label, begin: range.begin, end: range.end };
+function drawEnergyChart(data) {
+  ecChartData = data;
+  if (!data?.chart?.length) return;
+  const chart = data.chart;
+  const dpr=window.devicePixelRatio||1, w=ec.offsetWidth, h=140;
+  ec.width=w*dpr; ec.height=h*dpr; ectx.scale(dpr,dpr); ectx.clearRect(0,0,w,h);
+  const vals=chart.map(d=>d.wh), mx=Math.max(...vals,1), n=chart.length;
+  const p={t:10,b:24,l:42,r:8}, cw=w-p.l-p.r, ch=h-p.t-p.b;
+  const bw=Math.max(4, Math.min(40, cw/n-4));
 
-  const callEnergy = async (code) => {
-    const r = await privatePost('/app/space/data/single/index/', {
-      code, spaceId: SPACE_ID, params: { beginTime: range.begin, endTime: range.end },
+  for(let i=0;i<=3;i++){
+    const y=p.t+(ch/3)*i, val=mx*(1-i/3);
+    ectx.fillStyle=getColor('--brd'); ectx.fillRect(p.l,y,cw,.5);
+    ectx.fillStyle=getColor('--t2'); ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='right';
+    ectx.fillText(val>=1000?(val/1000).toFixed(1)+'k':Math.round(val)+'', p.l-4, y+3);
+  }
+
+  chart.forEach((d,i)=>{
+    const bh=Math.max(2,(d.wh/mx)*ch), x=p.l+(i/n)*cw+(cw/n-bw)/2, y=p.t+ch-bh;
+    const grad=ectx.createLinearGradient(0,y,0,y+bh);
+    grad.addColorStop(0,'rgba(240,192,64,.9)'); grad.addColorStop(1,'rgba(240,192,64,.2)');
+    ectx.fillStyle=grad;
+    if(ectx.roundRect) ectx.roundRect(x,y,bw,bh,2); else ectx.rect(x,y,bw,bh);
+    ectx.fill();
+  });
+
+  ectx.fillStyle=getColor('--t2'); ectx.font='9px IBM Plex Mono,monospace'; ectx.textAlign='center';
+  const step=Math.max(1,Math.ceil(n/8));
+  chart.forEach((d,i)=>{
+    if(i%step!==0 && i!==n-1) return;
+    const x=p.l+(i/n)*cw+(cw/n)/2;
+    let lb='';
+    if(curPeriod==='day')   lb=d.time.slice(11,16);
+    if(curPeriod==='week')  lb=['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
+    if(curPeriod==='month') lb=new Date(d.time+'T12:00').getDate()+'';
+    if(curPeriod==='year')  lb=['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'][new Date(d.time+'T12:00').getMonth()];
+    ectx.fillText(lb, x, h-6);
+  });
+}
+
+// ─── Wykres efektywności ──────────────────────────────────────────────────────
+const efc=document.getElementById('effchart'), efctx=efc.getContext('2d');
+function drawEfficiencyChart(chartData) {
+  if(!chartData?.length) return;
+  const dpr=window.devicePixelRatio||1, w=efc.offsetWidth, h=70;
+  efc.width=w*dpr; efc.height=h*dpr; efctx.scale(dpr,dpr); efctx.clearRect(0,0,w,h);
+  const vals=chartData.map(d=>d.pct), mx=Math.max(...vals,50), n=vals.length;
+  const p={t:6,b:20,l:34,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
+  for(let i=0;i<=2;i++){
+    const y=p.t+(ch/2)*i;
+    efctx.fillStyle=getColor('--brd'); efctx.fillRect(p.l,y,cw,.5);
+    efctx.fillStyle=getColor('--t2'); efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='right';
+    efctx.fillText(Math.round(mx*(1-i/2))+'%', p.l-3, y+3);
+  }
+  efctx.beginPath(); efctx.strokeStyle='#a78bfa'; efctx.lineWidth=1.5; efctx.lineJoin='round';
+  vals.forEach((v,i)=>{const x=p.l+(i/(Math.max(n-1,1)))*cw,y=p.t+ch-(v/mx)*ch; i?efctx.lineTo(x,y):efctx.moveTo(x,y)});
+  efctx.stroke();
+  efctx.lineTo(p.l+cw,p.t+ch); efctx.lineTo(p.l,p.t+ch); efctx.closePath();
+  const g=efctx.createLinearGradient(0,p.t,0,p.t+ch);
+  g.addColorStop(0,'rgba(167,139,250,.2)'); g.addColorStop(1,'rgba(167,139,250,0)');
+  efctx.fillStyle=g; efctx.fill();
+  efctx.fillStyle=getColor('--t2'); efctx.font='8px IBM Plex Mono,monospace'; efctx.textAlign='center';
+  const step=Math.max(1,Math.ceil(n/6));
+  chartData.forEach((d,i)=>{
+    if(i%step!==0 && i!==n-1) return;
+    const x=p.l+(i/(Math.max(n-1,1)))*cw;
+    const lb=curPeriod==='day'?d.time.slice(11,16):['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
+    efctx.fillText(lb, x, h-4);
+  });
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+function setupTooltip() {
+  const tt=document.getElementById('echart-tooltip');
+  if(!ec||!tt) return;
+  ec.addEventListener('mousemove', e=>{
+    if(!ecChartData?.chart?.length) return;
+    const rect=ec.getBoundingClientRect(), mx=e.clientX-rect.left;
+    const chart=ecChartData.chart, n=chart.length;
+    const p={t:10,b:24,l:42,r:8}, cw=ec.offsetWidth-p.l-p.r;
+    let ci=-1, md=Infinity;
+    chart.forEach((d,i)=>{const cx=p.l+(i/n)*cw+(cw/n)/2, dist=Math.abs(mx-cx); if(dist<md){md=dist;ci=i;}});
+    if(ci<0||md>cw/n){tt.style.display='none'; return;}
+    const d=chart[ci];
+    let lb='';
+    if(curPeriod==='day')   lb=d.time.slice(11,16);
+    if(curPeriod==='week')  lb=['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'][new Date(d.time+'T12:00').getDay()]+' '+new Date(d.time+'T12:00').getDate()+'.'+String(new Date(d.time+'T12:00').getMonth()+1).padStart(2,'0');
+    if(curPeriod==='month') lb=new Date(d.time+'T12:00').toLocaleDateString('pl-PL',{day:'numeric',month:'long'});
+    if(curPeriod==='year')  lb=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'][new Date(d.time+'T12:00').getMonth()];
+    tt.innerHTML=`<span style="color:var(--t2)">${lb}</span><br><span style="color:var(--yel);font-size:14px;font-weight:600">${(d.wh/1000).toFixed(2)}</span><span style="color:var(--t2)"> kWh</span>`;
+    tt.style.display='block';
+    const bx=p.l+(ci/n)*cw+(cw/n)/2, tw=tt.offsetWidth;
+    let tx=bx-tw/2; if(tx<0) tx=4; if(tx+tw>ec.offsetWidth) tx=ec.offsetWidth-tw-4;
+    tt.style.left=tx+'px'; tt.style.top='4px';
+  });
+  ec.addEventListener('mouseleave', ()=>{ tt.style.display='none'; });
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connect() {
+  const proto = location.protocol==='https:'?'wss':'ws';
+  const ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.onopen = () => {
+    fetch('/api/state').then(r=>r.json()).then(s=>{ update(s); setOn(s.connected); });
+    fetch('/api/history').then(r=>r.json()).then(h=>{
+      cd={ pv:h.pv||[], feed:h.feed||[], soc:h.soc||[], ts:h.timestamps||[] };
+      drawChart();
     });
-    return (r?.code === '0' && Array.isArray(r.data)) ? r.data : null;
+    loadEnergy();
   };
 
-  // Łączna produkcja kWh
-  const vd = await callEnergy(VALUE_CODES[period]);
-  if (vd) {
-    const m = vd.find(d => d.indexName === 'master_data');
-    const s = vd.find(d => d.indexName === 'sup_data');
-    out.totalKwh     = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
-    out.changePercent= s?.indexValue != null ? Math.round(s.indexValue * 10) / 10 : null;
-    if (period === 'day' && m?.indexValue != null) recordSnapshot(range.begin, Math.round(m.indexValue));
-  }
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'state')  { update(m.data); setOn(m.data.connected); drawChart(); }
+    if (m.type === 'status') { setOn(m.connected); }
+    if (m.type === 'energy') { curData = m.data; updateEnergy(m.data); }
+  };
 
-  // Wykres słupkowy
-  const bd = await callEnergy(BAR_CODES[period]);
-  if (bd && bd.length > 0) {
-    out.chart = bd.filter(d => d.indexName === 'chart_data' && d.time)
-      .map(d => ({ time: d.time, wh: Math.round(d.indexValue || 0) }))
-      .sort((a, b) => a.time.localeCompare(b.time));
-  }
-
-  // Fallback dzienny z snapshots
-  if (period === 'day' && (!out.chart || out.chart.length <= 1)) {
-    const hc = buildHourlyChart(range.begin);
-    if (hc.length > 0) out.chart = hc;
-  }
-
-  // Zyski
-  const earningsCode = period === 'year' ? 'SPACE-APP-EARNINGS-MONEY-VALUE-YEAR' : 'SPACE-APP-EARNINGS-MONEY-VALUE-MONTH';
-  const mBegin = range.begin.slice(0,7) + '-01';
-  const ed = await privatePost('/app/space/data/single/index/', {
-    code: earningsCode, spaceId: SPACE_ID,
-    params: { beginTime: period === 'year' ? range.begin : mBegin, endTime: range.end },
-  });
-  if (ed?.code === '0' && Array.isArray(ed.data)) {
-    const m = ed.data.find(d => d.indexName === 'master_data');
-    if (m?.indexValue != null) {
-      const monthEarnings = Math.round(m.indexValue * 100) / 100;
-      out.currency = m.unit || 'zł';
-      if (period === 'day' || period === 'week') {
-        const mResp = await privatePost('/app/space/data/single/index/', {
-          code: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH', spaceId: SPACE_ID,
-          params: { beginTime: mBegin, endTime: range.end },
-        });
-        const mWh = (mResp?.code === '0' && Array.isArray(mResp.data))
-          ? (mResp.data.find(d => d.indexName === 'master_data')?.indexValue || 0) : 0;
-        out.earnings = (mWh > 0 && out.totalKwh > 0)
-          ? Math.round(monthEarnings * out.totalKwh / (mWh/1000) * 100) / 100 : null;
-        out.earningsMonth = monthEarnings;
-      } else { out.earnings = monthEarnings; }
-    }
-  }
-
-  // Efektywność
-  if (period !== 'year') {
-    if (period === 'day') {
-      const rs = await privatePost('/iot-service/index/common/query', {
-        code: 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-MONTH-Sup_DATA',
-        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-      });
-      if (rs?.code === '0' && Array.isArray(rs.data)) {
-        const master = rs.data.find(d => d.indexName === 'master_data');
-        out.efficiency = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
-      }
-    } else {
-      const periodKey = period === 'week' ? 'WEEK' : 'MONTH';
-      const rs = await privatePost('/iot-service/index/common/query', {
-        code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Sup_DATA`,
-        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-      });
-      if (rs?.code === '0' && Array.isArray(rs.data)) {
-        const master = rs.data.find(d => d.indexName === 'master_data');
-        const sup    = rs.data.find(d => d.indexName === 'sup_data');
-        out.efficiency       = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
-        out.efficiencyChange = sup?.indexValue    != null ? Math.round(sup.indexValue * 10)    / 10 : null;
-      }
-      const rc = await privatePost('/iot-service/index/common/query', {
-        code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Chart_DATA`,
-        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-      });
-      if (rc?.code === '0' && Array.isArray(rc.data)) {
-        out.efficiencyChart = rc.data
-          .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
-          .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
-          .sort((a, b) => a.time.localeCompare(b.time));
-      }
-    }
-  }
-
-  return out;
+  ws.onclose = () => { setOn(false); setTimeout(connect, 3000); };
 }
 
-// ─── MQTT ─────────────────────────────────────────────────────────────────────
-async function startMqtt() {
-  if (!ACCESS_KEY || !SECRET_KEY) { startDemo(); return; }
-
-  let creds;
-  try {
-    const resp = await axios.get(`${API_HOST}/iot-open/sign/certification`,
-      { headers: hmacSign(), timeout: 10000 });
-    if (resp.data.code !== '0') throw new Error(resp.data.message);
-    creds = resp.data.data;
-    console.log(`✅ MQTT OK — ${creds.certificateAccount}`);
-  } catch(e) { console.error('❌ Creds:', e.message); setTimeout(startMqtt, 30000); return; }
-
-  const client = mqtt.connect(`mqtts://${creds.url}:${creds.port}`, {
-    clientId: `open-${uuidv4()}`,
-    username: creds.certificateAccount,
-    password: creds.certificatePassword,
-    rejectUnauthorized: false,
-    reconnectPeriod: 5000,
-  });
-
-  const quotaTopic  = `/open/${creds.certificateAccount}/${DEVICE_SN}/quota`;
-  const statusTopic = `/open/${creds.certificateAccount}/${DEVICE_SN}/status`;
-
-  client.on('connect', () => {
-    console.log('✅ MQTT połączony!');
-    deviceState.connected = true;
-    broadcast({ type: 'status', connected: true });
-    client.subscribe(quotaTopic);
-    client.subscribe(statusTopic);
-    // Pobierz wszystkie quota
-    setTimeout(async () => {
-      try {
-        const r = await axios.get(`${API_HOST}/iot-open/sign/device/quota/all`,
-          { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
-        if (r.data.data && Object.keys(r.data.data).length > 0) applyParams(r.data.data);
-      } catch(e) {}
-    }, 1000);
-  });
-
-  client.on('message', (topic, payload) => {
-    try {
-      const str = payload.toString('utf8');
-      if (!str.startsWith('{')) return;
-      const data = JSON.parse(str);
-      if (topic.endsWith('/status')) {
-        deviceState.connected = data.params?.status === 1;
-        broadcast({ type: 'status', connected: deviceState.connected });
-        return;
-      }
-      const params = data.params || data;
-      if (params && typeof params === 'object') applyParams(params);
-    } catch(e) {}
-  });
-
-  client.on('error', e => console.error('MQTT error:', e.message));
-  client.on('close', () => {
-    deviceState.connected = false;
-    broadcast({ type: 'status', connected: false });
-  });
-}
-
-function startDemo() {
-  console.log('🎭 Demo mode');
-  let t = 0, soc = 45;
-  setInterval(() => {
-    t += 0.05;
-    const pv = Math.max(0, 800 + 400*Math.sin(t) + Math.random()*20);
-    soc = Math.min(95, soc + 0.01);
-    applyParams({
-      powGetPvSum: pv, powGetPv3: pv*0.52, powGetPv4: pv*0.48,
-      plugInInfoPv3Flag: true, plugInInfoPv4Flag: true,
-      gridConnectionPower: pv > 200 ? 100 : -50,
-      bmsBattSoc: soc, f32ShowSoc: soc,
-      powGetBpCms: pv > 200 ? 200 : -100,
-      bmsChgDsgState: pv > 200 ? 2 : 1,
-      cmsChgRemTime: 120, cmsDsgRemTime: 300,
-      gridConnectionVol: 230, gridConnectionFreq: 50,
-      powGetSysLoad: 300, powGetSysLoadFromPv: Math.min(pv, 300),
-      powGetSysLoadFromGrid: Math.max(0, 300-pv),
-      invTempNtc: 35, bmsMaxCellTemp: 25,
-    });
-  }, 2000);
-}
-
-// ─── Start ────────────────────────────────────────────────────────────────────
-server.listen(PORT, async () => {
-  console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
-
-  startMqtt();
-
-  if (EF_EMAIL && EF_PASSWORD) {
-    await loginPrivateApi();
-    const today = new Date().toISOString().slice(0,10);
-    const autoRefresh = async () => {
-      try {
-        const data = await fetchEnergyForPeriod('day', today);
-        if (data) {
-          energyCache[`day:${today}`] = { ...data, fetchedAt: Date.now() };
-          console.log(`Auto-refresh: ${data.totalKwh||0} kWh, snapshots: ${dailySnapshots[today]?.length||0}`);
-          broadcast({ type: 'energy', data });
-        }
-      } catch(e) {}
-    };
-    setTimeout(async () => { await autoRefresh(); setInterval(autoRefresh, 5*60*1000); }, 10000);
-  }
+window.addEventListener('resize', () => {
+  drawChart();
+  if(curData) drawEnergyChart(curData);
+  if(curData?.efficiencyChart) drawEfficiencyChart(curData.efficiencyChart);
 });
+
+setupTooltip();
+connect();
+loadEnergy();
+</script>
+</body>
+</html>
