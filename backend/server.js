@@ -210,12 +210,33 @@ function applyParams(params) {
     deviceState.gridPower = r1(g);
     updated = true;
   }
+  // Fallback - sysGridConnectionPower lub powGetSysGrid
+  if (params.sysGridConnectionPower !== undefined && params.gridConnectionPower === undefined) {
+    const g = params.sysGridConnectionPower;
+    deviceState.feedPower = g > 0 ? r1(g) : 0;
+    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
+    deviceState.gridPower = r1(g);
+    updated = true;
+  }
+  if (params.powGetSysGrid !== undefined && params.gridConnectionPower === undefined) {
+    // powGetSysGrid = pobor z sieci (zawsze dodatni)
+    deviceState.fromGrid  = r1(params.powGetSysGrid);
+    deviceState.gridPower = -r1(params.powGetSysGrid);
+    updated = true;
+  }
 
   // Zużycie
   set('powGetSysLoad',         'sysLoad',     r1);
   set('powGetSysLoadFromPv',   'loadFromPv',  r1);
   set('powGetSysLoadFromGrid', 'loadFromGrid',r1);
   set('powGetSysLoadFromBp',   'loadFromBat', r1);
+  set('sysGridConnectionPower','feedPower',   r1);
+
+  // Aktualizuj fromGrid z loadFromGrid gdy gridConnectionPower nie przychodzi
+  if (params.powGetSysLoadFromGrid !== undefined && params.gridConnectionPower === undefined) {
+    deviceState.fromGrid = r1(params.powGetSysLoadFromGrid);
+    updated = true;
+  }
 
   // Bateria - zdrowie i statystyki
   set('bmsBattSoh',    'battSoh',       v => Math.round(v * 10) / 10);
@@ -347,7 +368,7 @@ async function fetchEnergyForPeriod(period, refDate) {
     const m = ed.data.find(d => d.indexName === 'master_data');
     if (m?.indexValue != null) {
       const monthEarnings = Math.round(m.indexValue * 100) / 100;
-      out.currency = m.unit || 'zł';
+      out.currency = (m.unit && m.unit !== '$') ? m.unit : 'zł';
       if (period === 'day' || period === 'week') {
         const mResp = await privatePost('/app/space/data/single/index/', {
           code: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH', spaceId: SPACE_ID,
