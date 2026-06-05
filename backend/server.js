@@ -452,14 +452,22 @@ async function startMqtt() {
     broadcast({ type: 'status', connected: true });
     client.subscribe(quotaTopic);
     client.subscribe(statusTopic);
-    // Pobierz wszystkie quota
-    setTimeout(async () => {
+    // Pobierz wszystkie quota natychmiast i ponow po 3s
+    const fetchQuota = async () => {
       try {
         const r = await axios.get(`${API_HOST}/iot-open/sign/device/quota/all`,
           { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
-        if (r.data.data && Object.keys(r.data.data).length > 0) applyParams(r.data.data);
-      } catch(e) {}
-    }, 1000);
+        if (r.data.data && Object.keys(r.data.data).length > 0) {
+          applyParams(r.data.data);
+          console.log('Quota zaladowane: ' + Object.keys(r.data.data).length + ' parametrow');
+          return true;
+        }
+      } catch(e) { console.error('Quota error:', e.message); }
+      return false;
+    };
+    fetchQuota().then(ok => { if (!ok) setTimeout(fetchQuota, 3000); });
+    // Odswiezaj quota co 30s
+    setInterval(fetchQuota, 30000);
   });
 
   client.on('message', (topic, payload) => {
