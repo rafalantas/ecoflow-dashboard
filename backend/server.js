@@ -65,6 +65,8 @@ let deviceState = {
   feedPower: 0, fromGrid: 0, gridStatus: '',
   // Zużycie
   sysLoad: 0, loadFromPv: 0, loadFromGrid: 0, loadFromBat: 0,
+  // Bateria - zdrowie
+  battSoh: 100, battCycles: 0, accuChgEnergy: 0, accuDsgEnergy: 0,
   // Inne
   invTemp: 0, maxChgSoc: 95, minDsgSoc: 20,
 };
@@ -215,6 +217,11 @@ function applyParams(params) {
   set('powGetSysLoadFromGrid', 'loadFromGrid',r1);
   set('powGetSysLoadFromBp',   'loadFromBat', r1);
 
+  // Bateria - zdrowie i statystyki
+  set('bmsBattSoh',    'battSoh',       v => Math.round(v * 10) / 10);
+  set('cycles',        'battCycles',    v => v);
+  set('accuChgEnergy', 'accuChgEnergy', v => v);
+  set('accuDsgEnergy', 'accuDsgEnergy', v => v);
   // Inne
   set('invTempNtc',   'invTemp', v => v);
   set('cmsMaxChgSoc', 'maxChgSoc', v => v);
