@@ -179,21 +179,17 @@ function applyMeterParams(params) {
   if (params.gridConnectionDataRecord) {
     const rec = params.gridConnectionDataRecord;
     // todayActive = net import (moze byc ujemny eksport)
+    // todayActive = calkowite zuzycie domu
     if (rec.todayActive != null) {
-      deviceState.meterTodayImport = Math.max(0, Math.round(rec.todayActive));
+      deviceState.meterTodayConsumption = Math.max(0, Math.round(rec.todayActive));
     }
+    // totalActiveEnergy = laczne zuzycie
     if (rec.totalActiveEnergy != null) {
-      deviceState.meterTotalImport = Math.max(0, Math.round(rec.totalActiveEnergy));
+      deviceState.meterTotalConsumption = Math.max(0, Math.round(rec.totalActiveEnergy));
     }
-    // Eksport = suma ujemnych wartosci faz
-    const l1 = rec.todayActiveL1 || 0;
-    const l2 = rec.todayActiveL2 || 0;
-    const l3 = rec.todayActiveL3 || 0;
-    const exportWh = Math.abs(Math.min(0, l1)) + Math.abs(Math.min(0, l2)) + Math.abs(Math.min(0, l3));
-    if (exportWh > 0) deviceState.meterTodayExport = Math.round(exportWh);
-    // totalReactiveEnergy moze byc eksport
+    // totalReactiveEnergy = eksport do sieci (feed-in)
     if (rec.totalReactiveEnergy != null && rec.totalReactiveEnergy > 0) {
-      deviceState.meterTotalExport = Math.round(rec.totalReactiveEnergy);
+      deviceState.meterTodayExport = Math.round(rec.totalReactiveEnergy);
     }
     updated = true;
   }
