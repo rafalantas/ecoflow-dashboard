@@ -69,6 +69,10 @@ let deviceState = {
   battSoh: 100, battCycles: 0, accuChgEnergy: 0, accuDsgEnergy: 0,
   // Inne
   invTemp: 0, maxChgSoc: 95, minDsgSoc: 20,
+  // Licznik
+  meterL1: 0, meterL2: 0, meterL3: 0, meterTotal: 0,
+  meterTodayImport: 0, meterTodayExport: 0,
+  meterTotalImport: 0, meterTotalExport: 0,
 };
 
 // Historia real-time sesji
@@ -159,6 +163,30 @@ function buildHourlyChart(date) {
     const diff = byHour[h] - byHour[hours[i]];
     return diff > 0 ? { time: `${date} ${String(hours[i]).padStart(2,'0')}:00:00`, wh: Math.round(diff) } : null;
   }).filter(Boolean);
+}
+
+// ─── Apply Meter params ──────────────────────────────────────────────────────
+function applyMeterParams(params) {
+  let updated = false;
+  const r1 = v => Math.round(v * 10) / 10;
+
+  if (params.gridConnectionPowerL1 !== undefined) { deviceState.meterL1 = r1(params.gridConnectionPowerL1); updated = true; }
+  if (params.gridConnectionPowerL2 !== undefined) { deviceState.meterL2 = r1(params.gridConnectionPowerL2); updated = true; }
+  if (params.gridConnectionPowerL3 !== undefined) { deviceState.meterL3 = r1(params.gridConnectionPowerL3); updated = true; }
+  if (params.powGetSysGrid !== undefined)         { deviceState.meterTotal = r1(params.powGetSysGrid); updated = true; }
+
+  if (params.gridConnectionDataRecord) {
+    const rec = params.gridConnectionDataRecord;
+    if (rec.todayActive    != null) deviceState.meterTodayImport = Math.round(rec.todayActive);
+    if (rec.totalActiveEnergy != null) deviceState.meterTotalImport = Math.round(rec.totalActiveEnergy);
+    updated = true;
+  }
+
+  if (updated) {
+    deviceState.fromGrid  = deviceState.meterTotal;
+    deviceState.lastMqttData = Date.now();
+    broadcast({ type: 'state', data: deviceState });
+  }
 }
 
 // ─── Apply MQTT params ────────────────────────────────────────────────────────
@@ -445,6 +473,7 @@ async function startMqtt() {
 
   const quotaTopic  = `/open/${creds.certificateAccount}/${DEVICE_SN}/quota`;
   const statusTopic = `/open/${creds.certificateAccount}/${DEVICE_SN}/status`;
+  const meterTopic  = METER_SN ? `/open/${creds.certificateAccount}/${METER_SN}/quota` : null;
 
   client.on('connect', () => {
     console.log('✅ MQTT połączony!');
@@ -452,6 +481,7 @@ async function startMqtt() {
     broadcast({ type: 'status', connected: true });
     client.subscribe(quotaTopic);
     client.subscribe(statusTopic);
+    if (meterTopic) { client.subscribe(meterTopic); console.log('📊 Licznik: ' + METER_SN); }
     // Pobierz wszystkie quota natychmiast i ponow po 3s
     const fetchQuota = async () => {
       try {
@@ -481,7 +511,13 @@ async function startMqtt() {
         return;
       }
       const params = data.params || data;
-      if (params && typeof params === 'object') applyParams(params);
+      if (!params || typeof params !== 'object') return;
+      // Rozrozniaj licznik od Stream X
+      if (meterTopic && topic === meterTopic) {
+        applyMeterParams(params);
+      } else {
+        applyParams(params);
+      }
     } catch(e) {}
   });
 
