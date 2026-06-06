@@ -178,8 +178,23 @@ function applyMeterParams(params) {
 
   if (params.gridConnectionDataRecord) {
     const rec = params.gridConnectionDataRecord;
-    if (rec.todayActive    != null) deviceState.meterTodayImport = Math.round(rec.todayActive);
-    if (rec.totalActiveEnergy != null) deviceState.meterTotalImport = Math.round(rec.totalActiveEnergy);
+    // todayActive = net import (moze byc ujemny eksport)
+    if (rec.todayActive != null) {
+      deviceState.meterTodayImport = Math.max(0, Math.round(rec.todayActive));
+    }
+    if (rec.totalActiveEnergy != null) {
+      deviceState.meterTotalImport = Math.max(0, Math.round(rec.totalActiveEnergy));
+    }
+    // Eksport = suma ujemnych wartosci faz
+    const l1 = rec.todayActiveL1 || 0;
+    const l2 = rec.todayActiveL2 || 0;
+    const l3 = rec.todayActiveL3 || 0;
+    const exportWh = Math.abs(Math.min(0, l1)) + Math.abs(Math.min(0, l2)) + Math.abs(Math.min(0, l3));
+    if (exportWh > 0) deviceState.meterTodayExport = Math.round(exportWh);
+    // totalReactiveEnergy moze byc eksport
+    if (rec.totalReactiveEnergy != null && rec.totalReactiveEnergy > 0) {
+      deviceState.meterTotalExport = Math.round(rec.totalReactiveEnergy);
+    }
     updated = true;
   }
 
@@ -361,6 +376,14 @@ async function fetchEnergyForPeriod(period, refDate) {
     });
     return (r?.code === '0' && Array.isArray(r.data)) ? r.data : null;
   };
+
+  // Zużycie domu kWh
+  const loadCode = VALUE_CODES[period].replace('SOLAR-ENERGY', 'LOAD-ENERGY');
+  const ld = await callEnergy(loadCode);
+  if (ld) {
+    const m = ld.find(d => d.indexName === 'master_data');
+    out.loadKwh = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
+  }
 
   // Łączna produkcja kWh
   const vd = await callEnergy(VALUE_CODES[period]);
