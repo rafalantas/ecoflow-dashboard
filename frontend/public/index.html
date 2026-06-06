@@ -193,67 +193,60 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
   <div class="card flow-wrap">
     <div class="card-title">// przepływ energii</div>
     <div class="flow-diagram">
-      <svg viewBox="0 0 500 280" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="arr-pv"   markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--pv)"/></marker>
-          <marker id="arr-bat"  markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--bat)"/></marker>
-          <marker id="arr-gin"  markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--grid-in)"/></marker>
-          <marker id="arr-gout" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--grid-out)"/></marker>
-          <marker id="arr-load" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--load)"/></marker>
-        </defs>
+      <svg id="flow-svg" viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:360px">
 
-        <!-- Linie połączeń -->
-        <!-- PV → Center -->
-        <line id="line-pv"   x1="250" y1="55" x2="250" y2="125" class="flow-line" stroke-dasharray="6 4"/>
-        <!-- BAT → Center -->
-        <line id="line-bat"  x1="120" y1="200" x2="210" y2="155" class="flow-line" stroke-dasharray="6 4"/>
-        <!-- GRID → Center -->
-        <line id="line-grid" x1="380" y1="200" x2="290" y2="155" class="flow-line" stroke-dasharray="6 4"/>
-        <!-- Center → LOAD -->
-        <line id="line-load" x1="250" y1="165" x2="250" y2="235" class="flow-line" stroke-dasharray="6 4" style="display:none"/>
+        <!-- === LINIE POŁĄCZEŃ === -->
+        <!-- PV → Dom -->
+        <line id="ln-pv"   x1="240" y1="72"  x2="240" y2="138" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <!-- Sieć → Dom -->
+        <line id="ln-grid" x1="98"  y1="185" x2="172" y2="185" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <!-- Bateria → Dom -->
+        <line id="ln-bat"  x1="382" y1="185" x2="308" y2="185" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <!-- Dom → Dół (zużycie) -->
+        <line id="ln-load" x1="240" y1="232" x2="240" y2="272" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
 
-        <!-- Animowane kropki -->
-        <circle class="flow-dot hidden" id="dot-pv1"><animateMotion id="mot-pv1"  dur="1.2s" repeatCount="indefinite" path="M250,55 L250,130"/></circle>
-        <circle class="flow-dot hidden" id="dot-bat1"><animateMotion id="mot-bat1" dur="1.4s" repeatCount="indefinite" path="M120,200 L210,155"/></circle>
-        <circle class="flow-dot hidden" id="dot-grid1"><animateMotion id="mot-grid1" dur="1.3s" repeatCount="indefinite" path="M380,200 L290,155"/></circle>
+        <!-- === ANIMOWANE KROPKI === -->
+        <circle id="dot-pv"   r="5" fill="var(--pv)"       style="display:none"><animateMotion id="anim-pv"   dur="1.2s" repeatCount="indefinite" path="M240,72 L240,138"/></circle>
+        <circle id="dot-grid" r="5" fill="var(--grid-out)"  style="display:none"><animateMotion id="anim-grid" dur="1.3s" repeatCount="indefinite" path="M98,185 L172,185"/></circle>
+        <circle id="dot-bat"  r="5" fill="var(--bat)"       style="display:none"><animateMotion id="anim-bat"  dur="1.4s" repeatCount="indefinite" path="M382,185 L308,185"/></circle>
 
-        <!-- Węzeł centralny (hub) -->
-        <circle cx="250" cy="145" r="22" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5"/>
-        <text x="250" y="141" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)" letter-spacing="1">HUB</text>
-        <text x="250" y="153" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--t3)" id="hub-pwr">—</text>
+        <!-- === DOM — centrum === -->
+        <rect x="172" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
+        <text x="240" y="168" text-anchor="middle" font-size="26">🏠</text>
+        <text x="240" y="187" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)" letter-spacing="1">DOM</text>
+        <text id="sv-load" x="240" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--load)">– W</text>
+        <text id="sv-load-sub" x="240" y="222" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
 
-        <!-- ☀️ PV - góra środek -->
-        <g id="node-pv">
-          <rect x="185" y="2" width="130" height="52" rx="10" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5"/>
-          <text x="250" y="20" text-anchor="middle" font-size="14">☀️</text>
-          <text x="250" y="33" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--pv)" letter-spacing="1">PANELE</text>
-          <text id="pv-val-svg" x="250" y="48" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" font-weight="500" fill="var(--pv)">– W</text>
-        </g>
+        <!-- === PV — góra === -->
+        <rect x="174" y="4" width="132" height="64" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-pv"/>
+        <text x="210" y="32" font-size="20">☀️</text>
+        <text x="268" y="28" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--pv)" letter-spacing="1">PANELE</text>
+        <text id="sv-pv" x="268" y="48" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--pv)">– W</text>
+        <text id="sv-pv-sub" x="240" y="62" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
 
-        <!-- 🔋 BAT - lewy dół -->
-        <g id="node-bat">
-          <rect x="20" y="168" width="140" height="72" rx="10" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5"/>
-          <text x="40" y="192" font-size="14">🔋</text>
-          <text x="90" y="192" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--bat)" letter-spacing="1">BATERIA</text>
-          <text id="bat-soc-svg" x="90" y="212" text-anchor="middle" font-family="DM Mono,monospace" font-size="18" font-weight="500" fill="var(--bat)">– %</text>
-          <text id="bat-pwr-svg" x="90" y="228" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="var(--t2)">idle</text>
-        </g>
+        <!-- === SIEĆ — lewo === -->
+        <rect x="4" y="148" width="92" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-grid"/>
+        <text x="50" y="174" text-anchor="middle" font-size="20">⚡</text>
+        <text id="sv-grid-lbl" x="50" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--t2)" letter-spacing="1">SIEĆ</text>
+        <text id="sv-grid" x="50" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--t1)">– W</text>
 
-        <!-- ⚡ SIEĆ - prawy dół -->
-        <g id="node-grid">
-          <rect x="340" y="168" width="140" height="72" rx="10" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5"/>
-          <text x="360" y="192" font-size="14">⚡</text>
-          <text id="grid-lbl-svg" x="410" y="192" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)" letter-spacing="1">SIEĆ</text>
-          <text id="grid-val-svg" x="410" y="212" text-anchor="middle" font-family="DM Mono,monospace" font-size="18" font-weight="500" fill="var(--t1)">– W</text>
-          <text id="grid-dir-svg" x="410" y="228" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" fill="var(--t2)">–</text>
-        </g>
+        <!-- === BATERIA — prawo === -->
+        <rect x="384" y="148" width="92" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-bat"/>
+        <text x="430" y="174" text-anchor="middle" font-size="20">🔋</text>
+        <text x="430" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--bat)" letter-spacing="1">BATERIA</text>
+        <text id="sv-bat" x="430" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--bat)">– %</text>
+        <text id="sv-bat-sub" x="430" y="220" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)">idle</text>
 
-        <!-- 🏠 ZUŻYCIE - dół środek -->
-        <g id="node-load" style="display:none">
-          <rect x="185" y="238" width="130" height="40" rx="10" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5"/>
-          <text x="250" y="253" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--load)" letter-spacing="1">DOM</text>
-          <text id="load-val-svg" x="250" y="271" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" font-weight="500" fill="var(--load)">– W</text>
-        </g>
+        <!-- === WARTOŚCI NA LINIACH === -->
+        <rect x="186" y="97" width="108" height="20" rx="6" fill="var(--bg)" id="lv-pv-bg" style="display:none"/>
+        <text id="lv-pv" x="240" y="110" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" fill="var(--pv)" style="display:none"></text>
+
+        <rect x="104" y="175" width="62" height="20" rx="6" fill="var(--bg)" id="lv-grid-bg" style="display:none"/>
+        <text id="lv-grid" x="135" y="188" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" style="display:none"></text>
+
+        <rect x="314" y="175" width="62" height="20" rx="6" fill="var(--bg)" id="lv-bat-bg" style="display:none"/>
+        <text id="lv-bat" x="345" y="188" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" fill="var(--bat)" style="display:none"></text>
+
       </svg>
     </div>
   </div>
@@ -455,36 +448,54 @@ function update(s) {
   const load=s.sysLoad||0, soc=s.soc||0, batPwr=s.battPower||0, chg=s.chgDsgState||0;
   const fromPv=s.loadFromPv||0, fromBat=s.loadFromBat||0, fromGrd=s.loadFromGrid||0;
 
-  // SVG Przepływ
+  // SVG Przepływ EcoFlow style
   const pvActive   = pv > 5;
   const batChg     = chg === 2;
   const batDsg     = chg === 1;
   const feedActive = feed > 5;
   const fromActive = from > 5 || fromGrd > 5;
-  const loadActive = load > 5;
+  const gval       = feedActive ? feed : (fromGrd || from);
 
-  // Aktualizuj węzły SVG
-  document.getElementById('pv-val-svg').textContent   = pvActive ? `${Math.round(pv)} W` : '– W';
-  document.getElementById('bat-soc-svg').textContent  = `${soc} %`;
-  document.getElementById('bat-pwr-svg').textContent  = batChg?`↑ ${Math.round(Math.abs(batPwr))}W`:batDsg?`↓ ${Math.round(Math.abs(batPwr))}W`:'idle';
-  const gval = feedActive?feed:(fromGrd||from);
-  document.getElementById('grid-val-svg').textContent = `${gval>0?Math.round(gval):'–'} W`;
-  document.getElementById('grid-lbl-svg').textContent = feedActive?'SIEĆ ↑':fromActive?'SIEĆ ↓':'SIEĆ';
-  document.getElementById('grid-val-svg').setAttribute('fill', feedActive?'var(--grid-in)':fromActive?'var(--grid-out)':'var(--t1)');
-  document.getElementById('grid-dir-svg').textContent = feedActive?'feed-in':fromActive?'pobór':'–';
-  document.getElementById('hub-pwr').textContent = pvActive?`${Math.round(pv)}W`:'–';
-  if(loadActive){
-    document.getElementById('load-val-svg').textContent=`${Math.round(load)} W`;
-    document.getElementById('node-load').style.display='';
-    document.getElementById('line-load').style.display='';
-  }
+  // Węzeł PV
+  svSet('sv-pv', pvActive ? Math.round(pv)+' W' : '– W');
+  svSet('sv-pv-sub', pvActive ? `PV3:${f(s.pv3Power||0)} PV4:${f(s.pv4Power||0)}` : '');
+  svColor('sv-pv', pvActive ? 'var(--pv)' : 'var(--t2)');
+  svStroke('rect-pv', pvActive ? 'var(--pv)' : 'var(--brd)');
 
-  // Kolory linii i kropek
-  flowLine('line-pv',   pvActive,   'active-pv',   'dot-pv1',   'mot-pv1',  false);
-  flowLine('line-bat',  batDsg,     'active-bat',  'dot-bat1',  'mot-bat1', false);
-  flowLine('line-bat',  batChg,     'active-bat',  'dot-bat1',  'mot-bat1', true);
-  flowLine('line-grid', fromActive&&!feedActive, 'active-gout','dot-grid1','mot-grid1',true);
-  flowLine('line-grid', feedActive, 'active-gin',  'dot-grid1', 'mot-grid1',false);
+  // Węzeł Bateria
+  svSet('sv-bat', soc + ' %');
+  svSet('sv-bat-sub', batChg?`↑ ${Math.round(Math.abs(batPwr))}W`:batDsg?`↓ ${Math.round(Math.abs(batPwr))}W`:'idle');
+  svColor('sv-bat', 'var(--bat)');
+  svStroke('rect-bat', (batChg||batDsg) ? 'var(--bat)' : 'var(--brd)');
+
+  // Węzeł Sieć
+  svSet('sv-grid', gval > 0 ? Math.round(gval)+' W' : '– W');
+  svSet('sv-grid-lbl', feedActive ? 'FEED-IN ↑' : fromActive ? 'SIEĆ ↓' : 'SIEĆ');
+  svColor('sv-grid', feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--t2)');
+  svStroke('rect-grid', feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--brd)');
+
+  // Węzeł Dom
+  svSet('sv-load', load > 0 ? Math.round(load)+' W' : '– W');
+  svSet('sv-load-sub', load>0 ? `PV:${f(fromPv)}W Bat:${f(fromBat)}W Sieć:${f(fromGrd)}W` : '');
+  svStroke('rect-load', load > 5 ? 'var(--load)' : 'var(--brd)');
+
+  // Linie i animacje
+  svLine('ln-pv',   pvActive,   pvActive   ? 'var(--pv)'       : 'var(--brd)');
+  svLine('ln-grid', fromActive||feedActive, feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--brd)');
+  svLine('ln-bat',  batChg||batDsg, (batChg||batDsg) ? 'var(--bat)' : 'var(--brd)');
+  svLine('ln-load', load > 5, load>5 ? 'var(--load)' : 'var(--brd)');
+
+  // Wartości na liniach
+  svLineVal('lv-pv',   'lv-pv-bg',   pvActive,   Math.round(pv)+'W',          'var(--pv)');
+  svLineVal('lv-grid', 'lv-grid-bg', fromActive||feedActive, Math.round(gval)+'W', feedActive?'var(--grid-in)':'var(--grid-out)');
+  svLineVal('lv-bat',  'lv-bat-bg',  batChg||batDsg, Math.round(Math.abs(batPwr))+'W', 'var(--bat)');
+
+  // Animowane kropki
+  svDot('dot-pv',   pvActive,   'var(--pv)',      'anim-pv',   false);
+  svDot('dot-grid', fromActive&&!feedActive, 'var(--grid-out)', 'anim-grid', true);
+  if(feedActive) svDot('dot-grid', true, 'var(--grid-in)', 'anim-grid', false);
+  svDot('dot-bat',  batDsg,     'var(--bat)',     'anim-bat',  false);
+  if(batChg) svDot('dot-bat',   true,  'var(--bat)',     'anim-bat',  true);
 
   // Panele PV
   [[1,s.pv1Power,s.pv1Vol,s.pv1Amp,s.pv1Active],
@@ -552,19 +563,29 @@ function update(s) {
   document.getElementById('g-sta').textContent=sm[s.gridStatus]||s.gridStatus||'–';
 }
 
-function flowLine(lineId, active, cls, dotId, motId, reverse) {
-  const line=document.getElementById(lineId);
-  const dot=document.getElementById(dotId);
-  if(!line||!dot) return;
-  if(active){
-    line.className='flow-line '+cls;
-    dot.className='flow-dot '+cls;
-    const mot=dot.querySelector('animateMotion')||document.getElementById(motId);
-    if(mot) mot.setAttribute('keyPoints', reverse?'1;0':'0;1');
-  } else {
-    if(!line.className.includes('active')) line.className='flow-line';
-    dot.className='flow-dot hidden';
+function svSet(id, val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+function svColor(id, c){ const el=document.getElementById(id); if(el) el.setAttribute('fill',c); }
+function svStroke(id, c){ const el=document.getElementById(id); if(el) el.setAttribute('stroke',c); }
+function svLine(id, active, color){
+  const el=document.getElementById(id); if(!el) return;
+  el.setAttribute('stroke', color);
+  el.setAttribute('stroke-dasharray', active ? '6 4' : '4 8');
+  el.setAttribute('opacity', active ? '1' : '0.3');
+}
+function svDot(id, active, color, animId, reverse){
+  const el=document.getElementById(id); if(!el) return;
+  el.style.display = active ? '' : 'none';
+  el.setAttribute('fill', color);
+  const anim=document.getElementById(animId);
+  if(anim && reverse) {
+    const path=anim.getAttribute('path');
+    if(path){const pts=path.split(' L ');if(pts.length===2)anim.setAttribute('path',pts[1]+' L '+pts[0]);}
   }
+}
+function svLineVal(id, bgId, active, val, color){
+  const el=document.getElementById(id), bg=document.getElementById(bgId);
+  if(el){ el.style.display=active?'':'none'; el.textContent=val; el.setAttribute('fill',color); }
+  if(bg) bg.style.display=active?'':'none';
 }
 
 function setOn(on){
@@ -815,6 +836,8 @@ window.addEventListener('resize',()=>{
 
 setupTT();
 connect();
+// Wymusz natychmiastowe pobranie danych
+setTimeout(poll, 500);
 </script>
 </body>
 </html>
