@@ -13,6 +13,7 @@ services:
       - EF_EMAIL=${EF_EMAIL}
       - EF_PASSWORD=${EF_PASSWORD}
       - EF_SPACE_ID=${EF_SPACE_ID}
+      - METER_SN=${METER_SN}
     restart: unless-stopped
 
   cloudflared:
