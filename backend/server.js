@@ -420,7 +420,7 @@ async function fetchEnergyForPeriod(period, refDate) {
     const m = ed.data.find(d => d.indexName === 'master_data');
     if (m?.indexValue != null) {
       const monthEarnings = Math.round(m.indexValue * 100) / 100;
-      out.currency = (m.unit && m.unit !== '$') ? m.unit : 'zł';
+      out.currency = (m.unit && m.unit !== '$' && m.unit !== '€') ? m.unit : 'zł';
       if (period === 'day' || period === 'week') {
         const mResp = await privatePost('/app/space/data/single/index/', {
           code: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH', spaceId: SPACE_ID,
@@ -509,11 +509,27 @@ async function startMqtt() {
     // Pobierz wszystkie quota natychmiast i ponow po 3s
     const fetchQuota = async () => {
       try {
+        // Sprobuj quota/all
         const r = await axios.get(`${API_HOST}/iot-open/sign/device/quota/all`,
           { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
         if (r.data.data && Object.keys(r.data.data).length > 0) {
           applyParams(r.data.data);
           console.log('Quota zaladowane: ' + Object.keys(r.data.data).length + ' parametrow');
+          return true;
+        }
+        // Fallback: zapytaj o konkretne pola
+        const fields = ['bmsBattSoc','f32ShowSoc','powGetPvSum','powGetPv3','powGetPv4',
+          'gridConnectionPower','sysGridConnectionPower','powGetSysLoadFromGrid',
+          'powGetSysLoad','bmsChgDsgState','powGetBpCms','cmsChgRemTime','cmsDsgRemTime',
+          'gridConnectionVol','gridConnectionFreq','bmsMaxCellTemp','bmsMinCellTemp',
+          'bmsBattSoh','cycles','accuChgEnergy','accuDsgEnergy','plugInInfoPv3Flag',
+          'plugInInfoPv4Flag','plugInInfoPv3Vol','plugInInfoPv4Vol','cmsMaxChgSoc','cmsMinDsgSoc'];
+        const r2 = await axios.post(`${API_HOST}/iot-open/sign/device/quota`,
+          { sn: DEVICE_SN, params: fields },
+          { headers: hmacSign(), timeout: 10000 });
+        if (r2.data.data && Object.keys(r2.data.data).length > 0) {
+          applyParams(r2.data.data);
+          console.log('Quota (fields) zaladowane: ' + Object.keys(r2.data.data).length + ' parametrow');
           return true;
         }
       } catch(e) { console.error('Quota error:', e.message); }
