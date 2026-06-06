@@ -445,7 +445,7 @@ function update(s) {
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
 
   const pv=s.pvTotal||0, feed=s.feedPower||0, from=s.fromGrid||0;
-  const load=s.sysLoad||0, soc=s.soc||0, batPwr=s.battPower||0, chg=s.chgDsgState||0;
+  const load=s.sysLoad||0, soc=s.soc||(s.socExact?Math.round(s.socExact):0), batPwr=s.battPower||0, chg=s.chgDsgState||0;
   const fromPv=s.loadFromPv||0, fromBat=s.loadFromBat||0, fromGrd=s.loadFromGrid||0;
 
   // SVG Przepływ EcoFlow style
