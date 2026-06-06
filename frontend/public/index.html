@@ -312,38 +312,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
       </div>
     </div>
     <div class="meter-kwh">
-      <div class="mk"><div class="mk-lbl">Dziś pobrano z sieci</div><div class="mk-val" id="m-today-imp">– Wh</div></div>
-      <div class="mk"><div class="mk-lbl">Łącznie pobrano</div><div class="mk-val" id="m-total-imp">– Wh</div></div>
-    </div>
-  </div>
-
-  <!-- ZASILANIE DOMU -->
-  <div class="card">
-    <div class="card-title">// źródła zasilania domu</div>
-    <div class="src-grid">
-      <div class="src-card" style="border-top:3px solid var(--pv)">
-        <div class="src-lbl" style="color:var(--pv)">Z paneli PV</div>
-        <div class="src-val" id="s-pv">–<span class="u"> W</span></div>
-        <div class="src-bar"><div class="src-bar-f" id="s-pv-b" style="background:var(--pv)"></div></div>
-        <div class="src-pct" id="s-pv-p"></div>
-      </div>
-      <div class="src-card" style="border-top:3px solid var(--bat)">
-        <div class="src-lbl" style="color:var(--bat)">Z baterii</div>
-        <div class="src-val" id="s-bat">–<span class="u"> W</span></div>
-        <div class="src-bar"><div class="src-bar-f" id="s-bat-b" style="background:var(--bat)"></div></div>
-        <div class="src-pct" id="s-bat-p"></div>
-      </div>
-      <div class="src-card" style="border-top:3px solid var(--grid-out)">
-        <div class="src-lbl" style="color:var(--grid-out)">Z sieci</div>
-        <div class="src-val" id="s-grid">–<span class="u"> W</span></div>
-        <div class="src-bar"><div class="src-bar-f" id="s-grid-b" style="background:var(--grid-out)"></div></div>
-        <div class="src-pct" id="s-grid-p"></div>
-      </div>
-      <div class="src-card" style="border-top:3px solid var(--load)">
-        <div class="src-lbl" style="color:var(--load)">Razem dom</div>
-        <div class="src-val" id="s-tot">–<span class="u"> W</span></div>
-        <div class="src-pct" id="s-tot-p"></div>
-      </div>
+      <div class="mk"><div class="mk-lbl">Dziś pobrano z sieci</div><div class="mk-val" id="m-today-imp">– kWh</div></div>
+      <div class="mk"><div class="mk-lbl">Łącznie pobrano</div><div class="mk-val" id="m-total-imp">– kWh</div></div>
     </div>
   </div>
 
@@ -533,8 +503,8 @@ function update(s) {
     document.getElementById('m-l2').innerHTML=`${f(s.meterL2)}<span class="u"> W</span>`;
     document.getElementById('m-l3').innerHTML=`${f(s.meterL3)}<span class="u"> W</span>`;
     document.getElementById('m-tot').innerHTML=`${f(s.meterTotal)}<span class="u"> W</span>`;
-    if(s.meterTodayImport) document.getElementById('m-today-imp').textContent=s.meterTodayImport+' Wh';
-    if(s.meterTotalImport) document.getElementById('m-total-imp').textContent=s.meterTotalImport+' Wh';
+    if(s.meterTodayImport) document.getElementById('m-today-imp').textContent=(s.meterTodayImport/1000).toFixed(2)+' kWh';
+    if(s.meterTotalImport) document.getElementById('m-total-imp').textContent=(s.meterTotalImport/1000).toFixed(2)+' kWh';
   }
 
   // Źródła zasilania domu
