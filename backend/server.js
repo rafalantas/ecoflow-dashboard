@@ -14,6 +14,7 @@ const SECRET_KEY = process.env.EF_SECRET_KEY || '';
 const EF_EMAIL   = process.env.EF_EMAIL      || '';
 const EF_PASSWORD= process.env.EF_PASSWORD   || '';
 const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
+const METER_SN   = process.env.METER_SN      || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
