@@ -495,12 +495,10 @@ function update(s) {
     document.getElementById('m-l2').innerHTML=`${f(s.meterL2)}<span class="u"> W</span>`;
     document.getElementById('m-l3').innerHTML=`${f(s.meterL3)}<span class="u"> W</span>`;
     document.getElementById('m-tot').innerHTML=`${f(s.meterTotal)}<span class="u"> W</span>`;
-    if(s.meterTodayImport) document.getElementById('m-today-imp').textContent=(s.meterTodayImport/1000).toFixed(2)+' kWh';
-    if(s.meterTotalImport) document.getElementById('m-total-imp').textContent=(s.meterTotalImport/1000).toFixed(2)+' kWh';
+    if(s.meterTodayConsumption) document.getElementById('m-today-imp').textContent=(s.meterTodayConsumption/1000).toFixed(2)+' kWh';
+    if(s.meterTotalConsumption) document.getElementById('m-total-imp').textContent=(s.meterTotalConsumption/1000).toFixed(2)+' kWh';
     const expToday = document.getElementById('m-today-exp');
-    const expTotal = document.getElementById('m-total-exp');
-    if(expToday) expToday.textContent = s.meterTodayExport>0 ? (s.meterTodayExport/1000).toFixed(2)+' kWh' : '0.00 kWh';
-    if(expTotal) expTotal.textContent = s.meterTotalExport>0 ? (s.meterTotalExport/1000).toFixed(2)+' kWh' : '0.00 kWh';
+    if(expToday) expToday.textContent = s.meterTodayExport>0 ? (s.meterTodayExport/1000).toFixed(2)+' kWh' : '– kWh';
   }
 
   // Źródła zasilania domu
