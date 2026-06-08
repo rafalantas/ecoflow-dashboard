@@ -206,16 +206,16 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <line id="ln-load" x1="280" y1="232" x2="280" y2="272" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
 
         <!-- === ANIMOWANE KROPKI === -->
-        <circle id="dot-pv-fwd"   r="0" fill="var(--pv)"      filter="url(#glow-pv)">
-          <animateTransform attributeName="transform" type="translate" from="280,72" to="280,138" dur="1.2s" repeatCount="indefinite"/></circle>
-        <circle id="dot-grid-fwd" r="0" fill="var(--grid-out)" filter="url(#glow-red)">
-          <animateTransform attributeName="transform" type="translate" from="80,185" to="168,185" dur="1.3s" repeatCount="indefinite"/></circle>
-        <circle id="dot-grid-rev" r="0" fill="var(--grid-in)"  filter="url(#glow-grn)">
-          <animateTransform attributeName="transform" type="translate" from="168,185" to="80,185" dur="1.3s" repeatCount="indefinite"/></circle>
-        <circle id="dot-bat-fwd"  r="0" fill="var(--bat)"      filter="url(#glow-bat)">
-          <animateTransform attributeName="transform" type="translate" from="392,185" to="480,185" dur="1.4s" repeatCount="indefinite"/></circle>
-        <circle id="dot-bat-rev"  r="0" fill="var(--bat)"      filter="url(#glow-bat)">
-          <animateTransform attributeName="transform" type="translate" from="480,185" to="392,185" dur="1.4s" repeatCount="indefinite"/></circle>
+        <circle id="dot-pv-fwd"   r="0" cx="280" cy="72"  fill="var(--pv)">
+          <animate attributeName="cy" from="72" to="138" dur="1.2s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-fwd" r="0" cx="80"  cy="185" fill="var(--grid-out)">
+          <animate attributeName="cx" from="80" to="168" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-rev" r="0" cx="168" cy="185" fill="var(--grid-in)">
+          <animate attributeName="cx" from="168" to="80" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-fwd"  r="0" cx="392" cy="185" fill="var(--bat)">
+          <animate attributeName="cx" from="392" to="480" dur="1.4s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-rev"  r="0" cx="480" cy="185" fill="var(--bat)">
+          <animate attributeName="cx" from="480" to="392" dur="1.4s" repeatCount="indefinite"/></circle>
 
         <!-- === DOM — centrum === -->
         <rect x="212" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
@@ -464,8 +464,8 @@ function update(s) {
   showDot('dot-pv-fwd',   pvActive);
   showDot('dot-grid-fwd', fromActive && !feedActive);
   showDot('dot-grid-rev', feedActive);
-  showDot('dot-bat-fwd',  batDsg);
-  showDot('dot-bat-rev',  batChg);
+  showDot('dot-bat-fwd',  batChg);
+  showDot('dot-bat-rev',  batDsg);
 
   // Panele PV
   [[1,s.pv1Power,s.pv1Vol,s.pv1Amp,s.pv1Active],
