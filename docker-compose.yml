@@ -14,6 +14,7 @@ services:
       - EF_PASSWORD=${EF_PASSWORD}
       - EF_SPACE_ID=${EF_SPACE_ID}
       - METER_SN=${METER_SN}
+      - PSTRYK_API_KEY=${PSTRYK_API_KEY}
     restart: unless-stopped
 
   cloudflared:
