@@ -195,11 +195,10 @@ function applyMeterParams(params) {
   }
 
   if (updated) {
-    // Licznik daje prawdziwy pobor z sieci
-    // Uzyj tylko gdy gridConnectionPower nie ustawia feedPower
     if (deviceState.feedPower === 0 && deviceState.meterTotal > 0) {
       deviceState.fromGrid = deviceState.meterTotal;
     }
+    deviceState.connected = true;
     deviceState.lastMqttData = Date.now();
     broadcast({ type: 'state', data: deviceState });
   }
