@@ -425,6 +425,9 @@ function ft(m){if(!m||m<=0)return'–';const h=Math.floor(m/60),mm=m%60;return h
 function update(s) {
   ds = s;
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
+  // Pulsuj kropka przy nowych danych
+  const dotEl=document.getElementById('dot');
+  if(dotEl){dotEl.classList.add('pulse'); setTimeout(()=>dotEl.classList.remove('pulse'),400);}
 
   const pv=s.pvTotal||0, feed=s.feedPower||0, from=s.fromGrid||0;
   const load=s.sysLoad||0, soc=s.soc||(s.socExact?Math.round(s.socExact):0), batPwr=s.battPower||0, chg=s.chgDsgState||0;
