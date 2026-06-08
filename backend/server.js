@@ -195,7 +195,11 @@ function applyMeterParams(params) {
   }
 
   if (updated) {
-    deviceState.fromGrid  = deviceState.meterTotal;
+    // Licznik daje prawdziwy pobor z sieci
+    // Uzyj tylko gdy gridConnectionPower nie ustawia feedPower
+    if (deviceState.feedPower === 0 && deviceState.meterTotal > 0) {
+      deviceState.fromGrid = deviceState.meterTotal;
+    }
     deviceState.lastMqttData = Date.now();
     broadcast({ type: 'state', data: deviceState });
   }
@@ -250,20 +254,7 @@ function applyParams(params) {
     deviceState.gridPower = r1(g);
     updated = true;
   }
-  // Fallback - sysGridConnectionPower lub powGetSysGrid
-  if (params.sysGridConnectionPower !== undefined && params.gridConnectionPower === undefined) {
-    const g = params.sysGridConnectionPower;
-    deviceState.feedPower = g > 0 ? r1(g) : 0;
-    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
-    deviceState.gridPower = r1(g);
-    updated = true;
-  }
-  if (params.powGetSysGrid !== undefined && params.gridConnectionPower === undefined) {
-    // powGetSysGrid = pobor z sieci (zawsze dodatni)
-    deviceState.fromGrid  = r1(params.powGetSysGrid);
-    deviceState.gridPower = -r1(params.powGetSysGrid);
-    updated = true;
-  }
+
 
   // Zużycie
   set('powGetSysLoad',         'sysLoad',     r1);
