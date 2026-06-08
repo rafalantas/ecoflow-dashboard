@@ -502,30 +502,9 @@ function update(s) {
     if(expToday) expToday.textContent = s.meterTodayExport>0 ? (s.meterTodayExport/1000).toFixed(2)+' kWh' : '– kWh';
   }
 
-  // Źródła zasilania domu
-  const mx=Math.max(load,1);
-  document.getElementById('s-pv').innerHTML=`${f(fromPv)}<span class="u"> W</span>`;
-  document.getElementById('s-bat').innerHTML=`${f(fromBat)}<span class="u"> W</span>`;
-  document.getElementById('s-grid').innerHTML=`${f(fromGrd)}<span class="u"> W</span>`;
-  document.getElementById('s-tot').innerHTML=`${f(load)}<span class="u"> W</span>`;
-  document.getElementById('s-pv-b').style.width=Math.min(100,fromPv/mx*100)+'%';
-  document.getElementById('s-bat-b').style.width=Math.min(100,fromBat/mx*100)+'%';
-  document.getElementById('s-grid-b').style.width=Math.min(100,fromGrd/mx*100)+'%';
-  if(load>0){
-    document.getElementById('s-pv-p').textContent=Math.round(fromPv/load*100)+'%';
-    document.getElementById('s-bat-p').textContent=Math.round(fromBat/load*100)+'%';
-    document.getElementById('s-grid-p').textContent=Math.round(fromGrd/load*100)+'%';
-    document.getElementById('s-tot-p').textContent=`PV ${Math.round(fromPv/load*100)}% | Bat ${Math.round(fromBat/load*100)}% | Sieć ${Math.round(fromGrd/load*100)}%`;
-  }
+  // Zasilanie domu (sekcja usunieta)
 
-  // Sieć
-  const dispFrom = from>0?from:(fromGrd||0);
-  document.getElementById('g-feed').innerHTML=feed>0?`${f(feed)}<span class="u"> W</span>`:`–<span class="u"> W</span>`;
-  document.getElementById('g-from').innerHTML=dispFrom>0?`${f(dispFrom)}<span class="u"> W</span>`:`–<span class="u"> W</span>`;
-  document.getElementById('g-vol').innerHTML=`${f(s.gridVol||0,1)}<span class="u"> V</span>`;
-  document.getElementById('g-freq').innerHTML=`${f(s.gridFreq||0,2)}<span class="u"> Hz</span>`;
-  const sm={'PANEL_FEED_GRID':'↑ Feed-in','PANEL_GRID_IN':'↓ Pobór','DISCONNECT':'Rozłączono'};
-  document.getElementById('g-sta').textContent=sm[s.gridStatus]||s.gridStatus||'–';
+  // Sieć (sekcja usunieta)
 }
 
 function svSet(id, val){ const el=document.getElementById(id); if(el) el.textContent=val; }
