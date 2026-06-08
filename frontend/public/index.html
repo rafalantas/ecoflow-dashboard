@@ -30,6 +30,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .topbar-r{display:flex;align-items:center;gap:12px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--grid-out)}
 .dot.on{background:var(--grid-in);box-shadow:0 0 0 3px rgba(16,185,129,.2)}
+  .dot.pulse{animation:dot-pulse .4s ease-out}
+  @keyframes dot-pulse{0%{transform:scale(1)}50%{transform:scale(2.2);box-shadow:0 0 0 6px rgba(16,185,129,.3)}100%{transform:scale(1)}}
 .ts{font-family:var(--mono);font-size:11px;color:var(--t2)}
 
 /* Main layout */
