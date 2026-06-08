@@ -16,6 +16,7 @@ const EF_PASSWORD= process.env.EF_PASSWORD   || '';
 const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
 const METER_SN   = process.env.METER_SN      || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
+const PSTRYK_KEY = process.env.PSTRYK_API_KEY || '';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function uuidv4() {
@@ -85,6 +86,7 @@ let dailySnapshots = {};
 
 // Cache energii
 let energyCache = {};
+let pricesCache = { data: null, fetchedAt: 0 };
 
 // Token prywatnego API
 let privateToken = null;
@@ -98,6 +100,38 @@ const wss    = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json(deviceState));
 app.get('/api/history', (_, res) => res.json(history));
+
+app.get('/api/prices', async (req, res) => {
+  const now = Date.now();
+  if (pricesCache.data && now - pricesCache.fetchedAt < 15 * 60 * 1000) {
+    return res.json(pricesCache.data);
+  }
+  if (!PSTRYK_KEY) return res.json({ error: 'no_key' });
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const url = `https://api.pstryk.pl/integrations/meter-data/unified-metrics/?metrics=pricing&resolution=hour&window_start=${today}T00:00:00Z&window_end=${tomorrow}T23:59:59Z`;
+    const r = await axios.get(url, {
+      headers: { 'Authorization': PSTRYK_KEY },
+      timeout: 10000
+    });
+    const frames = r.data.frames || [];
+    const prices = frames.map(f => ({
+      start: f.start,
+      end: f.end,
+      price: f.metrics?.pricing?.full_price,
+      priceNet: f.metrics?.pricing?.price_net,
+      priceProsumer: f.metrics?.pricing?.price_prosumer_gross,
+      isCheap: f.metrics?.pricing?.is_cheap,
+      isExpensive: f.metrics?.pricing?.is_expensive,
+    }));
+    pricesCache = { data: { prices }, fetchedAt: now };
+    res.json({ prices });
+  } catch(e) {
+    console.error('Pstryk prices error:', e.message);
+    res.json({ error: e.message });
+  }
+});
 
 app.get('/api/energy', async (req, res) => {
   const period  = req.query.period || 'day';
