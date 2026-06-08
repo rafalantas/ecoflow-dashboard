@@ -229,7 +229,6 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <text x="250" y="32" font-size="20">☀️</text>
         <text x="308" y="28" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--pv)" letter-spacing="1">PANELE</text>
         <text id="sv-pv" x="308" y="48" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--pv)">– W</text>
-        <text id="sv-pv-sub" x="280" y="62" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
 
         <!-- === SIEĆ — lewo === -->
         <rect x="4" y="148" width="100" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-grid"/>
@@ -428,7 +427,7 @@ function update(s) {
 
   // Węzeł PV
   svSet('sv-pv', pvActive ? Math.round(pv)+' W' : '– W');
-  svSet('sv-pv-sub', pvActive ? `PV3:${f(s.pv3Power||0)} PV4:${f(s.pv4Power||0)}` : '');
+  svSet('sv-pv-sub', '');
   svColor('sv-pv', pvActive ? 'var(--pv)' : 'var(--t2)');
   svStroke('rect-pv', pvActive ? 'var(--pv)' : 'var(--brd)');
 
