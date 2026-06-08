@@ -338,6 +338,20 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     </div>
   </div>
 
+  <!-- CENY PSTRYK -->
+  <div class="card" id="prices-card" style="display:none">
+    <div class="card-title">// ceny energii · pstryk</div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-bottom:4px">
+      <div class="price-now">
+        <span class="price-now-val" id="price-now-val">–</span>
+        <span class="price-now-unit">zł/kWh</span>
+        <span class="price-badge price-norm" id="price-now-badge"></span>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--t2)" id="price-prosumer"></div>
+    </div>
+    <div class="hours-wrap" id="price-hours"></div>
+  </div>
+
   <!-- PRODUKCJA ENERGII -->
   <div class="card">
     <div class="card-title">// produkcja energii</div>
@@ -822,8 +836,44 @@ window.addEventListener('resize',()=>{
 
 setupTT();
 connect();
-// Wymusz natychmiastowe pobranie danych
 setTimeout(poll, 500);
+loadPrices();
+setInterval(loadPrices, 15*60*1000);
+
+async function loadPrices() {
+  try {
+    const r = await fetch('/api/prices');
+    const data = await r.json();
+    if (!data.prices || data.error) return;
+    const card = document.getElementById('prices-card');
+    if(card) card.style.display = 'block';
+    const now = new Date();
+    const curHour = now.toISOString().slice(0,13) + ':00:00Z';
+    const cur = data.prices.find(p => p.start <= now.toISOString() && p.end > now.toISOString());
+    if (cur) {
+      document.getElementById('price-now-val').textContent = cur.price?.toFixed(4) || '–';
+      const badge = document.getElementById('price-now-badge');
+      badge.textContent = cur.isCheap ? '✓ tania' : cur.isExpensive ? '↑ droga' : 'normalna';
+      badge.className = 'price-badge ' + (cur.isCheap ? 'price-cheap' : cur.isExpensive ? 'price-exp' : 'price-norm');
+      const pros = document.getElementById('price-prosumer');
+      if(pros) pros.textContent = 'Prosument: ' + (cur.priceProsumer?.toFixed(4)||'–') + ' zł/kWh';
+    }
+    // Siatka godzin
+    const hoursEl = document.getElementById('price-hours');
+    if (hoursEl) {
+      const todayPrices = data.prices.filter(p => p.start.slice(0,10) === now.toISOString().slice(0,10));
+      hoursEl.innerHTML = todayPrices.map(p => {
+        const h = new Date(p.start).getHours();
+        const isCur = cur && p.start === cur.start;
+        const cls = isCur ? 'current' : p.isCheap ? 'cheap' : p.isExpensive ? 'expensive' : '';
+        return `<div class="hcell ${cls}">
+          <div class="hcell-h">${String(h).padStart(2,'0')}:00</div>
+          <div class="hcell-p">${p.price?.toFixed(3)||'–'}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e) {}
+}
 </script>
 </body>
 </html>
