@@ -248,21 +248,31 @@ function applyParams(params) {
   set('gridConnectionFreq', 'gridFreq', r2);
   if (params.gridConnectionSta !== undefined) { deviceState.gridStatus = params.gridConnectionSta; updated = true; }
   if (params.gridConnectionPower !== undefined) {
-    const g = params.gridConnectionPower;
-    const sta = deviceState.gridStatus;
-    // Uzyj statusu do okreslenia kierunku
-    if (sta === 'PANEL_FEED_GRID') {
-      deviceState.feedPower = r1(Math.abs(g));
+    deviceState.gridPower = r1(params.gridConnectionPower);
+    updated = true;
+  }
+
+  // Oblicz feed/fromGrid z bilansu energetycznego po kazdej zmianie
+  // (gridConnectionPower ze Stream X jest niewiarygodny)
+  if (params.powGetPvSum !== undefined || params.powGetSysLoad !== undefined ||
+      params.powGetBpCms !== undefined || params.bmsChgDsgState !== undefined) {
+    const pv   = deviceState.pvTotal || 0;
+    const load = deviceState.sysLoad || 0;
+    const bat  = deviceState.battPower || 0;
+    const chg  = deviceState.chgDsgState || 0;
+    const batCharging    = chg === 2 ? Math.max(0, bat) : 0;
+    const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : 0;
+    const net = pv + batDischarging - load - batCharging;
+    if (net > 20) {
+      deviceState.feedPower = Math.round(net);
       deviceState.fromGrid  = 0;
-    } else if (sta === 'PANEL_GRID_IN') {
+    } else if (net < -20) {
       deviceState.feedPower = 0;
-      deviceState.fromGrid  = r1(Math.abs(g));
+      deviceState.fromGrid  = Math.round(-net);
     } else {
-      // Brak statusu - uzyj znaku
-      deviceState.feedPower = g > 5 ? r1(g) : 0;
-      deviceState.fromGrid  = g < -5 ? r1(Math.abs(g)) : 0;
+      deviceState.feedPower = 0;
+      deviceState.fromGrid  = 0;
     }
-    deviceState.gridPower = r1(g);
     updated = true;
   }
 
