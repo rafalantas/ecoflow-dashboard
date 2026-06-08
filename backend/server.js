@@ -249,8 +249,19 @@ function applyParams(params) {
   if (params.gridConnectionSta !== undefined) { deviceState.gridStatus = params.gridConnectionSta; updated = true; }
   if (params.gridConnectionPower !== undefined) {
     const g = params.gridConnectionPower;
-    deviceState.feedPower = g > 0 ? r1(g) : 0;
-    deviceState.fromGrid  = g < 0 ? r1(Math.abs(g)) : 0;
+    const sta = deviceState.gridStatus;
+    // Uzyj statusu do okreslenia kierunku
+    if (sta === 'PANEL_FEED_GRID') {
+      deviceState.feedPower = r1(Math.abs(g));
+      deviceState.fromGrid  = 0;
+    } else if (sta === 'PANEL_GRID_IN') {
+      deviceState.feedPower = 0;
+      deviceState.fromGrid  = r1(Math.abs(g));
+    } else {
+      // Brak statusu - uzyj znaku
+      deviceState.feedPower = g > 5 ? r1(g) : 0;
+      deviceState.fromGrid  = g < -5 ? r1(Math.abs(g)) : 0;
+    }
     deviceState.gridPower = r1(g);
     updated = true;
   }
