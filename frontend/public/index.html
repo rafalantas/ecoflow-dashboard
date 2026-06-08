@@ -484,8 +484,10 @@ function update(s) {
   const bf=document.getElementById('b-bar'); bf.style.width=soc+'%';
   bf.style.background=soc>60?'var(--bat)':soc>25?'var(--pv)':'var(--grid-out)';
   document.getElementById('b-range').textContent=`${s.minDsgSoc||20}% – ${s.maxChgSoc||95}%`;
-  document.getElementById('b-state').textContent=chg===2?'⚡ Ładowanie':chg===1?'↓ Rozładowanie':'· Idle';
-  document.getElementById('b-state').style.color=chg===2?'var(--bat)':chg===1?'var(--pv)':'var(--t2)';
+  const batStateText = batChg ? '⚡ Ładowanie' : batDsg ? '↓ Rozładowanie' : '· Idle';
+  const batStateColor = batChg ? 'var(--bat)' : batDsg ? 'var(--pv)' : 'var(--t2)';
+  document.getElementById('b-state').textContent = batStateText;
+  document.getElementById('b-state').style.color  = batStateColor;
   document.getElementById('b-pwr').textContent=batPwr>0?`+${Math.round(batPwr)}W`:batPwr<0?`${Math.round(batPwr)}W`:'0W';
   document.getElementById('b-chg').textContent=chg===2?ft(s.chgRemTime):'–';
   document.getElementById('b-dsg').textContent=chg===1?ft(s.dsgRemTime):'–';
