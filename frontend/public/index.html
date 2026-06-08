@@ -861,14 +861,17 @@ async function loadPrices() {
     // Siatka godzin
     const hoursEl = document.getElementById('price-hours');
     if (hoursEl) {
+      hoursEl.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px;margin-top:12px';
       const todayPrices = data.prices.filter(p => p.start.slice(0,10) === now.toISOString().slice(0,10));
       hoursEl.innerHTML = todayPrices.map(p => {
         const h = new Date(p.start).getHours();
         const isCur = cur && p.start === cur.start;
-        const cls = isCur ? 'current' : p.isCheap ? 'cheap' : p.isExpensive ? 'expensive' : '';
-        return `<div class="hcell ${cls}">
-          <div class="hcell-h">${String(h).padStart(2,'0')}:00</div>
-          <div class="hcell-p">${p.price?.toFixed(3)||'–'}</div>
+        const bg = isCur ? 'rgba(245,158,11,.12)' : p.isCheap ? 'rgba(16,185,129,.08)' : p.isExpensive ? 'rgba(239,68,68,.08)' : 'var(--bg)';
+        const border = isCur ? '2px solid var(--pv)' : p.isCheap ? '1px solid rgba(16,185,129,.3)' : p.isExpensive ? '1px solid rgba(239,68,68,.3)' : '1px solid var(--brd)';
+        const color = isCur ? 'var(--pv)' : p.isCheap ? 'var(--grid-in)' : p.isExpensive ? 'var(--grid-out)' : 'var(--t1)';
+        return `<div style="padding:7px 4px;border-radius:8px;border:${border};text-align:center;background:${bg}">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--t2)">${String(h).padStart(2,'0')}:00</div>
+          <div style="font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:${color}">${p.price?.toFixed(3)||'–'}</div>
         </div>`;
       }).join('');
     }
