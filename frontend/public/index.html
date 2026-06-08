@@ -333,7 +333,6 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
       <div class="meter-phase" style="border-top:3px solid var(--grid-out)">
         <div class="mp-lbl" style="color:var(--grid-out)">Łącznie</div>
         <div class="mp-val" id="m-tot" style="color:var(--grid-out)">–<span class="u"> W</span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-bal"></div>
       </div>
 
     </div>
@@ -534,13 +533,7 @@ function update(s) {
       if(pctEl) pctEl.textContent = mtot>0 ? pct+'% zużycia' : '';
       if(barEl) barEl.style.width = bar+'%';
     });
-    // Bilans faz
-    const balEl = document.getElementById('m-bal');
-    if(balEl) {
-      const diff = Math.max(ml1,ml2,ml3) - Math.min(ml1,ml2,ml3);
-      balEl.textContent = diff > 100 ? '⚠ nierównomierny' : '✓ zbalansowany';
-      balEl.style.color = diff > 100 ? 'var(--red)' : 'var(--grid-in)';
-    }
+
   }
 
   // Zasilanie domu (sekcja usunieta)
