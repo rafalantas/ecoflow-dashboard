@@ -197,25 +197,25 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 
         <!-- === LINIE POŁĄCZEŃ === -->
         <!-- PV → Dom -->
-        <line id="ln-pv"   x1="280" y1="72"  x2="280" y2="138" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-pv"   x1="280" y1="68" x2="280" y2="138" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
         <!-- Sieć → Dom -->
-        <line id="ln-grid" x1="80"  y1="185" x2="168" y2="185" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-grid" x1="104" y1="185" x2="212" y2="185" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
         <!-- Bateria → Dom -->
-        <line id="ln-bat"  x1="480" y1="185" x2="392" y2="185" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-bat"  x1="348" y1="185" x2="456" y2="185" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
         <!-- Dom → Dół (zużycie) -->
         <line id="ln-load" x1="280" y1="232" x2="280" y2="272" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
 
         <!-- === ANIMOWANE KROPKI === -->
         <circle id="dot-pv-fwd"   r="0" cx="280" cy="72"  fill="var(--pv)">
-          <animate attributeName="cy" from="72" to="138" dur="1.2s" repeatCount="indefinite"/></circle>
-        <circle id="dot-grid-fwd" r="0" cx="80"  cy="185" fill="var(--grid-out)">
-          <animate attributeName="cx" from="80" to="168" dur="1.3s" repeatCount="indefinite"/></circle>
-        <circle id="dot-grid-rev" r="0" cx="168" cy="185" fill="var(--grid-in)">
-          <animate attributeName="cx" from="168" to="80" dur="1.3s" repeatCount="indefinite"/></circle>
-        <circle id="dot-bat-fwd"  r="0" cx="392" cy="185" fill="var(--bat)">
-          <animate attributeName="cx" from="392" to="480" dur="1.4s" repeatCount="indefinite"/></circle>
-        <circle id="dot-bat-rev"  r="0" cx="480" cy="185" fill="var(--bat)">
-          <animate attributeName="cx" from="480" to="392" dur="1.4s" repeatCount="indefinite"/></circle>
+          <animate attributeName="cy" from="68" to="138" dur="1.2s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-fwd" r="0" cx="104" cy="185" fill="var(--grid-out)">
+          <animate attributeName="cx" from="104" to="212" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-rev" r="0" cx="212" cy="185" fill="var(--grid-in)">
+          <animate attributeName="cx" from="212" to="104" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-fwd"  r="0" cx="348" cy="185" fill="var(--bat)">
+          <animate attributeName="cx" from="348" to="456" dur="1.4s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-rev"  r="0" cx="456" cy="185" fill="var(--bat)">
+          <animate attributeName="cx" from="456" to="348" dur="1.4s" repeatCount="indefinite"/></circle>
 
         <!-- === DOM — centrum === -->
         <rect x="212" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
@@ -251,8 +251,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <rect x="127" y="172" width="62" height="20" rx="6" fill="var(--bg)" id="lv-grid-bg" style="display:none"/>
         <text id="lv-grid" x="158" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" font-weight="500" style="display:none"></text>
 
-        <rect x="371" y="172" width="62" height="20" rx="6" fill="var(--bg)" id="lv-bat-bg" style="display:none"/>
-        <text id="lv-bat" x="402" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" font-weight="500" fill="var(--bat)" style="display:none"></text>
+        <rect x="381" y="172" width="62" height="20" rx="6" fill="var(--bg)" id="lv-bat-bg" style="display:none"/>
+        <text id="lv-bat" x="412" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" font-weight="500" fill="var(--bat)" style="display:none"></text>
 
       </svg>
     </div>
@@ -420,8 +420,8 @@ function update(s) {
 
   // SVG Przepływ EcoFlow style
   const pvActive   = pv > 5;
-  const batChg     = chg === 2;
-  const batDsg     = chg === 1;
+  const batChg = chg === 2 || (chg === 0 && batPwr > 20);
+  const batDsg = chg === 1 || (chg === 0 && batPwr < -20);
   const feedActive = feed > 5;
   const fromActive = from > 5 || fromGrd > 5;
   const gval       = feedActive ? feed : (fromGrd || from);
