@@ -193,59 +193,59 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
   <div class="card flow-wrap">
     <div class="card-title">// przepływ energii</div>
     <div class="flow-diagram">
-      <svg id="flow-svg" viewBox="0 0 480 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:360px">
+      <svg id="flow-svg" viewBox="0 0 560 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:380px">
 
         <!-- === LINIE POŁĄCZEŃ === -->
         <!-- PV → Dom -->
-        <line id="ln-pv"   x1="240" y1="72"  x2="240" y2="138" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-pv"   x1="280" y1="72"  x2="280" y2="138" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
         <!-- Sieć → Dom -->
-        <line id="ln-grid" x1="98"  y1="185" x2="172" y2="185" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-grid" x1="80"  y1="185" x2="168" y2="185" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
         <!-- Bateria → Dom -->
-        <line id="ln-bat"  x1="382" y1="185" x2="308" y2="185" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-bat"  x1="480" y1="185" x2="392" y2="185" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
         <!-- Dom → Dół (zużycie) -->
-        <line id="ln-load" x1="240" y1="232" x2="240" y2="272" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
+        <line id="ln-load" x1="280" y1="232" x2="280" y2="272" stroke="var(--brd)" stroke-width="2" stroke-dasharray="6 4" stroke-linecap="round"/>
 
         <!-- === ANIMOWANE KROPKI === -->
-        <circle id="dot-pv"   r="5" fill="var(--pv)"       style="display:none"><animateMotion id="anim-pv"   dur="1.2s" repeatCount="indefinite" path="M240,72 L240,138"/></circle>
-        <circle id="dot-grid" r="5" fill="var(--grid-out)"  style="display:none"><animateMotion id="anim-grid" dur="1.3s" repeatCount="indefinite" path="M98,185 L172,185"/></circle>
-        <circle id="dot-bat"  r="5" fill="var(--bat)"       style="display:none"><animateMotion id="anim-bat"  dur="1.4s" repeatCount="indefinite" path="M382,185 L308,185"/></circle>
+        <circle id="dot-pv"   r="5" fill="var(--pv)"       style="display:none"><animateMotion id="anim-pv"   dur="1.2s" repeatCount="indefinite" path="M280,72 L280,138"/></circle>
+        <circle id="dot-grid" r="5" fill="var(--grid-out)"  style="display:none"><animateMotion id="anim-grid" dur="1.3s" repeatCount="indefinite" path="M80,185 L168,185"/></circle>
+        <circle id="dot-bat"  r="5" fill="var(--bat)"       style="display:none"><animateMotion id="anim-bat"  dur="1.4s" repeatCount="indefinite" path="M480,185 L392,185"/></circle>
 
         <!-- === DOM — centrum === -->
-        <rect x="172" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
-        <text x="240" y="168" text-anchor="middle" font-size="26">🏠</text>
-        <text x="240" y="187" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)" letter-spacing="1">DOM</text>
-        <text id="sv-load" x="240" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--load)">– W</text>
-        <text id="sv-load-sub" x="240" y="222" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
+        <rect x="212" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
+        <text x="280" y="168" text-anchor="middle" font-size="26">🏠</text>
+        <text x="280" y="187" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)" letter-spacing="1">DOM</text>
+        <text id="sv-load" x="280" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--load)">– W</text>
+        <text id="sv-load-sub" x="280" y="222" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
 
         <!-- === PV — góra === -->
-        <rect x="174" y="4" width="132" height="64" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-pv"/>
-        <text x="210" y="32" font-size="20">☀️</text>
-        <text x="268" y="28" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--pv)" letter-spacing="1">PANELE</text>
-        <text id="sv-pv" x="268" y="48" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--pv)">– W</text>
-        <text id="sv-pv-sub" x="240" y="62" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
+        <rect x="214" y="4" width="132" height="64" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-pv"/>
+        <text x="250" y="32" font-size="20">☀️</text>
+        <text x="308" y="28" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--pv)" letter-spacing="1">PANELE</text>
+        <text id="sv-pv" x="308" y="48" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--pv)">– W</text>
+        <text id="sv-pv-sub" x="280" y="62" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
 
         <!-- === SIEĆ — lewo === -->
-        <rect x="4" y="148" width="92" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-grid"/>
-        <text x="50" y="174" text-anchor="middle" font-size="20">⚡</text>
-        <text id="sv-grid-lbl" x="50" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--t2)" letter-spacing="1">SIEĆ</text>
-        <text id="sv-grid" x="50" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--t1)">– W</text>
+        <rect x="4" y="148" width="100" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-grid"/>
+        <text x="54" y="174" text-anchor="middle" font-size="20">⚡</text>
+        <text id="sv-grid-lbl" x="54" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--t2)" letter-spacing="1">SIEĆ</text>
+        <text id="sv-grid" x="54" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--t1)">– W</text>
 
         <!-- === BATERIA — prawo === -->
-        <rect x="384" y="148" width="92" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-bat"/>
-        <text x="430" y="174" text-anchor="middle" font-size="20">🔋</text>
-        <text x="430" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--bat)" letter-spacing="1">BATERIA</text>
-        <text id="sv-bat" x="430" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--bat)">– %</text>
-        <text id="sv-bat-sub" x="430" y="220" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)">idle</text>
+        <rect x="456" y="148" width="100" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-bat"/>
+        <text x="506" y="174" text-anchor="middle" font-size="20">🔋</text>
+        <text x="506" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--bat)" letter-spacing="1">BATERIA</text>
+        <text id="sv-bat" x="506" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--bat)">– %</text>
+        <text id="sv-bat-sub" x="506" y="220" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)">idle</text>
 
         <!-- === WARTOŚCI NA LINIACH === -->
-        <rect x="186" y="97" width="108" height="20" rx="6" fill="var(--bg)" id="lv-pv-bg" style="display:none"/>
-        <text id="lv-pv" x="240" y="110" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" fill="var(--pv)" style="display:none"></text>
+        <rect x="226" y="97" width="108" height="20" rx="6" fill="var(--bg)" id="lv-pv-bg" style="display:none"/>
+        <text id="lv-pv" x="280" y="110" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" fill="var(--pv)" style="display:none"></text>
 
-        <rect x="104" y="175" width="62" height="20" rx="6" fill="var(--bg)" id="lv-grid-bg" style="display:none"/>
-        <text id="lv-grid" x="135" y="188" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" style="display:none"></text>
+        <rect x="90" y="175" width="62" height="20" rx="6" fill="var(--bg)" id="lv-grid-bg" style="display:none"/>
+        <text id="lv-grid" x="121" y="188" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" style="display:none"></text>
 
-        <rect x="314" y="175" width="62" height="20" rx="6" fill="var(--bg)" id="lv-bat-bg" style="display:none"/>
-        <text id="lv-bat" x="345" y="188" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" fill="var(--bat)" style="display:none"></text>
+        <rect x="398" y="175" width="62" height="20" rx="6" fill="var(--bg)" id="lv-bat-bg" style="display:none"/>
+        <text id="lv-bat" x="429" y="188" text-anchor="middle" font-family="DM Mono,monospace" font-size="10" font-weight="500" fill="var(--bat)" style="display:none"></text>
 
       </svg>
     </div>
@@ -433,7 +433,7 @@ function update(s) {
 
   // Węzeł Sieć
   svSet('sv-grid', gval > 0 ? Math.round(gval)+' W' : '– W');
-  svSet('sv-grid-lbl', feedActive ? 'FEED-IN ↑' : fromActive ? 'SIEĆ ↓' : 'SIEĆ');
+  svSet('sv-grid-lbl', feedActive ? 'DO SIECI ↑' : fromActive ? 'Z SIECI ↓' : 'SIEĆ');
   svColor('sv-grid', feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--t2)');
   svStroke('rect-grid', feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--brd)');
 
@@ -455,8 +455,8 @@ function update(s) {
 
   // Animowane kropki
   svDot('dot-pv',   pvActive,   'var(--pv)',      'anim-pv',   false);
-  svDot('dot-grid', fromActive&&!feedActive, 'var(--grid-out)', 'anim-grid', true);
-  if(feedActive) svDot('dot-grid', true, 'var(--grid-in)', 'anim-grid', false);
+  svDot('dot-grid', fromActive&&!feedActive, 'var(--grid-out)', 'anim-grid', false);
+  if(feedActive) svDot('dot-grid', true, 'var(--grid-in)', 'anim-grid', true);
   svDot('dot-bat',  batDsg,     'var(--bat)',     'anim-bat',  false);
   if(batChg) svDot('dot-bat',   true,  'var(--bat)',     'anim-bat',  true);
 
