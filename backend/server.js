@@ -252,29 +252,7 @@ function applyParams(params) {
     updated = true;
   }
 
-  // Oblicz feed/fromGrid z bilansu energetycznego po kazdej zmianie
-  // (gridConnectionPower ze Stream X jest niewiarygodny)
-  if (params.powGetPvSum !== undefined || params.powGetSysLoad !== undefined ||
-      params.powGetBpCms !== undefined || params.bmsChgDsgState !== undefined) {
-    const pv   = deviceState.pvTotal || 0;
-    const load = deviceState.sysLoad || 0;
-    const bat  = deviceState.battPower || 0;
-    const chg  = deviceState.chgDsgState || 0;
-    const batCharging    = chg === 2 ? Math.max(0, bat) : 0;
-    const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : 0;
-    const net = pv + batDischarging - load - batCharging;
-    if (net > 20) {
-      deviceState.feedPower = Math.round(net);
-      deviceState.fromGrid  = 0;
-    } else if (net < -20) {
-      deviceState.feedPower = 0;
-      deviceState.fromGrid  = Math.round(-net);
-    } else {
-      deviceState.feedPower = 0;
-      deviceState.fromGrid  = 0;
-    }
-    updated = true;
-  }
+
 
 
   // Zużycie
@@ -299,6 +277,25 @@ function applyParams(params) {
   set('cmsMinDsgSoc', 'minDsgSoc', v => v);
 
   if (updated) {
+    // Przelicz bilans sieci ze swiezych wartosci
+    const pv   = deviceState.pvTotal   || 0;
+    const load = deviceState.sysLoad   || 0;
+    const bat  = deviceState.battPower || 0;
+    const chg  = deviceState.chgDsgState || 0;
+    const batCharging    = chg === 2 ? Math.max(0, bat)         : 0;
+    const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : 0;
+    const net = pv + batDischarging - load - batCharging;
+    if (net > 20) {
+      deviceState.feedPower = Math.round(net);
+      deviceState.fromGrid  = 0;
+    } else if (net < -20) {
+      deviceState.feedPower = 0;
+      deviceState.fromGrid  = Math.round(-net);
+    } else {
+      deviceState.feedPower = 0;
+      deviceState.fromGrid  = 0;
+    }
+
     deviceState.lastUpdate   = new Date().toISOString();
     deviceState.lastMqttData = Date.now();
     recordHistory();
