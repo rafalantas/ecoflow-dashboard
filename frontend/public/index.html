@@ -299,28 +299,41 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
   <!-- LICZNIK -->
   <div class="card" id="meter-card">
     <div class="card-title">// licznik smart meter</div>
-    <div class="meter-grid">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr) 1fr;gap:10px">
+
       <div class="meter-phase" style="border-top:3px solid #f59e0b">
         <div class="mp-lbl" style="color:#f59e0b">Faza L1</div>
         <div class="mp-val" id="m-l1">–<span class="u"> W</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l1-pct"></div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden">
+          <div id="m-l1-bar" style="height:100%;background:#f59e0b;border-radius:2px;width:0%;transition:width .5s"></div>
+        </div>
       </div>
+
       <div class="meter-phase" style="border-top:3px solid #06b6d4">
         <div class="mp-lbl" style="color:#06b6d4">Faza L2</div>
         <div class="mp-val" id="m-l2">–<span class="u"> W</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l2-pct"></div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden">
+          <div id="m-l2-bar" style="height:100%;background:#06b6d4;border-radius:2px;width:0%;transition:width .5s"></div>
+        </div>
       </div>
+
       <div class="meter-phase" style="border-top:3px solid #8b5cf6">
         <div class="mp-lbl" style="color:#8b5cf6">Faza L3</div>
         <div class="mp-val" id="m-l3">–<span class="u"> W</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l3-pct"></div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden">
+          <div id="m-l3-bar" style="height:100%;background:#8b5cf6;border-radius:2px;width:0%;transition:width .5s"></div>
+        </div>
       </div>
-      <div class="meter-total">
-        <div class="mp-lbl" style="color:var(--t2)">Łącznie z sieci</div>
+
+      <div class="meter-phase" style="border-top:3px solid var(--grid-out)">
+        <div class="mp-lbl" style="color:var(--grid-out)">Łącznie</div>
         <div class="mp-val" id="m-tot" style="color:var(--grid-out)">–<span class="u"> W</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-bal"></div>
       </div>
-    </div>
-    <div class="meter-kwh">
-      <div class="mk"><div class="mk-lbl">Dziś zużycie domu</div><div class="mk-val" id="m-today-imp" style="color:var(--load)">– kWh</div></div>
-      <div class="mk"><div class="mk-lbl">Łącznie zużycie</div><div class="mk-val" id="m-total-imp" style="color:var(--load)">– kWh</div></div>
-      <div class="mk"><div class="mk-lbl">Dziś oddano do sieci</div><div class="mk-val" id="m-today-exp" style="color:var(--grid-in)">– kWh</div></div>
+
     </div>
   </div>
 
@@ -499,15 +512,30 @@ function update(s) {
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${s.accuDsgEnergy}<span class="u"> Wh</span>`;
 
   // Licznik
-  if(s.meterL1||s.meterL2||s.meterL3) {
-    document.getElementById('m-l1').innerHTML=`${f(s.meterL1)}<span class="u"> W</span>`;
-    document.getElementById('m-l2').innerHTML=`${f(s.meterL2)}<span class="u"> W</span>`;
-    document.getElementById('m-l3').innerHTML=`${f(s.meterL3)}<span class="u"> W</span>`;
-    document.getElementById('m-tot').innerHTML=`${f(s.meterTotal)}<span class="u"> W</span>`;
-    if(s.meterTodayConsumption) document.getElementById('m-today-imp').textContent=(s.meterTodayConsumption/1000).toFixed(2)+' kWh';
-    if(s.meterTotalConsumption) document.getElementById('m-total-imp').textContent=(s.meterTotalConsumption/1000).toFixed(2)+' kWh';
-    const expToday = document.getElementById('m-today-exp');
-    if(expToday) expToday.textContent = s.meterTodayExport>0 ? (s.meterTodayExport/1000).toFixed(2)+' kWh' : '– kWh';
+  if(s.meterL1||s.meterL2||s.meterL3||s.meterTotal) {
+    const ml1=s.meterL1||0, ml2=s.meterL2||0, ml3=s.meterL3||0, mtot=s.meterTotal||0;
+    const mx3 = Math.max(ml1,ml2,ml3,1);
+    document.getElementById('m-l1').innerHTML=`${f(ml1)}<span class="u"> W</span>`;
+    document.getElementById('m-l2').innerHTML=`${f(ml2)}<span class="u"> W</span>`;
+    document.getElementById('m-l3').innerHTML=`${f(ml3)}<span class="u"> W</span>`;
+    document.getElementById('m-tot').innerHTML=`${f(mtot)}<span class="u"> W</span>`;
+    // Paski i procenty
+    const phases = [[1,ml1,'#f59e0b'],[2,ml2,'#06b6d4'],[3,ml3,'#8b5cf6']];
+    phases.forEach(([n,v,c])=>{
+      const pct = mtot>0 ? Math.round(v/mtot*100) : 0;
+      const bar = Math.min(100, Math.round(v/mx3*100));
+      const pctEl = document.getElementById('m-l'+n+'-pct');
+      const barEl = document.getElementById('m-l'+n+'-bar');
+      if(pctEl) pctEl.textContent = mtot>0 ? pct+'% zużycia' : '';
+      if(barEl) barEl.style.width = bar+'%';
+    });
+    // Bilans faz
+    const balEl = document.getElementById('m-bal');
+    if(balEl) {
+      const diff = Math.max(ml1,ml2,ml3) - Math.min(ml1,ml2,ml3);
+      balEl.textContent = diff > 100 ? '⚠ nierównomierny' : '✓ zbalansowany';
+      balEl.style.color = diff > 100 ? 'var(--red)' : 'var(--grid-in)';
+    }
   }
 
   // Zasilanie domu (sekcja usunieta)
