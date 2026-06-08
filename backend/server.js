@@ -270,8 +270,6 @@ function applyParams(params) {
   set('powGetSysLoadFromPv',   'loadFromPv',  r1);
   set('powGetSysLoadFromGrid', 'loadFromGrid',r1);
   set('powGetSysLoadFromBp',   'loadFromBat', r1);
-  set('sysGridConnectionPower','feedPower',   r1);
-
   // Aktualizuj fromGrid z loadFromGrid gdy gridConnectionPower nie przychodzi
   if (params.powGetSysLoadFromGrid !== undefined && params.gridConnectionPower === undefined) {
     deviceState.fromGrid = r1(params.powGetSysLoadFromGrid);
