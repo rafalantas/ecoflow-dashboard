@@ -206,9 +206,16 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <line id="ln-load" x1="280" y1="232" x2="280" y2="272" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
 
         <!-- === ANIMOWANE KROPKI === -->
-        <circle id="dot-pv"   r="5" fill="var(--pv)"       style="display:none"><animateMotion id="anim-pv"   dur="1.2s" repeatCount="indefinite" data-fwd="M280,72 L280,138"   data-rev="M280,138 L280,72"   path="M280,72 L280,138"/></circle>
-        <circle id="dot-grid" r="5" fill="var(--grid-out)"  style="display:none"><animateMotion id="anim-grid" dur="1.3s" repeatCount="indefinite" data-fwd="M80,185 L168,185"  data-rev="M168,185 L80,185"   path="M80,185 L168,185"/></circle>
-        <circle id="dot-bat"  r="5" fill="var(--bat)"       style="display:none"><animateMotion id="anim-bat"  dur="1.4s" repeatCount="indefinite" data-fwd="M480,185 L392,185" data-rev="M392,185 L480,185"  path="M480,185 L392,185"/></circle>
+        <circle id="dot-pv-fwd"   r="0" fill="var(--pv)"      filter="url(#glow-pv)">
+          <animateTransform attributeName="transform" type="translate" from="280,72" to="280,138" dur="1.2s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-fwd" r="0" fill="var(--grid-out)" filter="url(#glow-red)">
+          <animateTransform attributeName="transform" type="translate" from="80,185" to="168,185" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-rev" r="0" fill="var(--grid-in)"  filter="url(#glow-grn)">
+          <animateTransform attributeName="transform" type="translate" from="168,185" to="80,185" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-fwd"  r="0" fill="var(--bat)"      filter="url(#glow-bat)">
+          <animateTransform attributeName="transform" type="translate" from="392,185" to="480,185" dur="1.4s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-rev"  r="0" fill="var(--bat)"      filter="url(#glow-bat)">
+          <animateTransform attributeName="transform" type="translate" from="480,185" to="392,185" dur="1.4s" repeatCount="indefinite"/></circle>
 
         <!-- === DOM — centrum === -->
         <rect x="212" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
