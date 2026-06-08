@@ -206,9 +206,9 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <line id="ln-load" x1="280" y1="232" x2="280" y2="272" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
 
         <!-- === ANIMOWANE KROPKI === -->
-        <circle id="dot-pv"   r="5" fill="var(--pv)"       style="display:none"><animateMotion id="anim-pv"   dur="1.2s" repeatCount="indefinite" path="M280,72 L280,138"/></circle>
-        <circle id="dot-grid" r="5" fill="var(--grid-out)"  style="display:none"><animateMotion id="anim-grid" dur="1.3s" repeatCount="indefinite" path="M80,185 L168,185"/></circle>
-        <circle id="dot-bat"  r="5" fill="var(--bat)"       style="display:none"><animateMotion id="anim-bat"  dur="1.4s" repeatCount="indefinite" path="M480,185 L392,185"/></circle>
+        <circle id="dot-pv"   r="5" fill="var(--pv)"       style="display:none"><animateMotion id="anim-pv"   dur="1.2s" repeatCount="indefinite" data-fwd="M280,72 L280,138"   data-rev="M280,138 L280,72"   path="M280,72 L280,138"/></circle>
+        <circle id="dot-grid" r="5" fill="var(--grid-out)"  style="display:none"><animateMotion id="anim-grid" dur="1.3s" repeatCount="indefinite" data-fwd="M80,185 L168,185"  data-rev="M168,185 L80,185"   path="M80,185 L168,185"/></circle>
+        <circle id="dot-bat"  r="5" fill="var(--bat)"       style="display:none"><animateMotion id="anim-bat"  dur="1.4s" repeatCount="indefinite" data-fwd="M480,185 L392,185" data-rev="M392,185 L480,185"  path="M480,185 L392,185"/></circle>
 
         <!-- === DOM — centrum === -->
         <rect x="212" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
@@ -455,10 +455,13 @@ function update(s) {
 
   // Animowane kropki
   svDot('dot-pv',   pvActive,   'var(--pv)',      'anim-pv',   false);
-  svDot('dot-grid', fromActive&&!feedActive, 'var(--grid-out)', 'anim-grid', false);
-  if(feedActive) svDot('dot-grid', true, 'var(--grid-in)', 'anim-grid', true);
-  svDot('dot-bat',  batDsg,     'var(--bat)',     'anim-bat',  false);
-  if(batChg) svDot('dot-bat',   true,  'var(--bat)',     'anim-bat',  true);
+  // Siec: fwd = siec→dom (pobor), rev = dom→siec (feed-in)
+  if(feedActive)          svDot('dot-grid', true, 'var(--grid-in)',  'anim-grid', true);
+  else if(fromActive)     svDot('dot-grid', true, 'var(--grid-out)', 'anim-grid', false);
+  else                    svDot('dot-grid', false, 'var(--grid-out)', 'anim-grid', false);
+  // Bateria: fwd = bat→dom (rozladowanie), rev = dom→bat (ladowanie)
+  if(batChg)  svDot('dot-bat', true, 'var(--bat)', 'anim-bat', true);
+  else        svDot('dot-bat', batDsg, 'var(--bat)', 'anim-bat', false);
 
   // Panele PV
   [[1,s.pv1Power,s.pv1Vol,s.pv1Amp,s.pv1Active],
@@ -541,11 +544,11 @@ function svDot(id, active, color, animId, reverse){
   const el=document.getElementById(id); if(!el) return;
   el.style.display = active ? '' : 'none';
   el.setAttribute('fill', color);
-  const anim=document.getElementById(animId);
-  if(anim && reverse) {
-    const path=anim.getAttribute('path');
-    if(path){const pts=path.split(' L ');if(pts.length===2)anim.setAttribute('path',pts[1]+' L '+pts[0]);}
-  }
+  const anim=document.getElementById(animId); if(!anim) return;
+  // Uzyj data-fwd/data-rev zamiast modyfikowac path
+  const fwd = anim.getAttribute('data-fwd');
+  const rev = anim.getAttribute('data-rev');
+  if(fwd && rev) anim.setAttribute('path', reverse ? rev : fwd);
 }
 function svLineVal(id, bgId, active, val, color){
   const el=document.getElementById(id), bg=document.getElementById(bgId);
