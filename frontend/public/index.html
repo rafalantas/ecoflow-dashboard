@@ -861,19 +861,31 @@ async function loadPrices() {
     // Siatka godzin
     const hoursEl = document.getElementById('price-hours');
     if (hoursEl) {
-      hoursEl.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px;margin-top:12px';
-      const todayPrices = data.prices.filter(p => p.start.slice(0,10) === now.toISOString().slice(0,10));
-      hoursEl.innerHTML = todayPrices.map(p => {
-        const h = new Date(p.start).getHours();
-        const isCur = cur && p.start === cur.start;
-        const bg = isCur ? 'rgba(245,158,11,.12)' : p.isCheap ? 'rgba(16,185,129,.08)' : p.isExpensive ? 'rgba(239,68,68,.08)' : 'var(--bg)';
-        const border = isCur ? '2px solid var(--pv)' : p.isCheap ? '1px solid rgba(16,185,129,.3)' : p.isExpensive ? '1px solid rgba(239,68,68,.3)' : '1px solid var(--brd)';
-        const color = isCur ? 'var(--pv)' : p.isCheap ? 'var(--grid-in)' : p.isExpensive ? 'var(--grid-out)' : 'var(--t1)';
-        return `<div style="padding:7px 4px;border-radius:8px;border:${border};text-align:center;background:${bg}">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--t2)">${String(h).padStart(2,'0')}:00</div>
-          <div style="font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:${color}">${p.price?.toFixed(3)||'–'}</div>
-        </div>`;
-      }).join('');
+      // Podziel na dzis i jutro (czas lokalny)
+      const todayStr = now.toLocaleDateString('sv-SE'); // YYYY-MM-DD w czasie lokalnym
+      const tomorrowStr = new Date(now.getTime()+86400000).toLocaleDateString('sv-SE');
+
+      const renderGroup = (prices, label) => {
+        if (!prices.length) return '';
+        const cells = prices.map(p => {
+          const localH = new Date(p.start).getHours();
+          const isCur = cur && p.start === cur.start;
+          const bg = isCur ? 'rgba(245,158,11,.12)' : p.isCheap ? 'rgba(16,185,129,.08)' : p.isExpensive ? 'rgba(239,68,68,.08)' : 'var(--bg)';
+          const border = isCur ? '2px solid var(--pv)' : p.isCheap ? '1px solid rgba(16,185,129,.3)' : p.isExpensive ? '1px solid rgba(239,68,68,.3)' : '1px solid var(--brd)';
+          const color = isCur ? 'var(--pv)' : p.isCheap ? 'var(--grid-in)' : p.isExpensive ? 'var(--grid-out)' : 'var(--t1)';
+          return `<div style="padding:7px 4px;border-radius:8px;border:${border};text-align:center;background:${bg}">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--t2)">${String(localH).padStart(2,'0')}:00</div>
+            <div style="font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:${color}">${p.price?.toFixed(3)||'–'}</div>
+          </div>`;
+        }).join('');
+        return `<div style="font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin:10px 0 5px">${label}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px">${cells}</div>`;
+      };
+
+      const todayPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === todayStr);
+      const tomorrowPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === tomorrowStr);
+
+      hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + renderGroup(tomorrowPrices, 'Jutro');
     }
   } catch(e) {}
 }
