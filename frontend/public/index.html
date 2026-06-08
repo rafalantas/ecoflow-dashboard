@@ -773,7 +773,9 @@ function showEnergy(data){
 function poll(){
   fetch('/api/state').then(r=>r.json()).then(s=>{
     update(s);
-    setOn(s.connected && s.lastMqttData && (Date.now() - s.lastMqttData < 300000));
+    // Polaczenie = dane sa swiezsze niz 5 minut
+    const isOnline = s.connected || (s.lastMqttData && (Date.now() - s.lastMqttData < 300000));
+    setOn(isOnline);
     hist.pv.push(s.pvTotal||0); hist.feed.push(s.feedPower||0); hist.soc.push(s.soc||0);
     hist.ts.push(new Date().toISOString());
     if(hist.ts.length>300)['pv','feed','soc','ts'].forEach(k=>hist[k].shift());
@@ -803,7 +805,7 @@ function connect(){
           if(hist.ts.length>300)['pv','feed','soc','ts'].forEach(k=>hist[k].shift());
           drawHist();
         }
-        if(m.type==='status'){setOn(m.connected);}
+        if(m.type==='status'){ if(m.connected) setOn(true); }
         if(m.type==='energy'){curData=m.data;showEnergy(m.data);}
       }catch(err){}
     };
