@@ -205,6 +205,37 @@ function applyMeterParams(params) {
   }
 }
 
+// ─── Grid balance calculator ─────────────────────────────────────────────────
+function calcGridBalance() {
+  const pv   = deviceState.pvTotal      || 0;
+  const load = deviceState.sysLoad      || 0;
+  const bat  = deviceState.battPower    || 0;
+  const chg  = deviceState.chgDsgState  || 0;
+  const batCharging    = chg === 2 ? Math.max(0, bat)          : 0;
+  const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : 0;
+  const net = pv + batDischarging - load - batCharging;
+  if (net > 20) {
+    deviceState.feedPower = Math.round(net);
+    deviceState.fromGrid  = 0;
+  } else if (net < -20) {
+    deviceState.feedPower = 0;
+    deviceState.fromGrid  = Math.round(-net);
+  } else {
+    deviceState.feedPower = 0;
+    deviceState.fromGrid  = 0;
+  }
+}
+
+// Timer - przeliczaj co 3s i broadcastuj jesli zmiana
+setInterval(() => {
+  const prevFeed = deviceState.feedPower;
+  const prevFrom = deviceState.fromGrid;
+  calcGridBalance();
+  if (deviceState.feedPower !== prevFeed || deviceState.fromGrid !== prevFrom) {
+    broadcast({ type: 'state', data: deviceState });
+  }
+}, 3000);
+
 // ─── Apply MQTT params ────────────────────────────────────────────────────────
 function applyParams(params) {
   let updated = false;
@@ -278,23 +309,7 @@ function applyParams(params) {
 
   if (updated) {
     // Przelicz bilans sieci ze swiezych wartosci
-    const pv   = deviceState.pvTotal   || 0;
-    const load = deviceState.sysLoad   || 0;
-    const bat  = deviceState.battPower || 0;
-    const chg  = deviceState.chgDsgState || 0;
-    const batCharging    = chg === 2 ? Math.max(0, bat)         : 0;
-    const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : 0;
-    const net = pv + batDischarging - load - batCharging;
-    if (net > 20) {
-      deviceState.feedPower = Math.round(net);
-      deviceState.fromGrid  = 0;
-    } else if (net < -20) {
-      deviceState.feedPower = 0;
-      deviceState.fromGrid  = Math.round(-net);
-    } else {
-      deviceState.feedPower = 0;
-      deviceState.fromGrid  = 0;
-    }
+    calcGridBalance();
 
     deviceState.lastUpdate   = new Date().toISOString();
     deviceState.lastMqttData = Date.now();
