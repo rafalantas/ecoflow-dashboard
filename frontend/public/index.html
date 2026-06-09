@@ -727,7 +727,7 @@ async function loadEnergy(){
   document.getElementById('etotal-ch').style.display='none';
   document.getElementById('estats').style.display='none';
   document.getElementById('eff-sec').style.display='none';
-  document.getElementById('egenby').style.display='none';
+  const egenbyEl=// egenby removed if(egenbyEl) egenbyEl.style.display='none';
   try{
     const r=await fetch(`/api/energy?period=${curP}&date=${curD}`);
     const data=await r.json();
@@ -748,7 +748,7 @@ function showEnergy(data){
       ch.className='etotal-ch '+(up?'up':'dn'); ch.style.display='inline';
     }
     document.getElementById('eby-kwh').textContent=data.totalKwh.toFixed(2)+' kWh';
-    document.getElementById('egenby').style.display='block';
+    if(document.getElementById('egenby')) document.getElementById('egenby').style.display='block';
   }
   document.getElementById('eloading').style.display='none';
   if(data.chart?.length){ec.style.display='block'; drawEChart(data);}
