@@ -589,26 +589,22 @@ function drawHist(){
     hctx.fillText(val>=1000?(val/1000).toFixed(1)+'k':val+'',p.l-4,y+3);
   }
   // Funkcja z wypelnieniem
-  const area=(data,color,alpha)=>{
+  const area=(data,color,rgb,alpha)=>{
     if(!data.some(v=>v>0)) return;
+    if(!data.some(v=>v>0))return;
     hctx.beginPath(); hctx.strokeStyle=color; hctx.lineWidth=1.8; hctx.lineJoin='round';
     data.forEach((v,i)=>{const x=p.l+(i/(n-1))*cw,y=p.t+ch-(v/mx)*ch; i?hctx.lineTo(x,y):hctx.moveTo(x,y)});
     hctx.stroke();
-    // Wypelnienie
     const last=data.length-1;
     hctx.lineTo(p.l+(last/(n-1))*cw, p.t+ch);
     hctx.lineTo(p.l, p.t+ch); hctx.closePath();
-    const grad=hctx.createLinearGradient(0,p.t,0,p.t+ch);
-    grad.addColorStop(0,color.replace(')',`,${alpha})`).replace('var(','').replace(')',''));
-    // Uproszczone - uzyj rgba
-    const c=color==='var(--pv)'?'245,158,11':color==='var(--grid-in)'?'16,185,129':'6,182,212';
     const g2=hctx.createLinearGradient(0,p.t,0,p.t+ch);
-    g2.addColorStop(0,`rgba(${c},${alpha})`); g2.addColorStop(1,`rgba(${c},0)`);
+    g2.addColorStop(0,`rgba(${rgb},${alpha})`); g2.addColorStop(1,`rgba(${rgb},0)`);
     hctx.fillStyle=g2; hctx.fill();
   };
-  area(hist.soc.map(s=>s*10),'var(--bat)',.12);
-  area(hist.feed,'var(--grid-in)',.15);
-  area(hist.pv,'var(--pv)',.18);
+  area(hist.soc.map(s=>s*10), gc('--bat'),     '6,182,212',   .12);
+  area(hist.feed,              gc('--grid-in'), '16,185,129',  .15);
+  area(hist.pv,                gc('--pv'),      '245,158,11',  .18);
   // Etykiety czasu
   if(hist.ts.length>1){
     hctx.fillStyle=gc('--t2'); hctx.font='9px DM Mono,monospace'; hctx.textAlign='center';
