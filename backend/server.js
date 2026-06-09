@@ -138,7 +138,8 @@ app.get('/api/energy', async (req, res) => {
   const today   = new Date().toISOString().slice(0, 10);
   const refDate = req.query.date || today;
   const cacheKey = `${period}:${refDate}`;
-  if (refDate !== today && energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < 3600000) {
+  const ttl = refDate === today ? 60000 : 3600000;
+  if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) {
     return res.json(energyCache[cacheKey]);
   }
   try {
