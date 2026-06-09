@@ -747,8 +747,7 @@ function showEnergy(data){
       ch.textContent=(up?'▲':'▼')+' '+Math.abs(data.changePercent).toFixed(1)+'%';
       ch.className='etotal-ch '+(up?'up':'dn'); ch.style.display='inline';
     }
-    document.getElementById('eby-kwh').textContent=data.totalKwh.toFixed(2)+' kWh';
-    if(document.getElementById('egenby')) document.getElementById('egenby').style.display='block';
+    // egenby removed
   }
   document.getElementById('eloading').style.display='none';
   if(data.chart?.length){ec.style.display='block'; drawEChart(data);}
