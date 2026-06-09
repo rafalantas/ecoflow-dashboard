@@ -806,7 +806,7 @@ function poll(){
   fetch('/api/state').then(r=>r.json()).then(s=>{
     update(s);
     // Polaczenie = dane sa swiezsze niz 5 minut
-    const isOnline = s.connected || (s.lastMqttData && (Date.now() - s.lastMqttData < 300000));
+    const isOnline = s.connected || (s.lastMqttData && (Date.now() - s.lastMqttData < 600000));
     setOn(isOnline);
     hist.pv.push(s.pvTotal||0); hist.feed.push(s.feedPower||0); hist.soc.push(s.soc||0);
     hist.ts.push(new Date().toISOString());
@@ -909,7 +909,8 @@ async function loadPrices() {
       const todayPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === todayStr && p.price != null);
       const tomorrowPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === tomorrowStr && p.price != null);
 
-      hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + renderGroup(tomorrowPrices, 'Jutro');
+      const tmrHtml = tomorrowPrices.length > 0 ? renderGroup(tomorrowPrices, 'Jutro') : '';
+      hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + tmrHtml;
     }
   } catch(e) { console.error('loadPrices error:', e); }
 }
