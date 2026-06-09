@@ -374,7 +374,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     </div>
     <div class="echart-wrap">
       <div id="eloading" class="eloading">ładowanie…</div>
-      <canvas id="echart" height="140" style="display:none"></canvas>
+      <canvas id="echart" height="140" style="display:none;width:100%"></canvas>
       <div id="echart-tooltip"></div>
     </div>
     <div id="no-data" class="no-data" style="display:none">Brak danych</div>
@@ -901,7 +901,7 @@ async function loadPrices() {
 
       hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + renderGroup(tomorrowPrices, 'Jutro');
     }
-  } catch(e) {}
+  } catch(e) { console.error('loadPrices error:', e); }
 }
 </script>
 </body>
