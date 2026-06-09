@@ -69,6 +69,7 @@ let deviceState = {
   sysLoad: 0, loadFromPv: 0, loadFromGrid: 0, loadFromBat: 0,
   // Bateria - zdrowie
   battSoh: 100, battCycles: 0, accuChgEnergy: 0, accuDsgEnergy: 0,
+  vBat: 0,
   // Inne
   invTemp: 0, maxChgSoc: 95, minDsgSoc: 20,
   // Licznik
@@ -304,6 +305,7 @@ function applyParams(params) {
   set('cmsDsgRemTime','dsgRemTime', v => v);
   set('bmsChgDsgState','chgDsgState', v => v);
   set('bmsMaxCellTemp','maxCellTemp', v => v);
+  set('vBat','vBat', v => v);
   set('bmsMinCellTemp','minCellTemp', v => v);
   if (params.cellTemp) { deviceState.cellTemp = params.cellTemp; updated = true; }
   if (params.cellVol)  { deviceState.cellVol  = params.cellVol;  updated = true; }
@@ -473,17 +475,11 @@ async function fetchEnergyForPeriod(period, refDate) {
     if (m?.indexValue != null) {
       const monthEarnings = Math.round(m.indexValue * 100) / 100;
       out.currency = (m.unit && m.unit !== '$' && m.unit !== '€') ? m.unit : 'zł';
-      if (period === 'day' || period === 'week') {
-        const mResp = await privatePost('/app/space/data/single/index/', {
-          code: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH', spaceId: SPACE_ID,
-          params: { beginTime: mBegin, endTime: range.end },
-        });
-        const mWh = (mResp?.code === '0' && Array.isArray(mResp.data))
-          ? (mResp.data.find(d => d.indexName === 'master_data')?.indexValue || 0) : 0;
-        out.earnings = (mWh > 0 && out.totalKwh > 0)
-          ? Math.round(monthEarnings * out.totalKwh / (mWh/1000) * 100) / 100 : null;
-        out.earningsMonth = monthEarnings;
-      } else { out.earnings = monthEarnings; }
+      if (period === 'month' || period === 'year') {
+        out.earnings = monthEarnings;
+      } else {
+        out.earnings = null; // zbyt niedokladne dla day/week
+      }
     }
   }
 
