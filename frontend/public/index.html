@@ -845,6 +845,8 @@ function connect(){
   setInterval(()=>{if(!wsOK)poll();},3000);
 }
 
+// Wymusz resize po zaladowaniu strony
+window.addEventListener('load', ()=>{ drawHist(); if(curData)drawEChart(curData); });
 window.addEventListener('resize',()=>{
   drawHist();
   if(curData)drawEChart(curData);
@@ -854,6 +856,8 @@ window.addEventListener('resize',()=>{
 setupTT();
 connect();
 setTimeout(poll, 500);
+// Inicjalizuj wykres po zaladowaniu layoutu
+setTimeout(()=>{drawHist(); if(curData)drawEChart(curData);}, 100);
 loadPrices();
 setInterval(loadPrices, 15*60*1000);
 
