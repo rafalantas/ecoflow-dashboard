@@ -270,33 +270,40 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
   <!-- BATERIA -->
   <div class="card">
     <div class="card-title">// bateria</div>
-    <div class="bat-layout">
-      <div>
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+
+      <!-- SOC big -->
+      <div style="flex-shrink:0;min-width:120px">
         <div class="bat-soc-big" id="b-soc">–<span class="bat-soc-u">%</span></div>
-        <div class="bat-bar-wrap" style="width:180px">
+        <div class="bat-bar-wrap" style="width:160px">
           <div class="bat-bar"><div class="bat-bar-f" id="b-bar"></div></div>
         </div>
         <div class="bat-range" id="b-range">20% – 95%</div>
       </div>
-      <div>
-        <div class="bat-stats">
-          <div class="bs"><div class="bs-lbl">Stan</div><div class="bs-val" id="b-state">–</div></div>
-          <div class="bs"><div class="bs-lbl">Moc</div><div class="bs-val" id="b-pwr">–</div></div>
-          <div class="bs"><div class="bs-lbl">Do pełna</div><div class="bs-val" id="b-chg">–</div></div>
-          <div class="bs"><div class="bs-lbl">Do pustej</div><div class="bs-val" id="b-dsg">–</div></div>
-          <div class="bs"><div class="bs-lbl">Temp. cel.</div><div class="bs-val" id="b-temp">–</div></div>
-          <div class="bs"><div class="bs-lbl">Napięcie bat.</div><div class="bs-val" id="b-volt">–</div></div>
-        </div>
-        <div class="bat-cells" id="b-cells"></div>
+
+      <!-- Info -->
+      <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:200px">
+        <div class="bs"><div class="bs-lbl">Stan</div><div class="bs-val" id="b-state">–</div></div>
+        <div class="bs"><div class="bs-lbl">Moc</div><div class="bs-val" id="b-pwr">–</div></div>
+        <div class="bs"><div class="bs-lbl" id="b-time-lbl">Czas</div><div class="bs-val" id="b-time">–</div></div>
+        <div class="bs"><div class="bs-lbl">Temp. cel.</div><div class="bs-val" id="b-temp">–</div></div>
+        <div class="bs"><div class="bs-lbl">Napięcie bat.</div><div class="bs-val" id="b-volt">–</div></div>
+        <div class="bs"><div class="bs-lbl">SOH</div><div class="bs-val" id="b-soh">–</div></div>
       </div>
     </div>
+
+    <!-- Napięcia cel -->
+    <div class="bat-cells" id="b-cells" style="margin-top:12px"></div>
+
+    <!-- Statystyki -->
     <div class="bat-extra">
-      <div class="be"><div class="be-lbl">Zdrowie (SOH)</div><div class="be-val" id="b-soh">–<span class="u"> %</span></div></div>
       <div class="be"><div class="be-lbl">Cykle</div><div class="be-val" id="b-cyc">–<span class="u"> ×</span></div></div>
-      <div class="be"><div class="be-lbl">Naładowano łącznie</div><div class="be-val" id="b-ce">–<span class="u"> Wh</span></div></div>
-      <div class="be"><div class="be-lbl">Rozładowano łącznie</div><div class="be-val" id="b-de">–<span class="u"> Wh</span></div></div>
+      <div class="be"><div class="be-lbl">Naładowano łącznie</div><div class="be-val" id="b-ce">–<span class="u"> kWh</span></div></div>
+      <div class="be"><div class="be-lbl">Rozładowano łącznie</div><div class="be-val" id="b-de">–<span class="u"> kWh</span></div></div>
+      <div class="be"><div class="be-lbl">Pojemność</div><div class="be-val">3.84<span class="u"> kWh</span></div></div>
     </div>
   </div>
+
 
   <!-- LICZNIK -->
   <div class="card" id="meter-card">
@@ -510,15 +517,18 @@ function update(s) {
   document.getElementById('b-state').textContent = batStateText;
   document.getElementById('b-state').style.color  = batStateColor;
   document.getElementById('b-pwr').textContent=batPwr>0?`+${Math.round(batPwr)}W`:batPwr<0?`${Math.round(batPwr)}W`:'0W';
-  document.getElementById('b-chg').textContent=chg===2?ft(s.chgRemTime):'–';
-  document.getElementById('b-dsg').textContent=chg===1?ft(s.dsgRemTime):'–';
+  // Czas do pelna lub pustej
+  const bTimeLbl=document.getElementById('b-time-lbl'), bTimeVal=document.getElementById('b-time');
+  if(batChg){if(bTimeLbl)bTimeLbl.textContent='Do pełna';if(bTimeVal)bTimeVal.textContent=ft(s.chgRemTime);}
+  else if(batDsg){if(bTimeLbl)bTimeLbl.textContent='Do pustej';if(bTimeVal)bTimeVal.textContent=ft(s.dsgRemTime);}
+  else{if(bTimeLbl)bTimeLbl.textContent='Czas';if(bTimeVal)bTimeVal.textContent='–';}
   document.getElementById('b-temp').textContent=s.maxCellTemp?`${s.minCellTemp}–${s.maxCellTemp} °C`:'–';
   if(s.vBat) document.getElementById('b-volt').textContent=(s.vBat/1000).toFixed(2)+' V';
   if(s.cellVol?.length) document.getElementById('b-cells').innerHTML=s.cellVol.map((v,i)=>`<span class="cell-chip">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
   if(s.battSoh!=null) document.getElementById('b-soh').innerHTML=`${s.battSoh.toFixed(1)}<span class="u"> %</span>`;
   if(s.battCycles!=null) document.getElementById('b-cyc').innerHTML=`${s.battCycles}<span class="u"> ×</span>`;
-  if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${s.accuChgEnergy}<span class="u"> Wh</span>`;
-  if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${s.accuDsgEnergy}<span class="u"> Wh</span>`;
+  if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${(s.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
+  if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
 
   // Licznik
   if(s.meterL1||s.meterL2||s.meterL3||s.meterTotal) {
@@ -896,8 +906,8 @@ async function loadPrices() {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px">${cells}</div>`;
       };
 
-      const todayPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === todayStr);
-      const tomorrowPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === tomorrowStr);
+      const todayPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === todayStr && p.price != null);
+      const tomorrowPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === tomorrowStr && p.price != null);
 
       hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + renderGroup(tomorrowPrices, 'Jutro');
     }
