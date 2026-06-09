@@ -533,9 +533,9 @@ function update(s) {
     phases.forEach(([n,v,c])=>{
       const pct = mtot>0 ? Math.round(v/mtot*100) : 0;
       const bar = Math.min(100, Math.round(v/mx3*100));
-      const pctEl = document.getElementById('m-l'+n+'-pct');
       const barEl = document.getElementById('m-l'+n+'-bar');
-      if(pctEl) pctEl.textContent = mtot>0 ? pct+'% zużycia' : '';
+      const pctEl = document.getElementById('m-l'+n+'-pct');
+      if(pctEl) pctEl.textContent = '';
       if(barEl) barEl.style.width = bar+'%';
     });
 
@@ -734,7 +734,7 @@ async function loadEnergy(){
     curData=data;
     if(data.error){document.getElementById('eloading').textContent='Brak danych (skonfiguruj EF_EMAIL i EF_PASSWORD)';return}
     showEnergy(data);
-  }catch(e){document.getElementById('eloading').textContent='Błąd ładowania'}
+  }catch(e){console.error('loadEnergy error:',e); document.getElementById('eloading').textContent='Błąd: '+e.message}
 }
 
 function showEnergy(data){
