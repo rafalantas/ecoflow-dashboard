@@ -406,6 +406,21 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     </div>
   </div>
 
+  <!-- HARMONOGRAM INTELLIGENT+ -->
+  <div class="card" id="schedule-card" style="display:none">
+    <div class="card-title">// plan intelligent+</div>
+    <div style="overflow-x:auto">
+      <canvas id="schart" height="160" style="width:100%;min-width:400px;display:block"></canvas>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap" id="schedule-legend">
+      <div class="li"><div class="ld" style="background:#f59e0b"></div><span style="font-family:var(--mono);font-size:10px;color:var(--t2)">Solar</span></div>
+      <div class="li"><div class="ld" style="background:#06b6d4"></div><span style="font-family:var(--mono);font-size:10px;color:var(--t2)">Bateria</span></div>
+      <div class="li"><div class="ld" style="background:#ef4444"></div><span style="font-family:var(--mono);font-size:10px;color:var(--t2)">Z sieci</span></div>
+      <div class="li"><div class="ld" style="background:#10b981"></div><span style="font-family:var(--mono);font-size:10px;color:var(--t2)">Do sieci</span></div>
+      <div class="li" style="margin-left:auto"><span style="font-family:var(--mono);font-size:10px;color:var(--t2)">SOC% × 40</span></div>
+    </div>
+  </div>
+
   <!-- HISTORIA SESJI -->
   <div class="card">
     <div class="hist-hdr">
