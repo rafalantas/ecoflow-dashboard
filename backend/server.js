@@ -88,6 +88,7 @@ let dailySnapshots = {};
 // Cache energii
 let energyCache = {};
 let pricesCache = { data: null, fetchedAt: 0 };
+let scheduleCache = { data: null, fetchedAt: 0 };
 
 // Token prywatnego API
 let privateToken = null;
@@ -101,6 +102,35 @@ const wss    = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json(deviceState));
 app.get('/api/history', (_, res) => res.json(history));
+
+app.get('/api/schedule', async (req, res) => {
+  const now = Date.now();
+  if (scheduleCache.data && now - scheduleCache.fetchedAt < 15 * 60 * 1000) {
+    return res.json(scheduleCache.data);
+  }
+  if (!privateToken) return res.json({ error: 'no_token' });
+  try {
+    const nonce = crypto.randomBytes(8).toString('hex');
+    const timestamp = String(Date.now());
+    const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
+    const headers = {
+      'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
+      'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
+      'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'
+    };
+    const r = await axios.get('https://api-e.ecoflow.com/tou-service/intelligent/data',
+      { headers, params: { sn: DEVICE_SN, timezone: 'Europe/Warsaw', full: 1 }, timeout: 10000 });
+    if (r.data.code === '0') {
+      const data = { schedule: r.data.data?.intelligentDataList || [] };
+      scheduleCache = { data, fetchedAt: now };
+      return res.json(data);
+    }
+    res.json({ error: r.data.message, schedule: [] });
+  } catch(e) {
+    console.error('Schedule error:', e.message);
+    res.json({ error: e.message, schedule: [] });
+  }
+});
 
 app.get('/api/prices', async (req, res) => {
   const now = Date.now();
