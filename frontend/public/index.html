@@ -996,12 +996,12 @@ function drawSchedule(items) {
 
   ctx.beginPath(); ctx.strokeStyle='#8b5cf6'; ctx.lineWidth=2; ctx.lineJoin='round';
   items.forEach((d,i)=>{
-    const x=p.l+i*slot+slot/2;
+    const x = i===0 ? p.l : i===n-1 ? p.l+cw : p.l+i*slot+slot/2;
     const y=p.t+ch-((d.soc||0)/100)*ch;
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
-  ctx.lineTo(p.l+(n-0.5)*slot,p.t+ch); ctx.lineTo(p.l+0.5*slot,p.t+ch); ctx.closePath();
+  ctx.lineTo(p.l+cw,p.t+ch); ctx.lineTo(p.l,p.t+ch); ctx.closePath();
   const sg=ctx.createLinearGradient(0,p.t,0,p.t+ch);
   sg.addColorStop(0,'rgba(139,92,246,.15)'); sg.addColorStop(1,'rgba(139,92,246,0)');
   ctx.fillStyle=sg; ctx.fill();
