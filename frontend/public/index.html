@@ -4,42 +4,59 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EcoFlow STREAM Ultra X</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#f5f6f8; --sur:#ffffff; --brd:#e8eaed;
-  --pv:#f59e0b; --bat:#06b6d4; --grid-in:#10b981; --grid-out:#ef4444; --load:#8b5cf6;
-  --t1:#111827; --t2:#6b7280; --t3:#9ca3af;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
-  --shadow-lg:0 4px 16px rgba(0,0,0,.10);
-  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
-  --r:12px;
+  --bg:#f0f2f5;
+  --sur:#ffffff;
+  --sur2:#f8f9fb;
+  --brd:#e4e7ec;
+  --brd2:#ced2da;
+  --pv:#f59e0b; --pv-dim:rgba(245,158,11,.12);
+  --bat:#06b6d4; --bat-dim:rgba(6,182,212,.12);
+  --grid-in:#10b981; --grid-in-dim:rgba(16,185,129,.12);
+  --grid-out:#ef4444; --grid-out-dim:rgba(239,68,68,.12);
+  --load:#8b5cf6; --load-dim:rgba(139,92,246,.12);
+  --t1:#0f172a; --t2:#64748b; --t3:#94a3b8;
+  --red:#ef4444;
+  --shadow:0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+  --r:16px; --r-sm:10px;
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#0f1117; --sur:#1a1d27; --brd:#272b38;
-  --t1:#f1f5f9; --t2:#94a3b8; --t3:#475569;
-  --shadow:0 1px 3px rgba(0,0,0,.3); --shadow-lg:0 4px 16px rgba(0,0,0,.4);
+  --bg:#0a0c12;
+  --sur:#13161f;
+  --sur2:#1a1e2a;
+  --brd:#1e2330;
+  --brd2:#252b3a;
+  --t1:#f0f4ff; --t2:#7c8ba3; --t3:#3d4a5c;
+  --shadow:0 1px 4px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.3);
+  --shadow-md:0 4px 16px rgba(0,0,0,.5);
 }}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh;font-size:14px}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
 
 /* Topbar */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--sur);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100}
-.logo{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.05em;color:var(--t1)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--sur);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.logo{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--t1);display:flex;align-items:center;gap:8px}
+.logo::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--pv);box-shadow:0 0 8px var(--pv)}
 .logo span{color:var(--pv)}
-.topbar-r{display:flex;align-items:center;gap:12px}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--grid-out)}
+.topbar-r{display:flex;align-items:center;gap:14px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--grid-out);transition:all .3s}
 .dot.on{background:var(--grid-in);box-shadow:0 0 0 3px rgba(16,185,129,.2)}
-  .dot.pulse{animation:dot-pulse .4s ease-out}
-  @keyframes dot-pulse{0%{transform:scale(1)}50%{transform:scale(2.2);box-shadow:0 0 0 6px rgba(16,185,129,.3)}100%{transform:scale(1)}}
-.ts{font-family:var(--mono);font-size:11px;color:var(--t2)}
+.dot.pulse{animation:dot-pulse .5s ease-out}
+@keyframes dot-pulse{0%{transform:scale(1)}50%{transform:scale(2);box-shadow:0 0 0 5px rgba(16,185,129,.25)}100%{transform:scale(1)}}
+.ts{font-family:var(--mono);font-size:11px;color:var(--t2);letter-spacing:.02em}
 
 /* Main layout */
-.main{max-width:1080px;margin:0 auto;padding:20px 20px}
+.main{max-width:1100px;margin:0 auto;padding:24px 20px}
 
 /* Card */
-.card{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
-.card-title{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--t2);text-transform:uppercase;letter-spacing:.12em;margin-bottom:18px}
+.card{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);box-shadow:var(--shadow);padding:22px;margin-bottom:16px;transition:box-shadow .2s}
+.card:hover{box-shadow:var(--shadow-md)}
+.card-title{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px}
 
 /* ═══ FLOW DIAGRAM ════════════════════════════════════════════════════════════ */
 .flow-wrap{padding:20px}
