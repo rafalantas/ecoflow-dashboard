@@ -880,6 +880,50 @@ setInterval(loadPrices, 15*60*1000);
 loadSchedule();
 setInterval(loadSchedule, 15*60*1000);
 
+async function loadPrices() {
+  try {
+    const r = await fetch('/api/prices');
+    const data = await r.json();
+    if (!data.prices || data.error) return;
+    const card = document.getElementById('prices-card');
+    if(card) card.style.display = 'block';
+    const now = new Date();
+    const cur = data.prices.find(p => new Date(p.start) <= now && new Date(p.end) > now);
+    if (cur) {
+      document.getElementById('price-now-val').textContent = cur.price?.toFixed(4) || '–';
+      const badge = document.getElementById('price-now-badge');
+      badge.textContent = cur.isCheap ? '✓ tania' : cur.isExpensive ? '↑ droga' : 'normalna';
+      badge.className = 'price-badge ' + (cur.isCheap ? 'price-cheap' : cur.isExpensive ? 'price-exp' : 'price-norm');
+      const pros = document.getElementById('price-prosumer');
+      if(pros) pros.textContent = 'Prosument: ' + (cur.priceProsumer?.toFixed(4)||'–') + ' zł/kWh';
+    }
+    const hoursEl = document.getElementById('price-hours');
+    if (hoursEl) {
+      const todayStr = now.toLocaleDateString('sv-SE');
+      const tomorrowStr = new Date(now.getTime()+86400000).toLocaleDateString('sv-SE');
+      const renderGroup = (prices, label) => {
+        if (!prices.length) return '';
+        const cells = prices.map(p => {
+          const h = new Date(p.start).getHours();
+          const isCur = cur && p.start === cur.start;
+          const bg = isCur?'rgba(245,158,11,.12)':p.isCheap?'rgba(16,185,129,.08)':p.isExpensive?'rgba(239,68,68,.08)':'var(--bg)';
+          const border = isCur?'2px solid var(--pv)':p.isCheap?'1px solid rgba(16,185,129,.3)':p.isExpensive?'1px solid rgba(239,68,68,.3)':'1px solid var(--brd)';
+          const color = isCur?'var(--pv)':p.isCheap?'var(--grid-in)':p.isExpensive?'var(--grid-out)':'var(--t1)';
+          return `<div style="padding:7px 4px;border-radius:8px;border:${border};text-align:center;background:${bg}">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--t2)">${String(h).padStart(2,'0')}:00</div>
+            <div style="font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:${color}">${p.price?.toFixed(3)||'–'}</div>
+          </div>`;
+        }).join('');
+        return `<div style="font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin:10px 0 5px">${label}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px">${cells}</div>`;
+      };
+      const todayPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === todayStr && p.price != null);
+      const tomorrowPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === tomorrowStr && p.price != null);
+      hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + renderGroup(tomorrowPrices, 'Jutro');
+    }
+  } catch(e) { if(e.message&&!e.message.includes('DOCTYPE')&&!e.message.includes('close')) console.error('loadPrices:',e.message); }
+}
+
 async function loadSchedule() {
   try {
     const r = await fetch('/api/schedule');
@@ -964,3 +1008,6 @@ async function loadSchedule() {
     drawSchedule(data.schedule);
   } catch(e) {}
 }
+</script>
+</body>
+</html>
