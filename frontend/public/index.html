@@ -758,7 +758,7 @@ async function loadEnergy(){
     curData=data;
     if(data.error){document.getElementById('eloading').textContent='Brak danych (skonfiguruj EF_EMAIL i EF_PASSWORD)';return}
     showEnergy(data);
-  }catch(e){console.error('loadEnergy error:',e); document.getElementById('eloading').textContent='Błąd: '+e.message}
+  }catch(e){ if(e.message&&!e.message.includes('DOCTYPE')&&!e.message.includes('close')) console.error('loadEnergy:',e.message); }
 }
 
 function showEnergy(data){
@@ -1110,7 +1110,7 @@ async function loadPrices() {
       const tmrHtml = tomorrowPrices.length > 0 ? renderGroup(tomorrowPrices, 'Jutro') : '';
       hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + tmrHtml;
     }
-  } catch(e) { console.error('loadPrices error:', e); }
+  } catch(e) { if(!e.message.includes('DOCTYPE')&&!e.message.includes('close')) console.error('loadPrices:', e.message); }
 }
 </script>
 </body>
