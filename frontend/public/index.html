@@ -896,6 +896,105 @@ function drawSchedule(items) {
   if(!cv) return;
   const ctx = cv.getContext('2d');
   const dpr = window.devicePixelRatio||1;
+  const w = cv.offsetWidth, h = 200;
+  cv.width = w*dpr; cv.height = h*dpr; cv.style.height = h+'px';
+  ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
+
+  const p = {t:12, b:30, l:44, r:44};
+  const cw = w-p.l-p.r, ch = h-p.t-p.b, n = items.length;
+  const slot = cw/n;
+  const maxPow = Math.max(...items.map(d=>Math.max(d.solar||0,d.grid||0,d.battery||0)), 500);
+
+  // Siatka
+  for(let i=0;i<=4;i++){
+    const y=p.t+(ch/4)*i;
+    ctx.fillStyle=gc('--brd'); ctx.fillRect(p.l,y,cw,.5);
+    ctx.fillStyle=gc('--t2'); ctx.font='9px DM Mono,monospace';
+    ctx.textAlign='right';
+    const v=Math.round(maxPow*(1-i/4));
+    ctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':v+'', p.l-4, y+3);
+    ctx.textAlign='left';
+    ctx.fillText(Math.round(100*(1-i/4))+'%', w-p.r+4, y+3);
+  }
+
+  // Słupki — stacked (solar na dole, bateria w środku, grid na górze)
+  items.forEach((d,i)=>{
+    const bw = slot * 0.6;
+    const x = p.l + i*slot + (slot-bw)/2;
+    const solar = d.solar||0, bat = d.battery||0, grid = d.grid||0;
+    const total = Math.max(solar+bat+grid, 1);
+    const scale = v => Math.max(0, (v/maxPow)*ch);
+
+    let y = p.t+ch;
+
+    const drawSeg = (v, color) => {
+      if(v < 5) return;
+      const segH = scale(v);
+      y -= segH;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if(ctx.roundRect && y === p.t+ch - scale(solar+bat+grid))
+        ctx.roundRect(x, y, bw, segH, [3,3,0,0]);
+      else ctx.rect(x, y, bw, segH);
+      ctx.fill();
+    };
+
+    // Rysuj od dołu: solar, bateria, grid
+    const startY = p.t+ch;
+    y = startY;
+
+    if(grid>5){ const sh=scale(grid); ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.rect(x,y-sh,bw,sh); ctx.fill(); y-=sh; }
+    if(bat>5) { const sh=scale(bat);  ctx.fillStyle='#06b6d4'; ctx.beginPath(); ctx.rect(x,y-sh,bw,sh); ctx.fill(); y-=sh; }
+    if(solar>5){ const sh=scale(solar); ctx.fillStyle='#f59e0b'; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x,y-sh,bw,sh,[3,3,0,0]); else ctx.rect(x,y-sh,bw,sh); ctx.fill(); }
+
+    // Zaokraglenie gory najwyzszego slupka
+    const topH = scale(solar+bat+grid);
+    if(topH > 4 && ctx.roundRect){
+      ctx.beginPath(); ctx.roundRect(x, p.t+ch-topH, bw, Math.min(6, topH), [3,3,0,0]);
+      const topColor = solar>5 ? '#f59e0b' : bat>5 ? '#06b6d4' : '#ef4444';
+      ctx.fillStyle = topColor; ctx.fill();
+    }
+  });
+
+  // Linia SOC
+  ctx.beginPath(); ctx.strokeStyle='#8b5cf6'; ctx.lineWidth=2; ctx.lineJoin='round';
+  items.forEach((d,i)=>{
+    const x=p.l+(i+0.5)*slot;
+    const y=p.t+ch-((d.soc||0)/100)*ch;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
+  ctx.lineTo(p.l+(n-0.5)*slot,p.t+ch); ctx.lineTo(p.l+0.5*slot,p.t+ch); ctx.closePath();
+  const sg=ctx.createLinearGradient(0,p.t,0,p.t+ch);
+  sg.addColorStop(0,'rgba(139,92,246,.15)'); sg.addColorStop(1,'rgba(139,92,246,0)');
+  ctx.fillStyle=sg; ctx.fill();
+
+  // Etykiety X
+  ctx.fillStyle=gc('--t2'); ctx.font='9px DM Mono,monospace'; ctx.textAlign='center';
+  const step=Math.max(1,Math.ceil(n/8));
+  items.forEach((d,i)=>{
+    if(i%step!==0&&i!==n-1)return;
+    ctx.fillText(d.time.slice(0,5), p.l+(i+0.5)*slot, h-6);
+  });
+}
+
+
+async function loadSchedule() {
+  try {
+    const r = await fetch('/api/schedule');
+    const data = await r.json();
+    if (!data.schedule || !data.schedule.length) return;
+    const card = document.getElementById('schedule-card');
+    if(card) card.style.display = 'block';
+    drawSchedule(data.schedule);
+  } catch(e) {}
+}
+
+function drawSchedule(items) {
+  const cv = document.getElementById('schart');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
   const w = cv.offsetWidth, h = 180;
   cv.width = w*dpr; cv.height = h*dpr; cv.style.height = h+'px';
   ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
