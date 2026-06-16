@@ -896,6 +896,87 @@ function drawSchedule(items) {
   if(!cv) return;
   const ctx = cv.getContext('2d');
   const dpr = window.devicePixelRatio||1;
+  const w = cv.offsetWidth, h = 180;
+  cv.width = w*dpr; cv.height = h*dpr; cv.style.height = h+'px';
+  ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
+
+  const p = {t:10, b:28, l:44, r:44};
+  const cw = w-p.l-p.r, ch = h-p.t-p.b, n = items.length;
+  const slot = cw/n;
+  const bw = Math.max(3, Math.min(14, slot/3 - 1));
+  const maxPow = Math.max(...items.map(d=>Math.max(d.solar||0,d.grid||0,d.battery||0)), 500);
+
+  // Siatka + oś lewa (moc) + prawa (SOC%)
+  for(let i=0;i<=4;i++){
+    const y=p.t+(ch/4)*i;
+    ctx.fillStyle=gc('--brd'); ctx.fillRect(p.l,y,cw,.5);
+    ctx.fillStyle=gc('--t2'); ctx.font='9px DM Mono,monospace';
+    ctx.textAlign='right';
+    const v=Math.round(maxPow*(1-i/4));
+    ctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':v+'', p.l-4, y+3);
+    ctx.textAlign='left';
+    ctx.fillText(Math.round(100*(1-i/4))+'%', w-p.r+4, y+3);
+  }
+
+  // 3 słupki per godzina
+  items.forEach((d,i)=>{
+    const totalBw = bw*3 + 2;
+    const startX = p.l + i*slot + (slot-totalBw)/2;
+    [
+      [d.solar||0,   '#f59e0b', 0],
+      [d.battery||0, '#06b6d4', 1],
+      [d.grid||0,    '#ef4444', 2],
+    ].forEach(([v,color,off])=>{
+      if(v<5)return;
+      const bh=Math.max(2,(v/maxPow)*ch);
+      const x=startX+off*(bw+1), y0=p.t+ch-bh;
+      ctx.fillStyle=color;
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(x,y0,bw,bh,[2,2,0,0]);
+      else ctx.rect(x,y0,bw,bh);
+      ctx.fill();
+    });
+  });
+
+  // Linia SOC na prawej osi (0-100%, nie skalowana przez maxPow)
+  ctx.beginPath(); ctx.strokeStyle='#8b5cf6'; ctx.lineWidth=2; ctx.lineJoin='round';
+  items.forEach((d,i)=>{
+    const x=p.l+(i+0.5)*slot;
+    const y=p.t+ch-((d.soc||0)/100)*ch;
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
+  ctx.lineTo(p.l+(n-0.5)*slot,p.t+ch); ctx.lineTo(p.l+0.5*slot,p.t+ch); ctx.closePath();
+  const sg=ctx.createLinearGradient(0,p.t,0,p.t+ch);
+  sg.addColorStop(0,'rgba(139,92,246,.15)'); sg.addColorStop(1,'rgba(139,92,246,0)');
+  ctx.fillStyle=sg; ctx.fill();
+
+  // Etykiety X
+  ctx.fillStyle=gc('--t2'); ctx.font='9px DM Mono,monospace'; ctx.textAlign='center';
+  const step=Math.max(1,Math.ceil(n/8));
+  items.forEach((d,i)=>{
+    if(i%step!==0&&i!==n-1)return;
+    ctx.fillText(d.time.slice(0,5), p.l+(i+0.5)*slot, h-6);
+  });
+}
+
+
+async function loadSchedule() {
+  try {
+    const r = await fetch('/api/schedule');
+    const data = await r.json();
+    if (!data.schedule || !data.schedule.length) return;
+    const card = document.getElementById('schedule-card');
+    if(card) card.style.display = 'block';
+    drawSchedule(data.schedule);
+  } catch(e) {}
+}
+
+function drawSchedule(items) {
+  const cv = document.getElementById('schart');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
   const w = cv.offsetWidth, h = 200;
   cv.width = w*dpr; cv.height = h*dpr; cv.style.height = h+'px';
   ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
