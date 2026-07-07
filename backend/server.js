@@ -276,8 +276,18 @@ function calcGridBalance() {
   const load = deviceState.sysLoad      || 0;
   const bat  = deviceState.battPower    || 0;
   const chg  = deviceState.chgDsgState  || 0;
-  const batCharging    = chg === 2 ? Math.max(0, bat)          : 0;
-  const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : 0;
+  const meter = deviceState.meterTotal  || 0;
+
+  // Jesli licznik daje dane - uzyj go jako zrodla prawdy dla poboru z sieci
+  if (meter > 20) {
+    deviceState.fromGrid  = meter;
+    deviceState.feedPower = 0;
+    return;
+  }
+
+  // Fallback: bilans energetyczny
+  const batCharging    = chg === 2 ? Math.max(0, bat)           : (bat > 20  ? bat : 0);
+  const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : (bat < -20 ? Math.abs(bat) : 0);
   const net = pv + batDischarging - load - batCharging;
   if (net > 20) {
     deviceState.feedPower = Math.round(net);
