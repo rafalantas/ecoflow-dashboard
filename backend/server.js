@@ -213,8 +213,59 @@ app.get('/api/efficiency', async (req, res) => {
     const dailyEff = consumptionWh > 0
       ? Math.round(solarWh / consumptionWh * 1000) / 10 : 0;
 
-    // Prognoza pogodowa
+    // Prognoza: historia * korekta pogodowa
     let forecastKwh = 0, peakSunHours = 0, weather = [];
+    try {
+      const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
+        'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
+
+      // Krok 1: historia ostatnich 7 dni
+      const histDays = [];
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const ds = d.toISOString().slice(0, 10);
+        const hd = await efHistorical(
+          'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA',
+          `${ds} 00:00:00`, `${ds} 23:59:59`
+        );
+        if (hd?.length) histDays.push(parseFloat(hd[0].indexValue) / 1000);
+      }
+
+      if (histDays.length >= 3) {
+        // Srednia wazona
+        let sumW = 0, sumV = 0;
+        histDays.forEach((v, i) => { const w = histDays.length - i; sumW += w; sumV += v * w; });
+        const histAvg = sumV / sumW;
+
+        // Krok 2: pogoda dzisiaj przez prywatne API
+        let weatherFactor = 1.0;
+        if (privateToken) {
+          try {
+            const nonce = crypto.randomBytes(8).toString('hex');
+            const timestamp = String(Date.now());
+            const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
+            const wh = {'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
+              'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
+              'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
+            const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
+              { headers: wh, params: { beginTime: `${localDate} 00:00:00`, endTime: `${localDate} 23:59:59`,
+                spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
+            if (wr.data.code === '0' && wr.data.data?.length) {
+              weather = wr.data.data.map(w => ({
+                hour: new Date(w.timestamp*1000).getHours(), weather: w.weather }));
+              const sunHours = weather.filter(w => w.hour >= 7 && w.hour <= 19);
+              peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
+              // Srednia pogodowa dla typowego dnia (zakl. 8h przy 1.0)
+              const typicalSunHours = 8.0;
+              weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
+            }
+          } catch(e) {}
+        }
+
+        forecastKwh = Math.round(histAvg * weatherFactor * 10) / 10;
+      }
+    } catch(e) { console.error('Forecast error:', e.message); }
+
     if (privateToken) {
       try {
         const nonce = crypto.randomBytes(8).toString('hex');
@@ -235,7 +286,7 @@ app.get('/api/efficiency', async (req, res) => {
           const sunHours = weather.filter(w => w.hour >= 7 && w.hour <= 19);
           peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
           // Wspolczynnik 0.75 uwzglednia straty (temperatura, inverter, kable, kat padania)
-          forecastKwh = Math.round(PANEL_MAX_W * peakSunHours / 1000 * 0.75 * 10) / 10;
+          // forecastKwh z historii - nie nadpisuj, uzywamy tylko peakSunHours i weather do opisu
         }
       } catch(e) {}
     }
