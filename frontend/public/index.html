@@ -854,7 +854,8 @@ async function loadEfficiency(){
     if(d.consumptionKwh>0)sb('eff-solar-bar',d.solarKwh/d.consumptionKwh*100);
     sv('eff-forecast',d.forecastKwh>0?d.forecastKwh.toFixed(1):'–');
     if(d.weather?.length){
-      const cur=d.weather.find(w=>w.hour===new Date().getHours());
+      const nowH=new Date().getHours();
+      const cur=d.weather.find(w=>w.hour===nowH)||d.weather.find(w=>w.hour===nowH-1)||d.weather[Math.floor(d.weather.length/2)];
       sv('eff-weather',(cur?.weather||'–')+' · '+(d.peakSunHours||0)+'h');
     }
     sv('eff-independence',d.independence>0?d.independence.toFixed(1):'–');
