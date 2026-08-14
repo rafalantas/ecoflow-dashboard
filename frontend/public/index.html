@@ -362,6 +362,75 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     </div>
   </div>
 
+  <!-- EFEKTYWNOSC -->
+  <div class="card" id="eff-card" style="display:none">
+    <div class="card-title">// efektywność produkcji</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Efektywność chwilowa</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+          <span id="eff-instant" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--bat)">–</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">%</span>
+        </div>
+        <div style="height:4px;background:var(--brd);border-radius:3px;overflow:hidden;margin-bottom:5px">
+          <div id="eff-instant-bar" style="height:100%;background:var(--bat);border-radius:3px;width:0%;transition:width .5s"></div>
+        </div>
+        <div id="eff-instant-sub" style="font-family:var(--mono);font-size:10px;color:var(--t2)">– W / 2030W</div>
+      </div>
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Solar dziś</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+          <span id="eff-solar" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--pv)">–</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">kWh</span>
+        </div>
+        <div id="eff-daily-sub" style="font-family:var(--mono);font-size:10px;color:var(--t2)">zużycie: – kWh</div>
+      </div>
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Prognoza dziś</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+          <span id="eff-forecast" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--pv)">–</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">kWh</span>
+        </div>
+        <div id="eff-weather" style="font-family:var(--mono);font-size:10px;color:var(--t2)">– · – h słońca</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Niezależność</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
+          <span id="eff-independence" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-in)">–</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">%</span>
+        </div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;overflow:hidden">
+          <div id="eff-independence-bar" style="height:100%;background:var(--grid-in);border-radius:2px;width:0%;transition:width .5s"></div>
+        </div>
+      </div>
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Z sieci dziś</div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span id="eff-fromgrid" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-out)">–</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">kWh</span>
+        </div>
+        <div id="eff-togrid" style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px">do sieci: – kWh</div>
+      </div>
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Bateria dziś</div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span id="eff-batchg" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--bat)">–</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">kWh ↑</span>
+        </div>
+        <div id="eff-batdsg" style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px">rozładowanie: – kWh</div>
+      </div>
+      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">CO₂ zaoszcz.</div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span id="eff-co2" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-in)">–</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- CENY PSTRYK -->
   <div class="card" id="prices-card" style="display:none">
     <div class="card-title">// ceny energii · pstryk</div>
@@ -894,6 +963,42 @@ setTimeout(poll, 500);
 setTimeout(()=>{drawHist(); if(curData)drawEChart(curData);}, 100);
 loadPrices();
 setInterval(loadPrices, 15*60*1000);
+loadEfficiency();
+setInterval(loadEfficiency, 5*60*1000);
+
+async function loadEfficiency() {
+  try {
+    const r = await fetch('/api/efficiency');
+    const d = await r.json();
+    if(d.error) return;
+    const card = document.getElementById('eff-card');
+    if(card) card.style.display = 'block';
+
+    const s = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+    const bar = (id, pct) => { const e = document.getElementById(id); if(e) e.style.width = Math.min(100, pct||0) + '%'; };
+
+    s('eff-instant', d.instantEff > 0 ? d.instantEff.toFixed(1) : '–');
+    bar('eff-instant-bar', d.instantEff);
+    s('eff-instant-sub', (d.pvNow||0) + 'W / ' + (d.panelMax||2030) + 'W');
+
+    s('eff-solar', d.solarKwh > 0 ? d.solarKwh.toFixed(1) : '–');
+    s('eff-daily-sub', 'zużycie: ' + (d.consumptionKwh||0).toFixed(1) + ' kWh');
+
+    s('eff-forecast', d.forecastKwh > 0 ? d.forecastKwh.toFixed(1) : '–');
+    if(d.weather?.length) {
+      const cur = d.weather.find(w => w.hour === new Date().getHours());
+      s('eff-weather', (cur?.weather || '–') + ' · ' + (d.peakSunHours||0) + 'h słońca');
+    }
+
+    s('eff-independence', d.independence > 0 ? d.independence.toFixed(1) : '–');
+    bar('eff-independence-bar', d.independence);
+    s('eff-fromgrid', d.fromGridKwh > 0 ? d.fromGridKwh.toFixed(1) : '–');
+    s('eff-togrid', 'do sieci: ' + (d.toGridKwh||0).toFixed(1) + ' kWh');
+    s('eff-batchg', d.batChgKwh > 0 ? d.batChgKwh.toFixed(1) : '–');
+    s('eff-batdsg', 'rozładowanie: ' + (d.batDsgKwh||0).toFixed(1) + ' kWh');
+    s('eff-co2', d.co2g > 0 ? d.co2g.toLocaleString('pl-PL') : '–');
+  } catch(e) {}
+}
 loadSchedule();
 setInterval(loadSchedule, 15*60*1000);
 
