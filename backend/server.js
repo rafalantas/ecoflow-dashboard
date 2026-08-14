@@ -164,9 +164,12 @@ app.get('/api/history', (_, res) => res.json(history));
 app.get('/api/efficiency', async (req, res) => {
   try {
     const now = new Date();
+    // Uzyj lokalnego czasu kontenera (TZ=Europe/Warsaw) dla zakresu dat
+    const pad = n => String(n).padStart(2,'0');
+    const localDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
     const todayUTC = now.toISOString().slice(0, 10);
-    const beginTime = `${todayUTC} 00:00:00`;
-    const endTime   = `${todayUTC} 23:59:59`;
+    const beginTime = `${localDate} 00:00:00`;
+    const endTime   = `${localDate} 23:59:59`;
     const PANEL_MAX_W = 2030;
 
     const CODES = {
@@ -228,8 +231,10 @@ app.get('/api/efficiency', async (req, res) => {
             'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
           weather = (wr.data.data || []).map(w => ({
             hour: new Date(w.timestamp*1000).getHours(), weather: w.weather }));
-          peakSunHours = Math.round(weather.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
-          forecastKwh = Math.round(PANEL_MAX_W * peakSunHours / 100) / 10;
+          // Peak sun hours = suma efektywnosci tylko dla godzin 7-19 (faktyczne nasłonecznienie)
+          const sunHours = weather.filter(w => w.hour >= 7 && w.hour <= 19);
+          peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
+          forecastKwh = Math.round(PANEL_MAX_W * peakSunHours / 1000 * 10) / 10;
         }
       } catch(e) {}
     }
