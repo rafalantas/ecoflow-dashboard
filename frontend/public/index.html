@@ -340,11 +340,16 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <div class="estatlbl" id="earn-lbl">Zyski</div>
         <div class="estatval" id="e-earn">–<span class="estatunit"> zł</span></div>
       </div>
+      <div class="estat" id="est-solar" style="display:none">
+        <div class="estatlbl">Produkcja solar</div>
+        <div class="estatval" id="e-solar-kwh" style="color:var(--pv)">–<span class="estatunit"> kWh</span></div>
+      </div>
+      <div class="estat" id="est-load" style="display:none">
+        <div class="estatlbl">Zużycie domu</div>
+        <div class="estatval" id="e-load-kwh" style="color:var(--load)">–<span class="estatunit"> kWh</span></div>
+      </div>
     </div>
-    <div style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px" id="energy-extra">
-      <div class="mk"><div class="mk-lbl">Produkcja solar</div><div class="mk-val" id="e-solar-kwh" style="color:var(--pv)">– kWh</div></div>
-      <div class="mk"><div class="mk-lbl">Zużycie domu</div><div class="mk-val" id="e-load-kwh" style="color:var(--load)">– kWh</div></div>
-    </div>
+    <div id="energy-extra" style="display:none"></div>
     <div class="eff-sec" id="eff-sec" style="display:none">
       <div class="card-title" style="margin-bottom:8px">// efektywność (%)</div>
       <canvas id="effchart" height="70"></canvas>
@@ -685,8 +690,14 @@ function showEnergy(data){
   if(hs) document.getElementById('estats').style.display='grid';
 
   const extraEl=document.getElementById('energy-extra');
-  if(data.totalKwh!=null){document.getElementById('e-solar-kwh').textContent=data.totalKwh.toFixed(2)+' kWh';if(extraEl)extraEl.style.display='grid';}
-  if(data.loadKwh!=null){document.getElementById('e-load-kwh').textContent=data.loadKwh.toFixed(2)+' kWh';if(extraEl)extraEl.style.display='grid';}
+  if(data.totalKwh!=null){
+    document.getElementById('e-solar-kwh').innerHTML=data.totalKwh.toFixed(2)+'<span class="estatunit"> kWh</span>';
+    document.getElementById('est-solar').style.display='flex'; hs=true;
+  } else document.getElementById('est-solar').style.display='none';
+  if(data.loadKwh!=null){
+    document.getElementById('e-load-kwh').innerHTML=data.loadKwh.toFixed(2)+'<span class="estatunit"> kWh</span>';
+    document.getElementById('est-load').style.display='flex'; hs=true;
+  } else document.getElementById('est-load').style.display='none';
   if(data.efficiencyChart?.length){document.getElementById('eff-sec').style.display='block';drawEff(data.efficiencyChart);}
 }
 
