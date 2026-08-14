@@ -150,6 +150,42 @@ async function efHistorical(code, beginTime, endTime) {
 
 // Token prywatnego API
 let privateToken = null;
+
+// Cache pogody dziennej
+let weatherCache = { date: null, weather: [], peakSunHours: 0 };
+
+async function refreshWeatherCache() {
+  if (!privateToken) return;
+  const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
+    'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
+  try {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const localDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const nonce = crypto.randomBytes(8).toString('hex');
+    const timestamp = String(Date.now());
+    const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
+    const wh = {'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
+      'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
+      'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
+    const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
+      { headers: wh, params: { beginTime: `${localDate} 07:00:00`, endTime: `${localDate} 20:00:00`,
+        spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
+    if (wr.data.code === '0' && wr.data.data?.length) {
+      const newWeather = wr.data.data.map(w => ({
+        hour: parseInt(w.dt.slice(11,13)), weather: w.weather })); // dt = czas lokalny
+      // Merge z istniejącym cache (zachowaj godziny które juz minęły)
+      const nowH = now.getHours();
+      const existing = weatherCache.weather.filter(w => w.hour < nowH);
+      const merged = [...existing, ...newWeather.filter(w => !existing.find(e => e.hour === w.hour))];
+      merged.sort((a,b) => a.hour - b.hour);
+      const sunHours = merged.filter(w => w.hour >= 6 && w.hour <= 20); // CEST lokalny
+      const peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
+      weatherCache = { date: localDate, weather: merged, peakSunHours };
+      console.log(`☀️  Weather cache: ${peakSunHours}h peak sun (${merged.length} godzin)`);
+    }
+  } catch(e) { console.error('Weather cache error:', e.message); }
+}
 let tokenExpiry = 0;
 
 // ─── Server ───────────────────────────────────────────────────────────────────
@@ -248,15 +284,17 @@ app.get('/api/efficiency', async (req, res) => {
               'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
               'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
             const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
-              { headers: wh, params: { beginTime: `${localDate} 00:00:00`, endTime: `${localDate} 23:59:59`,
+              { headers: wh, params: { beginTime: `${localDate} 07:00:00`, endTime: `${localDate} 20:00:00`,
                 spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
             if (wr.data.code === '0' && wr.data.data?.length) {
               weather = wr.data.data.map(w => ({
-                hour: new Date(w.timestamp*1000).getHours(), weather: w.weather }));
-              const sunHours = weather.filter(w => w.hour >= 7 && w.hour <= 19);
+                hour: parseInt(w.dt.slice(11,13)), weather: w.weather })); // dt = lokalny
+              const sunHours = weather.filter(w => w.hour >= 6 && w.hour <= 20); // CEST lokalny
               peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
               // Srednia pogodowa dla typowego dnia (zakl. 8h przy 1.0)
-              const typicalSunHours = 8.0;
+              // Srednia liczba godzin slonecznych dla Hajnówki wg miesiaca
+          const avgSunByMonth = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
+          const typicalSunHours = avgSunByMonth[new Date().getMonth()];
               weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
             }
           } catch(e) {}
@@ -283,7 +321,7 @@ app.get('/api/efficiency', async (req, res) => {
           weather = (wr.data.data || []).map(w => ({
             hour: new Date(w.timestamp*1000).getHours(), weather: w.weather }));
           // Peak sun hours = suma efektywnosci tylko dla godzin 7-19 (faktyczne nasłonecznienie)
-          const sunHours = weather.filter(w => w.hour >= 7 && w.hour <= 19);
+          const sunHours = weather.filter(w => w.hour >= 6 && w.hour <= 20); // CEST lokalny
           peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
           // Wspolczynnik 0.75 uwzglednia straty (temperatura, inverter, kable, kat padania)
           // forecastKwh z historii - nie nadpisuj, uzywamy tylko peakSunHours i weather do opisu
@@ -623,6 +661,7 @@ async function loginPrivateApi() {
     }, { headers: { 'lang': 'en_US', 'content-type': 'application/json' }, timeout: 10000 });
     if (resp.data.code === '0' && resp.data.data?.token) {
       privateToken = resp.data.data.token;
+    refreshWeatherCache().catch(()=>{});
       tokenExpiry  = Date.now() + 25 * 24 * 3600 * 1000;
       console.log('✅ Login EcoFlow OK');
       return true;
