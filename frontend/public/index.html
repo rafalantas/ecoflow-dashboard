@@ -7,39 +7,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#f0f2f5;
-  --sur:#ffffff;
-  --sur2:#f8f9fb;
-  --brd:#e4e7ec;
-  --brd2:#ced2da;
-  --pv:#f59e0b; --pv-dim:rgba(245,158,11,.12);
-  --bat:#06b6d4; --bat-dim:rgba(6,182,212,.12);
-  --grid-in:#10b981; --grid-in-dim:rgba(16,185,129,.12);
-  --grid-out:#ef4444; --grid-out-dim:rgba(239,68,68,.12);
-  --load:#8b5cf6; --load-dim:rgba(139,92,246,.12);
+  --bg:#f0f2f5; --sur:#ffffff; --sur2:#f8f9fb; --brd:#e4e7ec; --brd2:#ced2da;
+  --pv:#f59e0b; --bat:#06b6d4; --grid-in:#10b981; --grid-out:#ef4444; --load:#8b5cf6;
   --t1:#0f172a; --t2:#64748b; --t3:#94a3b8;
-  --red:#ef4444;
-  --shadow:0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
-  --shadow-md:0 4px 12px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
-  --mono:'JetBrains Mono',monospace;
-  --sans:'Inter',sans-serif;
+  --shadow:0 1px 4px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.05);
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif;
   --r:16px; --r-sm:10px;
 }
 @media(prefers-color-scheme:dark){:root{
-  --bg:#0a0c12;
-  --sur:#13161f;
-  --sur2:#1a1e2a;
-  --brd:#1e2330;
-  --brd2:#252b3a;
+  --bg:#0a0c12; --sur:#13161f; --sur2:#1a1e2a; --brd:#1e2330; --brd2:#252b3a;
   --t1:#f0f4ff; --t2:#7c8ba3; --t3:#3d4a5c;
-  --shadow:0 1px 4px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.3);
+  --shadow:0 1px 4px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.3);
   --shadow-md:0 4px 16px rgba(0,0,0,.5);
 }}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
-
-/* Topbar */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--sur);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--sur);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100}
 .logo{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--t1);display:flex;align-items:center;gap:8px}
 .logo::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--pv);box-shadow:0 0 8px var(--pv)}
 .logo span{color:var(--pv)}
@@ -49,49 +33,11 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .dot.pulse{animation:dot-pulse .5s ease-out}
 @keyframes dot-pulse{0%{transform:scale(1)}50%{transform:scale(2);box-shadow:0 0 0 5px rgba(16,185,129,.25)}100%{transform:scale(1)}}
 .ts{font-family:var(--mono);font-size:11px;color:var(--t2);letter-spacing:.02em}
-
-/* Main layout */
 .main{max-width:1100px;margin:0 auto;padding:24px 20px}
-
-/* Card */
 .card{background:var(--sur);border:1px solid var(--brd);border-radius:var(--r);box-shadow:var(--shadow);padding:22px;margin-bottom:16px;transition:box-shadow .2s}
 .card:hover{box-shadow:var(--shadow-md)}
 .card-title{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px}
-
-/* ═══ FLOW DIAGRAM ════════════════════════════════════════════════════════════ */
-.flow-wrap{padding:20px}
-.flow-diagram{position:relative;width:100%;aspect-ratio:1.8;max-height:380px}
-.flow-diagram svg{width:100%;height:100%}
-
-/* Węzły */
-.fnode-g{cursor:default}
-.fnode-bg{transition:opacity .3s}
-.fnode-icon{font-size:22px}
-.fnode-label{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;fill:var(--t2)}
-.fnode-val{font-family:var(--mono);font-size:18px;font-weight:500;fill:var(--t1)}
-.fnode-sub{font-family:var(--mono);font-size:10px;fill:var(--t2)}
-
-/* Linie przepływu */
-.flow-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke:var(--brd);transition:stroke .4s}
-.flow-line.active-pv   {stroke:var(--pv)}
-.flow-line.active-bat  {stroke:var(--bat)}
-.flow-line.active-gin  {stroke:var(--grid-in)}
-.flow-line.active-gout {stroke:var(--grid-out)}
-.flow-line.active-load {stroke:var(--load)}
-
-/* Animowane kropki na liniach */
-.flow-dot{r:4;transition:fill .4s}
-.flow-dot.active-pv   {fill:var(--pv);   filter:drop-shadow(0 0 3px var(--pv))}
-.flow-dot.active-bat  {fill:var(--bat);  filter:drop-shadow(0 0 3px var(--bat))}
-.flow-dot.active-gin  {fill:var(--grid-in);  filter:drop-shadow(0 0 3px var(--grid-in))}
-.flow-dot.active-gout {fill:var(--grid-out); filter:drop-shadow(0 0 3px var(--grid-out))}
-.flow-dot.active-load {fill:var(--load); filter:drop-shadow(0 0 3px var(--load))}
-.flow-dot.hidden{r:0}
-
-@keyframes flow-anim    {0%{left:-100%}100%{left:100%}}
-@keyframes flow-anim-rev{0%{left:100%}100%{left:-100%}}
-
-/* ═══ PV PANELE ══════════════════════════════════════════════════════════════ */
+/* PV */
 .pv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 .pv-card{background:var(--sur);border:1px solid var(--brd);border-radius:10px;padding:14px;border-top:3px solid var(--brd);transition:border-top-color .3s}
 .pv-card.active{border-top-color:var(--pv)}
@@ -101,50 +47,26 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .pv-sub{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:2px}
 .pv-bar{height:3px;background:var(--brd);border-radius:2px;margin-top:8px;overflow:hidden}
 .pv-bar-f{height:100%;background:var(--pv);border-radius:2px;transition:width .6s}
-
-/* ═══ BATERIA ════════════════════════════════════════════════════════════════ */
-.bat-layout{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start}
+/* BAT */
 .bat-soc-big{font-family:var(--mono);font-size:56px;font-weight:500;line-height:1;color:var(--bat)}
 .bat-soc-u{font-size:20px;color:var(--t2)}
-.bat-bar-wrap{margin:8px 0}
 .bat-bar{height:10px;background:var(--brd);border-radius:5px;overflow:hidden}
 .bat-bar-f{height:100%;border-radius:5px;background:var(--bat);transition:width .8s,background .5s}
 .bat-range{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px}
-.bat-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .bs{padding:8px 10px;background:rgba(6,182,212,.05);border-radius:8px;border:1px solid rgba(6,182,212,.12)}
 .bs-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
 .bs-val{font-family:var(--mono);font-size:14px;font-weight:500}
-.bat-cells{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
 .cell-chip{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:4px;background:var(--brd);color:var(--t2)}
-.bat-extra{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)}
 .be{padding:10px;border-radius:8px;background:var(--bg);border:1px solid var(--brd)}
 .be-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
 .be-val{font-family:var(--mono);font-size:15px;font-weight:500}
 .be-val .u{font-size:10px;font-weight:400;color:var(--t2)}
-
-/* ═══ LICZNIK ════════════════════════════════════════════════════════════════ */
-.meter-grid{display:grid;grid-template-columns:repeat(3,1fr) 1fr;gap:10px}
+/* METER */
 .meter-phase{padding:14px;border-radius:10px;background:var(--bg);border:1px solid var(--brd)}
 .mp-lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
 .mp-val{font-family:var(--mono);font-size:20px;font-weight:500}
 .mp-val .u{font-size:10px;font-weight:400;color:var(--t2)}
-.meter-total{padding:14px;border-radius:10px;background:var(--bg);border:1px solid var(--brd)}
-.meter-kwh{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.mk{padding:10px;border-radius:8px;border:1px solid var(--brd);background:var(--sur)}
-.mk-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-.mk-val{font-family:var(--mono);font-size:15px;font-weight:500}
-
-/* ═══ ZASILANIE DOMU ═════════════════════════════════════════════════════════ */
-.src-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.src-card{padding:14px;border-radius:10px;border:1px solid var(--brd);background:var(--sur)}
-.src-lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
-.src-val{font-family:var(--mono);font-size:20px;font-weight:500}
-.src-val .u{font-size:10px;font-weight:400;color:var(--t2)}
-.src-bar{height:3px;border-radius:2px;margin-top:8px;background:var(--brd);overflow:hidden}
-.src-bar-f{height:100%;border-radius:2px;transition:width .5s}
-.src-pct{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px}
-
-/* ═══ PRODUKCJA ENERGII ══════════════════════════════════════════════════════ */
+/* ENERGIA */
 .etabs{display:flex;gap:0;border-bottom:1px solid var(--brd);margin-bottom:18px}
 .etab{font-family:var(--mono);font-size:11px;padding:8px 18px;border:none;background:transparent;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;letter-spacing:.05em}
 .etab.active{color:var(--t1);border-bottom-color:var(--pv);font-weight:500}
@@ -152,7 +74,6 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .earr{background:var(--brd);border:none;border-radius:50%;width:30px;height:30px;color:var(--t1);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:background .2s;font-family:var(--mono)}
 .earr:hover{background:var(--pv);color:#fff}
 .edate{font-family:var(--mono);font-size:13px;min-width:220px;text-align:center;font-weight:500}
-.etotal-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
 .etotal-val{font-family:var(--mono);font-size:48px;font-weight:500;line-height:1}
 .etotal-u{font-size:16px;font-weight:400;color:var(--t2)}
 .etotal-ch{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:20px;margin-left:10px;display:inline-block}
@@ -161,37 +82,42 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .echart-wrap{position:relative;margin:16px 0}
 .eloading{font-family:var(--mono);font-size:11px;color:var(--t2);text-align:center;padding:32px}
 .no-data{font-family:var(--mono);font-size:11px;color:var(--t2);text-align:center;padding:24px;opacity:.5}
-#echart-tooltip{display:none;position:absolute;background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--t1);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-lg)}
+#echart-tooltip{display:none;position:absolute;background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--t1);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-md)}
 .estats{display:none;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0}
 .estat{padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--brd)}
 .estatlbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
 .estatval{font-family:var(--mono);font-size:18px;font-weight:500}
 .estatunit{font-size:10px;font-weight:400;color:var(--t2)}
 .estatsub{font-family:var(--mono);font-size:9px;margin-top:2px}
-.egenby{margin-top:14px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--brd)}
-.egenby-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
-.egenby-row{display:flex;align-items:center;gap:10px}
-.egenby-name{font-family:var(--mono);font-size:12px;color:var(--t2);flex:1}
-.egenby-kwh{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--pv)}
-.ebar{height:3px;background:var(--brd);border-radius:2px;margin-top:8px;overflow:hidden}
-.ebar-f{height:100%;background:var(--pv);border-radius:2px}
 .eff-sec{margin-top:14px}
-
-/* ═══ HISTORIA SESJI ═════════════════════════════════════════════════════════ */
+.mk{padding:10px;border-radius:8px;border:1px solid var(--brd);background:var(--sur)}
+.mk-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.mk-val{font-family:var(--mono);font-size:15px;font-weight:500}
+/* HISTORIA */
 .hist-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .hist-legend{display:flex;gap:14px}
 .li{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--t2)}
 .ld{width:8px;height:8px;border-radius:50%}
-
-/* Baner */
+/* CENY */
+.price-now{display:flex;align-items:baseline;gap:6px}
+.price-now-val{font-family:var(--mono);font-size:36px;font-weight:500;color:var(--t1)}
+.price-now-unit{font-family:var(--mono);font-size:13px;color:var(--t2)}
+.price-badge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:20px;margin-left:4px}
+.price-cheap{background:rgba(16,185,129,.12);color:var(--grid-in)}
+.price-exp{background:rgba(239,68,68,.12);color:var(--grid-out)}
+.price-norm{background:var(--brd);color:var(--t2)}
+.hours-wrap{margin-top:10px}
+/* BANER */
 #bnr{display:none;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px 16px;margin-bottom:12px;font-family:var(--mono);font-size:11px;color:var(--grid-out);text-align:center}
-
+/* EFEKT KARTA */
+.ek{background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px}
+.ek-lbl{font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.ek-val{font-family:var(--mono);font-size:22px;font-weight:500}
+.ek-sub{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px}
+.ek-bar{height:3px;background:var(--brd);border-radius:2px;overflow:hidden;margin-top:6px}
+.ek-bar-f{height:100%;border-radius:2px;transition:width .5s}
 @media(max-width:640px){
-  .flow-grid{grid-template-columns:1fr 1fr;gap:8px}
-  .flow-arrow{display:none}
-  .pv-grid,.src-grid{grid-template-columns:1fr 1fr}
-  .bat-layout{grid-template-columns:1fr}
-  .bat-extra,.meter-grid{grid-template-columns:1fr 1fr}
+  .pv-grid{grid-template-columns:1fr 1fr}
   .main{padding:12px}
 }
 </style>
@@ -204,74 +130,46 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     <div class="ts" id="ts">—</div>
   </div>
 </div>
-
 <div class="main">
   <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
 
-  <!-- SCHEMAT PRZEPŁYWU -->
-  <div class="card flow-wrap">
+  <!-- PRZEPŁYW -->
+  <div class="card" style="padding:20px">
     <div class="card-title">// przepływ energii</div>
-    <div class="flow-diagram">
-      <svg id="flow-svg" viewBox="0 0 560 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:380px">
-
-        <!-- === LINIE POŁĄCZEŃ === -->
-        <!-- PV → Dom -->
+    <div style="position:relative;width:100%;aspect-ratio:1.8;max-height:380px">
+      <svg id="flow-svg" viewBox="0 0 560 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
         <line id="ln-pv"   x1="280" y1="74" x2="280" y2="138" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
-        <!-- Sieć → Dom -->
         <line id="ln-grid" x1="104" y1="185" x2="212" y2="185" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
-        <!-- Bateria → Dom -->
         <line id="ln-bat"  x1="348" y1="185" x2="456" y2="185" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
-        <!-- Dom → Dół (zużycie) -->
-        <line id="ln-load" x1="280" y1="232" x2="280" y2="272" stroke="var(--brd)" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round"/>
-
-        <!-- === ANIMOWANE KROPKI === -->
-        <circle id="dot-pv-fwd"   r="0" cx="280" cy="74"  fill="var(--pv)">
-          <animate attributeName="cy" from="74" to="138" dur="1.2s" repeatCount="indefinite"/></circle>
-        <circle id="dot-grid-fwd" r="0" cx="104" cy="185" fill="var(--grid-out)">
-          <animate attributeName="cx" from="104" to="212" dur="1.3s" repeatCount="indefinite"/></circle>
-        <circle id="dot-grid-rev" r="0" cx="212" cy="185" fill="var(--grid-in)">
-          <animate attributeName="cx" from="212" to="104" dur="1.3s" repeatCount="indefinite"/></circle>
-        <circle id="dot-bat-fwd"  r="0" cx="348" cy="185" fill="var(--bat)">
-          <animate attributeName="cx" from="348" to="456" dur="1.4s" repeatCount="indefinite"/></circle>
-        <circle id="dot-bat-rev"  r="0" cx="456" cy="185" fill="var(--bat)">
-          <animate attributeName="cx" from="456" to="348" dur="1.4s" repeatCount="indefinite"/></circle>
-
-        <!-- === DOM — centrum === -->
+        <circle id="dot-pv-fwd"   r="0" cx="280" cy="74"  fill="var(--pv)"><animate attributeName="cy" from="74" to="138" dur="1.2s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-fwd" r="0" cx="104" cy="185" fill="var(--grid-out)"><animate attributeName="cx" from="104" to="212" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-grid-rev" r="0" cx="212" cy="185" fill="var(--grid-in)"><animate attributeName="cx" from="212" to="104" dur="1.3s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-fwd"  r="0" cx="348" cy="185" fill="var(--bat)"><animate attributeName="cx" from="348" to="456" dur="1.4s" repeatCount="indefinite"/></circle>
+        <circle id="dot-bat-rev"  r="0" cx="456" cy="185" fill="var(--bat)"><animate attributeName="cx" from="456" to="348" dur="1.4s" repeatCount="indefinite"/></circle>
         <rect x="212" y="138" width="136" height="94" rx="14" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-load"/>
         <text x="280" y="168" text-anchor="middle" font-size="26">🏠</text>
         <text x="280" y="187" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)" letter-spacing="1">DOM</text>
         <text id="sv-load" x="280" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="16" font-weight="500" fill="var(--load)">– W</text>
         <text id="sv-load-sub" x="280" y="222" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)"></text>
-
-        <!-- === PV — góra === -->
         <rect x="214" y="4" width="132" height="70" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-pv"/>
         <text x="280" y="26" text-anchor="middle" font-size="18">☀️</text>
         <text x="280" y="41" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--pv)" letter-spacing="1">PANELE</text>
         <text id="sv-pv" x="280" y="60" text-anchor="middle" font-family="DM Mono,monospace" font-size="18" font-weight="500" fill="var(--pv)">– W</text>
-
-        <!-- === SIEĆ — lewo === -->
         <rect x="4" y="148" width="100" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-grid"/>
         <text x="54" y="174" text-anchor="middle" font-size="20">⚡</text>
         <text id="sv-grid-lbl" x="54" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--t2)" letter-spacing="1">SIEĆ</text>
         <text id="sv-grid" x="54" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--t1)">– W</text>
-
-        <!-- === BATERIA — prawo === -->
         <rect x="456" y="148" width="100" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-bat"/>
         <text x="506" y="174" text-anchor="middle" font-size="20">🔋</text>
         <text x="506" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--bat)" letter-spacing="1">BATERIA</text>
         <text id="sv-bat" x="506" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--bat)">– %</text>
         <text id="sv-bat-sub" x="506" y="220" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)">idle</text>
-
-        <!-- === WARTOŚCI NA LINIACH === -->
         <rect x="226" y="95" width="108" height="20" rx="6" fill="var(--bg)" id="lv-pv-bg" style="display:none"/>
-        <text id="lv-pv" x="280" y="108" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" font-weight="500" fill="var(--pv)" style="display:none"></text>
-
+        <text id="lv-pv" x="280" y="108" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" fill="var(--pv)" style="display:none"></text>
         <rect x="127" y="172" width="62" height="20" rx="6" fill="var(--bg)" id="lv-grid-bg" style="display:none"/>
-        <text id="lv-grid" x="158" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" font-weight="500" style="display:none"></text>
-
+        <text id="lv-grid" x="158" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" style="display:none"></text>
         <rect x="381" y="172" width="62" height="20" rx="6" fill="var(--bg)" id="lv-bat-bg" style="display:none"/>
-        <text id="lv-bat" x="412" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" font-weight="500" fill="var(--bat)" style="display:none"></text>
-
+        <text id="lv-bat" x="412" y="186" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" fill="var(--bat)" style="display:none"></text>
       </svg>
     </div>
   </div>
@@ -288,17 +186,13 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
   <div class="card">
     <div class="card-title">// bateria</div>
     <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-
-      <!-- SOC big -->
       <div style="flex-shrink:0;min-width:120px">
         <div class="bat-soc-big" id="b-soc">–<span class="bat-soc-u">%</span></div>
-        <div class="bat-bar-wrap" style="width:160px">
+        <div style="width:160px;margin:8px 0">
           <div class="bat-bar"><div class="bat-bar-f" id="b-bar"></div></div>
         </div>
         <div class="bat-range" id="b-range">20% – 95%</div>
       </div>
-
-      <!-- Info -->
       <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:200px">
         <div class="bs"><div class="bs-lbl">Stan</div><div class="bs-val" id="b-state">–</div></div>
         <div class="bs"><div class="bs-lbl">Moc</div><div class="bs-val" id="b-pwr">–</div></div>
@@ -308,12 +202,8 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <div class="bs"><div class="bs-lbl">SOH</div><div class="bs-val" id="b-soh">–</div></div>
       </div>
     </div>
-
-    <!-- Napięcia cel -->
-    <div class="bat-cells" id="b-cells" style="margin-top:12px"></div>
-
-    <!-- Statystyki -->
-    <div class="bat-extra">
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:12px" id="b-cells"></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)">
       <div class="be"><div class="be-lbl">Cykle</div><div class="be-val" id="b-cyc">–<span class="u"> ×</span></div></div>
       <div class="be"><div class="be-lbl">Naładowano łącznie</div><div class="be-val" id="b-ce">–<span class="u"> kWh</span></div></div>
       <div class="be"><div class="be-lbl">Rozładowano łącznie</div><div class="be-val" id="b-de">–<span class="u"> kWh</span></div></div>
@@ -321,111 +211,80 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     </div>
   </div>
 
-
   <!-- LICZNIK -->
   <div class="card" id="meter-card">
     <div class="card-title">// licznik smart meter</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr) 1fr;gap:10px">
-
       <div class="meter-phase" style="border-top:3px solid #f59e0b">
         <div class="mp-lbl" style="color:#f59e0b">Faza L1</div>
         <div class="mp-val" id="m-l1">–<span class="u"> W</span></div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l1-pct"></div>
-        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden">
-          <div id="m-l1-bar" style="height:100%;background:#f59e0b;border-radius:2px;width:0%;transition:width .5s"></div>
-        </div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden"><div id="m-l1-bar" style="height:100%;background:#f59e0b;border-radius:2px;width:0%;transition:width .5s"></div></div>
       </div>
-
       <div class="meter-phase" style="border-top:3px solid #06b6d4">
         <div class="mp-lbl" style="color:#06b6d4">Faza L2</div>
         <div class="mp-val" id="m-l2">–<span class="u"> W</span></div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l2-pct"></div>
-        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden">
-          <div id="m-l2-bar" style="height:100%;background:#06b6d4;border-radius:2px;width:0%;transition:width .5s"></div>
-        </div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden"><div id="m-l2-bar" style="height:100%;background:#06b6d4;border-radius:2px;width:0%;transition:width .5s"></div></div>
       </div>
-
       <div class="meter-phase" style="border-top:3px solid #8b5cf6">
         <div class="mp-lbl" style="color:#8b5cf6">Faza L3</div>
         <div class="mp-val" id="m-l3">–<span class="u"> W</span></div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l3-pct"></div>
-        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden">
-          <div id="m-l3-bar" style="height:100%;background:#8b5cf6;border-radius:2px;width:0%;transition:width .5s"></div>
-        </div>
+        <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden"><div id="m-l3-bar" style="height:100%;background:#8b5cf6;border-radius:2px;width:0%;transition:width .5s"></div></div>
       </div>
-
       <div class="meter-phase" style="border-top:3px solid var(--grid-out)">
         <div class="mp-lbl" style="color:var(--grid-out)">Łącznie</div>
         <div class="mp-val" id="m-tot" style="color:var(--grid-out)">–<span class="u"> W</span></div>
       </div>
-
     </div>
   </div>
 
-  <!-- EFEKTYWNOSC -->
+  <!-- EFEKTYWNOŚĆ DZIŚ -->
   <div class="card" id="eff-card" style="display:none">
-    <div class="card-title">// efektywność produkcji</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Efektywność chwilowa</div>
-        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
-          <span id="eff-instant" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--bat)">–</span>
-          <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">%</span>
-        </div>
-        <div style="height:4px;background:var(--brd);border-radius:3px;overflow:hidden;margin-bottom:5px">
-          <div id="eff-instant-bar" style="height:100%;background:var(--bat);border-radius:3px;width:0%;transition:width .5s"></div>
-        </div>
-        <div id="eff-instant-sub" style="font-family:var(--mono);font-size:10px;color:var(--t2)">– W / 2030W</div>
-      </div>
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Solar dziś</div>
-        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
-          <span id="eff-solar" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--pv)">–</span>
+    <div class="card-title">// energia dziś</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="ek">
+        <div class="ek-lbl">Solar · zużycie</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span id="eff-solar" style="font-family:var(--mono);font-size:30px;font-weight:500;color:var(--pv)">–</span>
           <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">kWh</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t3)">/ <span id="eff-consumption">–</span> kWh</span>
         </div>
-        <div id="eff-daily-sub" style="font-family:var(--mono);font-size:10px;color:var(--t2)">zużycie: – kWh</div>
+        <div class="ek-bar"><div id="eff-solar-bar" class="ek-bar-f" style="background:var(--pv);width:0%"></div></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:5px">prognoza: <span id="eff-forecast">–</span> kWh · <span id="eff-weather">–</span></div>
       </div>
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Prognoza dziś</div>
-        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
-          <span id="eff-forecast" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--pv)">–</span>
-          <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">kWh</span>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="ek">
+          <div class="ek-lbl">Niezależność</div>
+          <div style="display:flex;align-items:baseline;gap:3px">
+            <span id="eff-independence" class="ek-val" style="color:var(--grid-in)">–</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">%</span>
+          </div>
+          <div class="ek-bar"><div id="eff-independence-bar" class="ek-bar-f" style="background:var(--grid-in);width:0%"></div></div>
         </div>
-        <div id="eff-weather" style="font-family:var(--mono);font-size:10px;color:var(--t2)">– · – h słońca</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Niezależność</div>
-        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:6px">
-          <span id="eff-independence" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-in)">–</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">%</span>
+        <div class="ek">
+          <div class="ek-lbl">CO₂ zaoszcz.</div>
+          <div style="display:flex;align-items:baseline;gap:3px">
+            <span id="eff-co2" class="ek-val" style="color:var(--grid-in)">–</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">g</span>
+          </div>
         </div>
-        <div style="height:3px;background:var(--brd);border-radius:2px;overflow:hidden">
-          <div id="eff-independence-bar" style="height:100%;background:var(--grid-in);border-radius:2px;width:0%;transition:width .5s"></div>
+        <div class="ek">
+          <div class="ek-lbl">Z sieci</div>
+          <div style="display:flex;align-items:baseline;gap:3px">
+            <span id="eff-fromgrid" class="ek-val" style="color:var(--grid-out)">–</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">kWh</span>
+          </div>
+          <div id="eff-togrid" style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">do sieci: – kWh</div>
         </div>
-      </div>
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Z sieci dziś</div>
-        <div style="display:flex;align-items:baseline;gap:4px">
-          <span id="eff-fromgrid" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-out)">–</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">kWh</span>
-        </div>
-        <div id="eff-togrid" style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px">do sieci: – kWh</div>
-      </div>
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Bateria dziś</div>
-        <div style="display:flex;align-items:baseline;gap:4px">
-          <span id="eff-batchg" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--bat)">–</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">kWh ↑</span>
-        </div>
-        <div id="eff-batdsg" style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px">rozładowanie: – kWh</div>
-      </div>
-      <div style="background:var(--sur2);border:1px solid var(--brd);border-radius:var(--r-sm);padding:12px 14px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">CO₂ zaoszcz.</div>
-        <div style="display:flex;align-items:baseline;gap:4px">
-          <span id="eff-co2" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-in)">–</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">g</span>
+        <div class="ek">
+          <div class="ek-lbl">Bateria</div>
+          <div style="display:flex;align-items:baseline;gap:3px">
+            <span id="eff-batchg" class="ek-val" style="color:var(--bat)">–</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">↑</span>
+          </div>
+          <div id="eff-batdsg" style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">rozł: – kWh</div>
         </div>
       </div>
     </div>
@@ -457,9 +316,9 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     <div class="enavrow">
       <button class="earr" onclick="nav(-1)">◄</button>
       <div class="edate" id="edate">—</div>
-      <button class="earr" onclick="nav(+1)" id="earr-next">►</button>
+      <button class="earr" onclick="nav(+1)">►</button>
     </div>
-    <div class="etotal-lbl">TOTAL</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px">TOTAL</div>
     <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:16px">
       <span class="etotal-val" id="etotal">–</span>
       <span class="etotal-u">kWh</span>
@@ -482,7 +341,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <div class="estatval" id="e-earn">–<span class="estatunit"> zł</span></div>
       </div>
     </div>
-    <div class="meter-kwh" id="energy-extra" style="display:none;margin-bottom:10px">
+    <div style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px" id="energy-extra">
       <div class="mk"><div class="mk-lbl">Produkcja solar</div><div class="mk-val" id="e-solar-kwh" style="color:var(--pv)">– kWh</div></div>
       <div class="mk"><div class="mk-lbl">Zużycie domu</div><div class="mk-val" id="e-load-kwh" style="color:var(--load)">– kWh</div></div>
     </div>
@@ -492,7 +351,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
     </div>
   </div>
 
-  <!-- HARMONOGRAM INTELLIGENT+ -->
+  <!-- PLAN INTELLIGENT+ -->
   <div class="card" id="schedule-card" style="display:none">
     <div class="card-title">// plan intelligent+</div>
     <div style="overflow-x:auto">
@@ -521,8 +380,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 </div>
 
 <script data-cfasync="false">
-// ─── Stan ─────────────────────────────────────────────────────────────────────
-let ds = {}, curP='day', curD=new Date().toISOString().slice(0,10), curData=null, ecData=null;
+let ds={}, curP='day', curD=new Date().toISOString().slice(0,10), curData=null;
 let hist={pv:[],feed:[],soc:[],ts:[]};
 let wsOK=false;
 
@@ -531,75 +389,49 @@ window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
   drawHist(); if(curData)drawEChart(curData); if(curData?.efficiencyChart)drawEff(curData.efficiencyChart);
 });
 
-// ─── Aktualizacja UI ──────────────────────────────────────────────────────────
 function f(v,d=0){return v!=null&&v!==0?(d?v.toFixed(d):Math.round(v)):'–'}
 function ft(m){if(!m||m<=0)return'–';const h=Math.floor(m/60),mm=m%60;return h?h+'h '+mm+'m':mm+'m'}
 
-function update(s) {
-  ds = s;
+function update(s){
+  ds=s;
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
-  // Pulsuj kropka przy nowych danych
   const dotEl=document.getElementById('dot');
-  if(dotEl){dotEl.classList.add('pulse'); setTimeout(()=>dotEl.classList.remove('pulse'),400);}
+  if(dotEl){dotEl.classList.add('pulse');setTimeout(()=>dotEl.classList.remove('pulse'),400);}
 
   const pv=s.pvTotal||0, feed=s.feedPower||0, from=s.fromGrid||0;
   const load=s.sysLoad||0, soc=s.soc||(s.socExact?Math.round(s.socExact):0), batPwr=s.battPower||0, chg=s.chgDsgState||0;
   const fromPv=s.loadFromPv||0, fromBat=s.loadFromBat||0, fromGrd=s.loadFromGrid||0;
+  const pvActive=pv>5, batChg=chg===2||(chg===0&&batPwr>20), batDsg=chg===1||(chg===0&&batPwr<-20);
+  const feedActive=feed>5, fromActive=from>5||fromGrd>5;
+  const gval=feedActive?feed:from;
 
-  // SVG Przepływ EcoFlow style
-  const pvActive   = pv > 5;
-  const batChg = chg === 2 || (chg === 0 && batPwr > 20);
-  const batDsg = chg === 1 || (chg === 0 && batPwr < -20);
-  const feedActive = feed > 5;
-  const fromActive = from > 5 || fromGrd > 5;
-  const gval       = feedActive ? feed : from;
-
-  // Węzeł PV
-  svSet('sv-pv', pvActive ? Math.round(pv)+' W' : '– W');
-  svSet('sv-pv-sub', '');
-  svColor('sv-pv', pvActive ? 'var(--pv)' : 'var(--t2)');
-  svStroke('rect-pv', pvActive ? 'var(--pv)' : 'var(--brd)');
-
-  // Węzeł Bateria
-  svSet('sv-bat', soc + ' %');
+  svSet('sv-pv', pvActive?Math.round(pv)+' W':'– W');
+  svColor('sv-pv', pvActive?'var(--pv)':'var(--t2)');
+  svStroke('rect-pv', pvActive?'var(--pv)':'var(--brd)');
+  svSet('sv-bat', soc+' %');
   svSet('sv-bat-sub', batChg?`↑ ${Math.round(Math.abs(batPwr))}W`:batDsg?`↓ ${Math.round(Math.abs(batPwr))}W`:'idle');
-  svColor('sv-bat', 'var(--bat)');
-  svStroke('rect-bat', (batChg||batDsg) ? 'var(--bat)' : 'var(--brd)');
+  svStroke('rect-bat', (batChg||batDsg)?'var(--bat)':'var(--brd)');
+  svSet('sv-grid', gval>0?Math.round(gval)+' W':'– W');
+  svSet('sv-grid-lbl', feedActive?'DO SIECI ↑':fromActive?'Z SIECI ↓':'SIEĆ');
+  svColor('sv-grid', feedActive?'var(--grid-in)':fromActive?'var(--grid-out)':'var(--t2)');
+  svStroke('rect-grid', feedActive?'var(--grid-in)':fromActive?'var(--grid-out)':'var(--brd)');
+  svSet('sv-load', load>0?Math.round(load)+' W':'– W');
+  svSet('sv-load-sub', load>0?`PV:${f(fromPv)}W Bat:${f(fromBat)}W Sieć:${f(fromGrd)}W`:'');
+  svStroke('rect-load', load>5?'var(--load)':'var(--brd)');
+  svLine('ln-pv', pvActive, pvActive?'var(--pv)':'var(--brd)');
+  svLine('ln-grid', fromActive||feedActive, feedActive?'var(--grid-in)':fromActive?'var(--grid-out)':'var(--brd)');
+  svLine('ln-bat', batChg||batDsg, (batChg||batDsg)?'var(--bat)':'var(--brd)');
+  svLineVal('lv-pv','lv-pv-bg',pvActive,Math.round(pv)+'W','var(--pv)');
+  svLineVal('lv-grid','lv-grid-bg',fromActive||feedActive,Math.round(gval)+'W',feedActive?'var(--grid-in)':'var(--grid-out)');
+  svLineVal('lv-bat','lv-bat-bg',batChg||batDsg,Math.round(Math.abs(batPwr))+'W','var(--bat)');
+  showDot('dot-pv-fwd',pvActive);
+  showDot('dot-grid-fwd',fromActive&&!feedActive);
+  showDot('dot-grid-rev',feedActive);
+  showDot('dot-bat-fwd',batChg);
+  showDot('dot-bat-rev',batDsg);
 
-  // Węzeł Sieć
-  svSet('sv-grid', gval > 0 ? Math.round(gval)+' W' : '– W');
-  svSet('sv-grid-lbl', feedActive ? 'DO SIECI ↑' : fromActive ? 'Z SIECI ↓' : 'SIEĆ');
-  svColor('sv-grid', feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--t2)');
-  svStroke('rect-grid', feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--brd)');
-
-  // Węzeł Dom
-  svSet('sv-load', load > 0 ? Math.round(load)+' W' : '– W');
-  svSet('sv-load-sub', load>0 ? `PV:${f(fromPv)}W Bat:${f(fromBat)}W Sieć:${f(fromGrd)}W` : '');
-  svStroke('rect-load', load > 5 ? 'var(--load)' : 'var(--brd)');
-
-  // Linie i animacje
-  svLine('ln-pv',   pvActive,   pvActive   ? 'var(--pv)'       : 'var(--brd)');
-  svLine('ln-grid', fromActive||feedActive, feedActive ? 'var(--grid-in)' : fromActive ? 'var(--grid-out)' : 'var(--brd)');
-  svLine('ln-bat',  batChg||batDsg, (batChg||batDsg) ? 'var(--bat)' : 'var(--brd)');
-  svLine('ln-load', load > 5, load>5 ? 'var(--load)' : 'var(--brd)');
-
-  // Wartości na liniach
-  svLineVal('lv-pv',   'lv-pv-bg',   pvActive,   Math.round(pv)+'W',          'var(--pv)');
-  svLineVal('lv-grid', 'lv-grid-bg', fromActive||feedActive, Math.round(gval)+'W', feedActive?'var(--grid-in)':'var(--grid-out)');
-  svLineVal('lv-bat',  'lv-bat-bg',  batChg||batDsg, Math.round(Math.abs(batPwr))+'W', 'var(--bat)');
-
-  // Animowane kropki
-  showDot('dot-pv-fwd',   pvActive);
-  showDot('dot-grid-fwd', fromActive && !feedActive);
-  showDot('dot-grid-rev', feedActive);
-  showDot('dot-bat-fwd',  batChg);
-  showDot('dot-bat-rev',  batDsg);
-
-  // Panele PV
-  [[1,s.pv1Power,s.pv1Vol,s.pv1Amp,s.pv1Active],
-   [2,s.pv2Power,s.pv2Vol,s.pv2Amp,s.pv2Active],
-   [3,s.pv3Power,s.pv3Vol,s.pv3Amp,s.pv3Active],
-   [4,s.pv4Power,s.pv4Vol,s.pv4Amp,s.pv4Active]].forEach(([n,pw,vol,amp,act])=>{
+  [[1,s.pv1Power,s.pv1Vol,s.pv1Amp,s.pv1Active],[2,s.pv2Power,s.pv2Vol,s.pv2Amp,s.pv2Active],
+   [3,s.pv3Power,s.pv3Vol,s.pv3Amp,s.pv3Active],[4,s.pv4Power,s.pv4Vol,s.pv4Amp,s.pv4Active]].forEach(([n,pw,vol,amp,act])=>{
     const p=Math.min(100,Math.round((pw||0)/510*100));
     document.getElementById('pvc'+n).className='pv-card'+(act?' active':'');
     document.getElementById('pv'+n+'v').innerHTML=`${f(pw||0)}<span class="u"> W</span>`;
@@ -607,17 +439,13 @@ function update(s) {
     document.getElementById('pv'+n+'b').style.width=p+'%';
   });
 
-  // Bateria
   document.getElementById('b-soc').innerHTML=`${soc}<span class="bat-soc-u">%</span>`;
   const bf=document.getElementById('b-bar'); bf.style.width=soc+'%';
   bf.style.background=soc>60?'var(--bat)':soc>25?'var(--pv)':'var(--grid-out)';
   document.getElementById('b-range').textContent=`${s.minDsgSoc||20}% – ${s.maxChgSoc||95}%`;
-  const batStateText = batChg ? '⚡ Ładowanie' : batDsg ? '↓ Rozładowanie' : '· Idle';
-  const batStateColor = batChg ? 'var(--bat)' : batDsg ? 'var(--pv)' : 'var(--t2)';
-  document.getElementById('b-state').textContent = batStateText;
-  document.getElementById('b-state').style.color  = batStateColor;
+  document.getElementById('b-state').textContent=batChg?'⚡ Ładowanie':batDsg?'↓ Rozładowanie':'· Idle';
+  document.getElementById('b-state').style.color=batChg?'var(--bat)':batDsg?'var(--pv)':'var(--t2)';
   document.getElementById('b-pwr').textContent=batPwr>0?`+${Math.round(batPwr)}W`:batPwr<0?`${Math.round(batPwr)}W`:'0W';
-  // Czas do pelna lub pustej
   const bTimeLbl=document.getElementById('b-time-lbl'), bTimeVal=document.getElementById('b-time');
   if(batChg){if(bTimeLbl)bTimeLbl.textContent='Do pełna';if(bTimeVal)bTimeVal.textContent=ft(s.chgRemTime);}
   else if(batDsg){if(bTimeLbl)bTimeLbl.textContent='Do pustej';if(bTimeVal)bTimeVal.textContent=ft(s.dsgRemTime);}
@@ -630,189 +458,164 @@ function update(s) {
   if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${(s.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
 
-  // Licznik
-  if(s.meterL1||s.meterL2||s.meterL3||s.meterTotal) {
-    const ml1=s.meterL1||0, ml2=s.meterL2||0, ml3=s.meterL3||0, mtot=s.meterTotal||0;
-    const mx3 = Math.max(ml1,ml2,ml3,1);
+  if(s.meterL1||s.meterL2||s.meterL3||s.meterTotal){
+    const ml1=s.meterL1||0,ml2=s.meterL2||0,ml3=s.meterL3||0,mtot=s.meterTotal||0;
+    const mx3=Math.max(ml1,ml2,ml3,1);
     document.getElementById('m-l1').innerHTML=`${f(ml1)}<span class="u"> W</span>`;
     document.getElementById('m-l2').innerHTML=`${f(ml2)}<span class="u"> W</span>`;
     document.getElementById('m-l3').innerHTML=`${f(ml3)}<span class="u"> W</span>`;
     document.getElementById('m-tot').innerHTML=`${f(mtot)}<span class="u"> W</span>`;
-    // Paski i procenty
-    const phases = [[1,ml1,'#f59e0b'],[2,ml2,'#06b6d4'],[3,ml3,'#8b5cf6']];
-    phases.forEach(([n,v,c])=>{
-      const pct = mtot>0 ? Math.round(v/mtot*100) : 0;
-      const bar = Math.min(100, Math.round(v/mx3*100));
-      const barEl = document.getElementById('m-l'+n+'-bar');
-      const pctEl = document.getElementById('m-l'+n+'-pct');
-      if(pctEl) pctEl.textContent = '';
-      if(barEl) barEl.style.width = bar+'%';
+    [[1,ml1],[2,ml2],[3,ml3]].forEach(([n,v])=>{
+      const barEl=document.getElementById('m-l'+n+'-bar');
+      if(barEl) barEl.style.width=Math.min(100,Math.round(v/mx3*100))+'%';
     });
-
   }
-
-  // Zasilanie domu (sekcja usunieta)
-
-  // Sieć (sekcja usunieta)
 }
 
-function svSet(id, val){ const el=document.getElementById(id); if(el) el.textContent=val; }
-function svColor(id, c){ const el=document.getElementById(id); if(el) el.setAttribute('fill',c); }
-function svStroke(id, c){ const el=document.getElementById(id); if(el) el.setAttribute('stroke',c); }
-function svLine(id, active, color){
-  const el=document.getElementById(id); if(!el) return;
-  el.setAttribute('stroke', color);
-  el.setAttribute('stroke-dasharray', active ? '6 4' : '4 8');
-  el.setAttribute('opacity', active ? '1' : '0.3');
+function svSet(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
+function svColor(id,c){const e=document.getElementById(id);if(e)e.setAttribute('fill',c);}
+function svStroke(id,c){const e=document.getElementById(id);if(e)e.setAttribute('stroke',c);}
+function svLine(id,active,color){
+  const e=document.getElementById(id);if(!e)return;
+  e.setAttribute('stroke',color);
+  e.setAttribute('stroke-dasharray',active?'6 4':'4 8');
+  e.setAttribute('opacity',active?'1':'0.3');
 }
-function showDot(id, active){
-  const el=document.getElementById(id);
-  if(el) el.setAttribute('r', active ? '5' : '0');
+function showDot(id,active){const e=document.getElementById(id);if(e)e.setAttribute('r',active?'5':'0');}
+function svLineVal(id,bgId,active,val,color){
+  const e=document.getElementById(id),bg=document.getElementById(bgId);
+  if(e){e.style.display=active?'':'none';e.textContent=val;e.setAttribute('fill',color);}
+  if(bg)bg.style.display=active?'':'none';
 }
-function svLineVal(id, bgId, active, val, color){
-  const el=document.getElementById(id), bg=document.getElementById(bgId);
-  if(el){ el.style.display=active?'':'none'; el.textContent=val; el.setAttribute('fill',color); }
-  if(bg) bg.style.display=active?'':'none';
-}
-
 function setOn(on){
   document.getElementById('dot').classList.toggle('on',on);
   document.getElementById('bnr').style.display=on?'none':'block';
 }
 
-// ─── Historia sesji ───────────────────────────────────────────────────────────
-const hcv=document.getElementById('hchart'), hctx=hcv.getContext('2d');
+// Historia
+const hcv=document.getElementById('hchart'),hctx=hcv.getContext('2d');
 function drawHist(){
-  const dpr=window.devicePixelRatio||1, w=hcv.offsetWidth, h=140;
-  hcv.width=w*dpr; hcv.height=h*dpr; hctx.scale(dpr,dpr); hctx.clearRect(0,0,w,h);
-  const n=hist.pv.length; if(n<2)return;
+  const dpr=window.devicePixelRatio||1,w=hcv.offsetWidth,h=140;
+  hcv.width=w*dpr;hcv.height=h*dpr;hctx.scale(dpr,dpr);hctx.clearRect(0,0,w,h);
+  const n=hist.pv.length;if(n<2)return;
   const mx=Math.max(...hist.pv,...hist.feed,...hist.soc.map(s=>s*10),100);
-  const p={t:8,b:20,l:44,r:8}, cw=w-p.l-p.r, ch=h-p.t-p.b;
-  // Siatka
+  const p={t:8,b:20,l:44,r:8},cw=w-p.l-p.r,ch=h-p.t-p.b;
   for(let i=0;i<=4;i++){
     const y=p.t+(ch/4)*i;
-    hctx.fillStyle=gc('--brd'); hctx.fillRect(p.l,y,cw,.5);
-    hctx.fillStyle=gc('--t2'); hctx.font='9px DM Mono,monospace'; hctx.textAlign='right';
-    const val=Math.round(mx*(1-i/4));
-    hctx.fillText(val>=1000?(val/1000).toFixed(1)+'k':val+'',p.l-4,y+3);
+    hctx.fillStyle=gc('--brd');hctx.fillRect(p.l,y,cw,.5);
+    hctx.fillStyle=gc('--t2');hctx.font='9px DM Mono,monospace';hctx.textAlign='right';
+    const v=Math.round(mx*(1-i/4));hctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':v+'',p.l-4,y+3);
   }
-  // Funkcja z wypelnieniem
   const area=(data,color,rgb,alpha)=>{
-    if(!data.some(v=>v>0)) return;
     if(!data.some(v=>v>0))return;
-    hctx.beginPath(); hctx.strokeStyle=color; hctx.lineWidth=1.8; hctx.lineJoin='round';
-    data.forEach((v,i)=>{const x=p.l+(i/(n-1))*cw,y=p.t+ch-(v/mx)*ch; i?hctx.lineTo(x,y):hctx.moveTo(x,y)});
+    hctx.beginPath();hctx.strokeStyle=color;hctx.lineWidth=1.8;hctx.lineJoin='round';
+    data.forEach((v,i)=>{const x=p.l+(i/(n-1))*cw,y=p.t+ch-(v/mx)*ch;i?hctx.lineTo(x,y):hctx.moveTo(x,y)});
     hctx.stroke();
-    const last=data.length-1;
-    hctx.lineTo(p.l+(last/(n-1))*cw, p.t+ch);
-    hctx.lineTo(p.l, p.t+ch); hctx.closePath();
-    const g2=hctx.createLinearGradient(0,p.t,0,p.t+ch);
-    g2.addColorStop(0,`rgba(${rgb},${alpha})`); g2.addColorStop(1,`rgba(${rgb},0)`);
-    hctx.fillStyle=g2; hctx.fill();
+    hctx.lineTo(p.l+((n-1)/(n-1))*cw,p.t+ch);hctx.lineTo(p.l,p.t+ch);hctx.closePath();
+    const g=hctx.createLinearGradient(0,p.t,0,p.t+ch);
+    g.addColorStop(0,`rgba(${rgb},${alpha})`);g.addColorStop(1,`rgba(${rgb},0)`);
+    hctx.fillStyle=g;hctx.fill();
   };
-  area(hist.soc.map(s=>s*10), gc('--bat'),     '6,182,212',   .12);
-  area(hist.feed,              gc('--grid-in'), '16,185,129',  .15);
-  area(hist.pv,                gc('--pv'),      '245,158,11',  .18);
-  // Etykiety czasu
+  area(hist.soc.map(s=>s*10),gc('--bat'),'6,182,212',.12);
+  area(hist.feed,gc('--grid-in'),'16,185,129',.15);
+  area(hist.pv,gc('--pv'),'245,158,11',.18);
   if(hist.ts.length>1){
-    hctx.fillStyle=gc('--t2'); hctx.font='9px DM Mono,monospace'; hctx.textAlign='center';
-    [0, Math.floor((n-1)/2), n-1].forEach(i=>{
-      if(!hist.ts[i]) return;
-      const x=p.l+(i/(n-1))*cw;
-      hctx.fillText(new Date(hist.ts[i]).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}), x, h-4);
+    hctx.fillStyle=gc('--t2');hctx.font='9px DM Mono,monospace';hctx.textAlign='center';
+    [0,Math.floor((n-1)/2),n-1].forEach(i=>{
+      if(!hist.ts[i])return;
+      hctx.fillText(new Date(hist.ts[i]).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}),p.l+(i/(n-1))*cw,h-4);
     });
   }
 }
 
-// ─── Wykres energii ───────────────────────────────────────────────────────────
-const ec=document.getElementById('echart'), ectx=ec.getContext('2d');
+// Wykres energii
+const ec=document.getElementById('echart'),ectx=ec.getContext('2d');
 function drawEChart(data){
-  ecData=data;
   if(!data?.chart?.length)return;
   const chart=data.chart;
-  const dpr=window.devicePixelRatio||1, w=ec.offsetWidth, h=140;
-  ec.width=w*dpr; ec.height=h*dpr; ectx.scale(dpr,dpr); ectx.clearRect(0,0,w,h);
-  const vals=chart.map(d=>d.wh), mx=Math.max(...vals,1), n=chart.length;
-  const p={t:10,b:24,l:42,r:8}, cw=w-p.l-p.r, ch=h-p.t-p.b;
+  const dpr=window.devicePixelRatio||1,w=ec.offsetWidth,h=140;
+  ec.width=w*dpr;ec.height=h*dpr;ectx.scale(dpr,dpr);ectx.clearRect(0,0,w,h);
+  const vals=chart.map(d=>d.wh),mx=Math.max(...vals,1),n=chart.length;
+  const p={t:10,b:24,l:42,r:8},cw=w-p.l-p.r,ch=h-p.t-p.b;
   const bw=Math.max(4,Math.min(40,cw/n-4));
   for(let i=0;i<=3;i++){
-    const y=p.t+(ch/3)*i, v=mx*(1-i/3);
-    ectx.fillStyle=gc('--brd'); ectx.fillRect(p.l,y,cw,.5);
-    ectx.fillStyle=gc('--t2'); ectx.font='9px DM Mono,monospace'; ectx.textAlign='right';
+    const y=p.t+(ch/3)*i,v=mx*(1-i/3);
+    ectx.fillStyle=gc('--brd');ectx.fillRect(p.l,y,cw,.5);
+    ectx.fillStyle=gc('--t2');ectx.font='9px DM Mono,monospace';ectx.textAlign='right';
     ectx.fillText(v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+'',p.l-4,y+3);
   }
   chart.forEach((d,i)=>{
-    const bh=Math.max(2,(d.wh/mx)*ch), x=p.l+(i/n)*cw+(cw/n-bw)/2, y=p.t+ch-bh;
+    const bh=Math.max(2,(d.wh/mx)*ch),x=p.l+(i/n)*cw+(cw/n-bw)/2,y=p.t+ch-bh;
     const g=ectx.createLinearGradient(0,y,0,y+bh);
-    g.addColorStop(0,'rgba(245,158,11,.9)'); g.addColorStop(1,'rgba(245,158,11,.15)');
+    g.addColorStop(0,'rgba(245,158,11,.9)');g.addColorStop(1,'rgba(245,158,11,.15)');
     ectx.fillStyle=g;
-    if(ectx.roundRect)ectx.roundRect(x,y,bw,bh,2); else ectx.rect(x,y,bw,bh);
+    if(ectx.roundRect)ectx.roundRect(x,y,bw,bh,2);else ectx.rect(x,y,bw,bh);
     ectx.fill();
   });
-  ectx.fillStyle=gc('--t2'); ectx.font='9px DM Mono,monospace'; ectx.textAlign='center';
+  ectx.fillStyle=gc('--t2');ectx.font='9px DM Mono,monospace';ectx.textAlign='center';
   const step=Math.max(1,Math.ceil(n/8));
   chart.forEach((d,i)=>{
     if(i%step!==0&&i!==n-1)return;
     const x=p.l+(i/n)*cw+(cw/n)/2;
     let lb='';
-    if(curP==='day')   lb=d.time.slice(11,16);
-    if(curP==='week')  lb=['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
+    if(curP==='day') lb=d.time.slice(11,16);
+    if(curP==='week') lb=['Nd','Pn','Wt','Śr','Cz','Pt','So'][new Date(d.time+'T12:00').getDay()];
     if(curP==='month') lb=new Date(d.time+'T12:00').getDate()+'';
-    if(curP==='year')  lb=['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'][new Date(d.time+'T12:00').getMonth()];
+    if(curP==='year') lb=['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'][new Date(d.time+'T12:00').getMonth()];
     ectx.fillText(lb,x,h-6);
   });
 }
 
 // Wykres efektywności
-const efc=document.getElementById('effchart'), efctx=efc.getContext('2d');
+const efc=document.getElementById('effchart'),efctx=efc.getContext('2d');
 function drawEff(cd){
   if(!cd?.length)return;
-  const dpr=window.devicePixelRatio||1, w=efc.offsetWidth, h=70;
-  efc.width=w*dpr; efc.height=h*dpr; efctx.scale(dpr,dpr); efctx.clearRect(0,0,w,h);
-  const vals=cd.map(d=>d.pct), mx=Math.max(...vals,50), n=vals.length;
-  const p={t:6,b:20,l:34,r:6}, cw=w-p.l-p.r, ch=h-p.t-p.b;
+  const dpr=window.devicePixelRatio||1,w=efc.offsetWidth,h=70;
+  efc.width=w*dpr;efc.height=h*dpr;efctx.scale(dpr,dpr);efctx.clearRect(0,0,w,h);
+  const vals=cd.map(d=>d.pct),mx=Math.max(...vals,50),n=vals.length;
+  const p={t:6,b:20,l:34,r:6},cw=w-p.l-p.r,ch=h-p.t-p.b;
   for(let i=0;i<=2;i++){
     const y=p.t+(ch/2)*i;
-    efctx.fillStyle=gc('--brd'); efctx.fillRect(p.l,y,cw,.5);
-    efctx.fillStyle=gc('--t2'); efctx.font='8px DM Mono,monospace'; efctx.textAlign='right';
+    efctx.fillStyle=gc('--brd');efctx.fillRect(p.l,y,cw,.5);
+    efctx.fillStyle=gc('--t2');efctx.font='8px DM Mono,monospace';efctx.textAlign='right';
     efctx.fillText(Math.round(mx*(1-i/2))+'%',p.l-3,y+3);
   }
-  efctx.beginPath(); efctx.strokeStyle='#8b5cf6'; efctx.lineWidth=1.5; efctx.lineJoin='round';
-  vals.forEach((v,i)=>{const x=p.l+(i/(Math.max(n-1,1)))*cw,y=p.t+ch-(v/mx)*ch; i?efctx.lineTo(x,y):efctx.moveTo(x,y)});
+  efctx.beginPath();efctx.strokeStyle='#8b5cf6';efctx.lineWidth=1.5;efctx.lineJoin='round';
+  vals.forEach((v,i)=>{const x=p.l+(i/(Math.max(n-1,1)))*cw,y=p.t+ch-(v/mx)*ch;i?efctx.lineTo(x,y):efctx.moveTo(x,y)});
   efctx.stroke();
-  efctx.lineTo(p.l+cw,p.t+ch); efctx.lineTo(p.l,p.t+ch); efctx.closePath();
+  efctx.lineTo(p.l+cw,p.t+ch);efctx.lineTo(p.l,p.t+ch);efctx.closePath();
   const g=efctx.createLinearGradient(0,p.t,0,p.t+ch);
-  g.addColorStop(0,'rgba(139,92,246,.2)'); g.addColorStop(1,'rgba(139,92,246,0)');
-  efctx.fillStyle=g; efctx.fill();
+  g.addColorStop(0,'rgba(139,92,246,.2)');g.addColorStop(1,'rgba(139,92,246,0)');
+  efctx.fillStyle=g;efctx.fill();
 }
 
 // Tooltip
 function setupTT(){
   const tt=document.getElementById('echart-tooltip');
   ec.addEventListener('mousemove',e=>{
-    if(!ecData?.chart?.length){tt.style.display='none';return}
-    const r=ec.getBoundingClientRect(), mx=e.clientX-r.left;
-    const chart=ecData.chart, n=chart.length;
-    const p={t:10,b:24,l:42,r:8}, cw=ec.offsetWidth-p.l-p.r;
-    let ci=-1, md=Infinity;
+    if(!curData?.chart?.length){tt.style.display='none';return}
+    const r=ec.getBoundingClientRect(),mx=e.clientX-r.left;
+    const chart=curData.chart,n=chart.length;
+    const p={t:10,b:24,l:42,r:8},cw=ec.offsetWidth-p.l-p.r;
+    let ci=-1,md=Infinity;
     chart.forEach((d,i)=>{const cx=p.l+(i/n)*cw+(cw/n)/2,dist=Math.abs(mx-cx);if(dist<md){md=dist;ci=i;}});
     if(ci<0||md>cw/n){tt.style.display='none';return}
     const d=chart[ci];
     let lb='';
-    if(curP==='day')   lb=d.time.slice(11,16);
-    if(curP==='week')  lb=['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'][new Date(d.time+'T12:00').getDay()]+' '+new Date(d.time+'T12:00').getDate()+'.'+String(new Date(d.time+'T12:00').getMonth()+1).padStart(2,'0');
+    if(curP==='day') lb=d.time.slice(11,16);
+    if(curP==='week') lb=['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'][new Date(d.time+'T12:00').getDay()];
     if(curP==='month') lb=new Date(d.time+'T12:00').toLocaleDateString('pl-PL',{day:'numeric',month:'long'});
-    if(curP==='year')  lb=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'][new Date(d.time+'T12:00').getMonth()];
+    if(curP==='year') lb=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'][new Date(d.time+'T12:00').getMonth()];
     tt.innerHTML=`<span style="color:var(--t2)">${lb}</span><br><span style="color:var(--pv);font-size:14px;font-weight:500">${(d.wh/1000).toFixed(2)}</span><span style="color:var(--t2)"> kWh</span>`;
     tt.style.display='block';
-    const bx=p.l+(ci/n)*cw+(cw/n)/2, tw=tt.offsetWidth;
-    let tx=bx-tw/2; if(tx<0)tx=4; if(tx+tw>ec.offsetWidth)tx=ec.offsetWidth-tw-4;
-    tt.style.left=tx+'px'; tt.style.top='4px';
+    const bx=p.l+(ci/n)*cw+(cw/n)/2,tw=tt.offsetWidth;
+    let tx=bx-tw/2;if(tx<0)tx=4;if(tx+tw>ec.offsetWidth)tx=ec.offsetWidth-tw-4;
+    tt.style.left=tx+'px';tt.style.top='4px';
   });
   ec.addEventListener('mouseleave',()=>tt.style.display='none');
 }
 
-// ─── Energia historyczna ──────────────────────────────────────────────────────
+// Energia historyczna
 function offsetDate(p,o){
   const d=new Date(curD+'T12:00:00');
   if(p==='day'){d.setDate(d.getDate()+o)}
@@ -821,13 +624,12 @@ function offsetDate(p,o){
   else{d.setFullYear(d.getFullYear()+o,0,1)}
   return d.toISOString().slice(0,10);
 }
-
 function switchP(p,btn){
-  curP=p; curD=offsetDate(p,0);
+  curP=p;curD=offsetDate(p,0);
   document.querySelectorAll('.etab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); loadEnergy();
+  btn.classList.add('active');loadEnergy();
 }
-function nav(d){ curD=offsetDate(curP,d); loadEnergy(); }
+function nav(d){curD=offsetDate(curP,d);loadEnergy();}
 
 async function loadEnergy(){
   document.getElementById('eloading').style.display='block';
@@ -837,14 +639,13 @@ async function loadEnergy(){
   document.getElementById('etotal-ch').style.display='none';
   document.getElementById('estats').style.display='none';
   document.getElementById('eff-sec').style.display='none';
-  const egenbyEl=document.getElementById('egenby'); if(egenbyEl) egenbyEl.style.display='none';
   try{
     const r=await fetch(`/api/energy?period=${curP}&date=${curD}`);
     const data=await r.json();
     curData=data;
-    if(data.error){document.getElementById('eloading').textContent='Brak danych (skonfiguruj EF_EMAIL i EF_PASSWORD)';return}
+    if(data.error){document.getElementById('eloading').textContent='Brak danych';return}
     showEnergy(data);
-  }catch(e){ if(e.message&&!e.message.includes('DOCTYPE')&&!e.message.includes('close')) console.error('loadEnergy:',e.message); }
+  }catch(e){}
 }
 
 function showEnergy(data){
@@ -855,12 +656,11 @@ function showEnergy(data){
     if(data.changePercent!=null){
       const up=data.changePercent>=0;
       ch.textContent=(up?'▲':'▼')+' '+Math.abs(data.changePercent).toFixed(1)+'%';
-      ch.className='etotal-ch '+(up?'up':'dn'); ch.style.display='inline';
+      ch.className='etotal-ch '+(up?'up':'dn');ch.style.display='inline';
     }
-    // egenby removed
   }
   document.getElementById('eloading').style.display='none';
-  if(data.chart?.length){ec.style.display='block'; drawEChart(data);}
+  if(data.chart?.length){ec.style.display='block';drawEChart(data);}
   else document.getElementById('no-data').style.display='block';
 
   let hs=false;
@@ -872,43 +672,31 @@ function showEnergy(data){
       ch.textContent=(u?'▲':'▼')+' '+Math.abs(data.efficiencyChange).toFixed(1)+'%';
       ch.style.color=u?'var(--grid-in)':'var(--grid-out)';
     }
-    document.getElementById('est-eff').style.display='flex'; hs=true;
+    document.getElementById('est-eff').style.display='flex';hs=true;
   } else document.getElementById('est-eff').style.display='none';
 
   if(data.earnings!=null){
     const lbl={day:'Zyski (dziś)',week:'Zyski (tydz.)',month:'Zyski (mies.)',year:'Zyski (rok)'};
     document.getElementById('earn-lbl').textContent=lbl[curP]||'Zyski';
     document.getElementById('e-earn').innerHTML=`${data.earnings.toFixed(2)}<span class="estatunit"> ${data.currency||'zł'}</span>`;
-    document.getElementById('est-earn').style.display='flex'; hs=true;
+    document.getElementById('est-earn').style.display='flex';hs=true;
   } else document.getElementById('est-earn').style.display='none';
 
   if(hs) document.getElementById('estats').style.display='grid';
 
-  // Produkcja i zużycie
-  const extraEl = document.getElementById('energy-extra');
-  if(data.totalKwh != null) {
-    document.getElementById('e-solar-kwh').textContent = data.totalKwh.toFixed(2) + ' kWh';
-    if(extraEl) extraEl.style.display = 'grid';
-  }
-  if(data.loadKwh != null) {
-    document.getElementById('e-load-kwh').textContent = data.loadKwh.toFixed(2) + ' kWh';
-    if(extraEl) extraEl.style.display = 'grid';
-  }
-
-  if(data.efficiencyChart?.length){
-    document.getElementById('eff-sec').style.display='block';
-    drawEff(data.efficiencyChart);
-  }
+  const extraEl=document.getElementById('energy-extra');
+  if(data.totalKwh!=null){document.getElementById('e-solar-kwh').textContent=data.totalKwh.toFixed(2)+' kWh';if(extraEl)extraEl.style.display='grid';}
+  if(data.loadKwh!=null){document.getElementById('e-load-kwh').textContent=data.loadKwh.toFixed(2)+' kWh';if(extraEl)extraEl.style.display='grid';}
+  if(data.efficiencyChart?.length){document.getElementById('eff-sec').style.display='block';drawEff(data.efficiencyChart);}
 }
 
-// ─── WebSocket + Polling ──────────────────────────────────────────────────────
+// WebSocket + Polling
 function poll(){
   fetch('/api/state').then(r=>r.json()).then(s=>{
     update(s);
-    // Polaczenie = dane sa swiezsze niz 5 minut
-    const isOnline = s.connected || (s.lastMqttData && (Date.now() - s.lastMqttData < 600000));
+    const isOnline=s.connected||(s.lastMqttData&&(Date.now()-s.lastMqttData<600000));
     setOn(isOnline);
-    hist.pv.push(s.pvTotal||0); hist.feed.push(s.feedPower||0); hist.soc.push(s.soc||0);
+    hist.pv.push(s.pvTotal||0);hist.feed.push(s.feedPower||0);hist.soc.push(s.soc||0);
     hist.ts.push(new Date().toISOString());
     if(hist.ts.length>300)['pv','feed','soc','ts'].forEach(k=>hist[k].shift());
     drawHist();
@@ -918,11 +706,9 @@ function poll(){
 function connect(){
   fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected);});
   fetch('/api/history').then(r=>r.json()).then(h=>{
-    hist={pv:h.pv||[],feed:h.feed||[],soc:h.soc||[],ts:h.timestamps||[]};
-    drawHist();
+    hist={pv:h.pv||[],feed:h.feed||[],soc:h.soc||[],ts:h.timestamps||[]};drawHist();
   });
   loadEnergy();
-
   try{
     const proto=location.protocol==='https:'?'wss':'ws';
     const ws=new WebSocket(`${proto}://${location.host}`);
@@ -930,206 +716,156 @@ function connect(){
     ws.onmessage=e=>{
       try{
         const m=JSON.parse(e.data);
-        if(m.type==='state') {
-          update(m.data); setOn(m.data.connected);
-          hist.pv.push(m.data.pvTotal||0); hist.feed.push(m.data.feedPower||0); hist.soc.push(m.data.soc||0);
+        if(m.type==='state'){
+          update(m.data);setOn(m.data.connected);
+          hist.pv.push(m.data.pvTotal||0);hist.feed.push(m.data.feedPower||0);hist.soc.push(m.data.soc||0);
           hist.ts.push(new Date().toISOString());
           if(hist.ts.length>300)['pv','feed','soc','ts'].forEach(k=>hist[k].shift());
           drawHist();
         }
-        if(m.type==='status'){ if(m.connected) setOn(true); }
+        if(m.type==='status'&&m.connected)setOn(true);
         if(m.type==='energy'){curData=m.data;showEnergy(m.data);}
       }catch(err){}
     };
-    ws.onclose=()=>{ wsOK=false; setTimeout(connect,5000); };
+    ws.onclose=()=>{wsOK=false;setTimeout(connect,5000);};
     ws.onerror=()=>{wsOK=false;};
   }catch(e){}
-
   setInterval(()=>{if(!wsOK)poll();},3000);
 }
 
-// Wymusz resize po zaladowaniu strony
-window.addEventListener('load', ()=>{ drawHist(); if(curData)drawEChart(curData); });
+window.addEventListener('load',()=>{drawHist();if(curData)drawEChart(curData);});
 window.addEventListener('resize',()=>{
-  drawHist();
-  if(curData)drawEChart(curData);
+  drawHist();if(curData)drawEChart(curData);
   if(curData?.efficiencyChart)drawEff(curData.efficiencyChart);
 });
 
-setupTT();
-connect();
-setTimeout(poll, 500);
-// Inicjalizuj wykres po zaladowaniu layoutu
-setTimeout(()=>{drawHist(); if(curData)drawEChart(curData);}, 100);
-loadPrices();
-setInterval(loadPrices, 15*60*1000);
-loadEfficiency();
-setInterval(loadEfficiency, 5*60*1000);
-
-async function loadEfficiency() {
-  try {
-    const r = await fetch('/api/efficiency');
-    const d = await r.json();
-    if(d.error) return;
-    const card = document.getElementById('eff-card');
-    if(card) card.style.display = 'block';
-
-    const s = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
-    const bar = (id, pct) => { const e = document.getElementById(id); if(e) e.style.width = Math.min(100, pct||0) + '%'; };
-
-    s('eff-instant', d.instantEff > 0 ? d.instantEff.toFixed(1) : '–');
-    bar('eff-instant-bar', d.instantEff);
-    s('eff-instant-sub', (d.pvNow||0) + 'W / ' + (d.panelMax||2030) + 'W');
-
-    s('eff-solar', d.solarKwh > 0 ? d.solarKwh.toFixed(1) : '–');
-    s('eff-daily-sub', 'zużycie: ' + (d.consumptionKwh||0).toFixed(1) + ' kWh');
-
-    s('eff-forecast', d.forecastKwh > 0 ? d.forecastKwh.toFixed(1) : '–');
-    if(d.weather?.length) {
-      const cur = d.weather.find(w => w.hour === new Date().getHours());
-      s('eff-weather', (cur?.weather || '–') + ' · ' + (d.peakSunHours||0) + 'h słońca');
-    }
-
-    s('eff-independence', d.independence > 0 ? d.independence.toFixed(1) : '–');
-    bar('eff-independence-bar', d.independence);
-    s('eff-fromgrid', d.fromGridKwh > 0 ? d.fromGridKwh.toFixed(1) : '–');
-    s('eff-togrid', 'do sieci: ' + (d.toGridKwh||0).toFixed(1) + ' kWh');
-    s('eff-batchg', d.batChgKwh > 0 ? d.batChgKwh.toFixed(1) : '–');
-    s('eff-batdsg', 'rozładowanie: ' + (d.batDsgKwh||0).toFixed(1) + ' kWh');
-    s('eff-co2', d.co2g > 0 ? d.co2g.toLocaleString('pl-PL') : '–');
-  } catch(e) {}
-}
-loadSchedule();
-setInterval(loadSchedule, 15*60*1000);
-
-async function loadPrices() {
-  try {
-    const r = await fetch('/api/prices');
-    const data = await r.json();
-    if (!data.prices || data.error) return;
-    const card = document.getElementById('prices-card');
-    if(card) card.style.display = 'block';
-    const now = new Date();
-    const cur = data.prices.find(p => new Date(p.start) <= now && new Date(p.end) > now);
-    if (cur) {
-      document.getElementById('price-now-val').textContent = cur.price?.toFixed(4) || '–';
-      const badge = document.getElementById('price-now-badge');
-      badge.textContent = cur.isCheap ? '✓ tania' : cur.isExpensive ? '↑ droga' : 'normalna';
-      badge.className = 'price-badge ' + (cur.isCheap ? 'price-cheap' : cur.isExpensive ? 'price-exp' : 'price-norm');
-      const pros = document.getElementById('price-prosumer');
-      if(pros) pros.textContent = 'Prosument: ' + (cur.priceProsumer?.toFixed(4)||'–') + ' zł/kWh';
-    }
-    const hoursEl = document.getElementById('price-hours');
-    if (hoursEl) {
-      const todayStr = now.toLocaleDateString('sv-SE');
-      const tomorrowStr = new Date(now.getTime()+86400000).toLocaleDateString('sv-SE');
-      const renderGroup = (prices, label) => {
-        if (!prices.length) return '';
-        const cells = prices.map(p => {
-          const h = new Date(p.start).getHours();
-          const isCur = cur && p.start === cur.start;
-          const bg = isCur?'rgba(245,158,11,.12)':p.isCheap?'rgba(16,185,129,.08)':p.isExpensive?'rgba(239,68,68,.08)':'var(--bg)';
-          const border = isCur?'2px solid var(--pv)':p.isCheap?'1px solid rgba(16,185,129,.3)':p.isExpensive?'1px solid rgba(239,68,68,.3)':'1px solid var(--brd)';
-          const color = isCur?'var(--pv)':p.isCheap?'var(--grid-in)':p.isExpensive?'var(--grid-out)':'var(--t1)';
-          return `<div style="padding:7px 4px;border-radius:8px;border:${border};text-align:center;background:${bg}">
-            <div style="font-family:var(--mono);font-size:9px;color:var(--t2)">${String(h).padStart(2,'0')}:00</div>
-            <div style="font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:${color}">${p.price?.toFixed(3)||'–'}</div>
-          </div>`;
-        }).join('');
-        return `<div style="font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin:10px 0 5px">${label}</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px">${cells}</div>`;
-      };
-      const todayPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === todayStr && p.price != null);
-      const tomorrowPrices = data.prices.filter(p => new Date(p.start).toLocaleDateString('sv-SE') === tomorrowStr && p.price != null);
-      hoursEl.innerHTML = renderGroup(todayPrices, 'Dziś') + renderGroup(tomorrowPrices, 'Jutro');
-    }
-  } catch(e) { if(e.message&&!e.message.includes('DOCTYPE')&&!e.message.includes('close')) console.error('loadPrices:',e.message); }
-}
-
-async function loadSchedule() {
-  try {
-    const r = await fetch('/api/schedule');
-    const data = await r.json();
-    if (!data.schedule || !data.schedule.length) return;
-    const card = document.getElementById('schedule-card');
-    if(card) card.style.display = 'block';
-    drawSchedule(data.schedule);
-  } catch(e) {}
-}
-
-function drawSchedule(items) {
-  const cv = document.getElementById('schart');
-  if(!cv) return;
-  const ctx = cv.getContext('2d');
-  const dpr = window.devicePixelRatio||1;
-  const w = cv.offsetWidth, h = 180;
-  cv.width = w*dpr; cv.height = h*dpr; cv.style.height = h+'px';
-  ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
-
-  const p = {t:10, b:28, l:44, r:44};
-  const cw = w-p.l-p.r, ch = h-p.t-p.b, n = items.length;
-  const slot = cw/n;
-  const bw = Math.max(2, Math.floor(slot/4));
-  const maxPow = Math.max(...items.map(d=>Math.max(d.solar||0,d.grid||0,d.battery||0)), 500);
-
+// Plan Intelligent+
+function drawSchedule(items){
+  const cv=document.getElementById('schart');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const dpr=window.devicePixelRatio||1,w=cv.offsetWidth,h=180;
+  cv.width=w*dpr;cv.height=h*dpr;cv.style.height=h+'px';
+  ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  const p={t:10,b:28,l:44,r:44},cw=w-p.l-p.r,ch=h-p.t-p.b,n=items.length;
+  const slot=cw/n,bw=Math.max(2,Math.floor(slot/4));
+  const maxPow=Math.max(...items.map(d=>Math.max(d.solar||0,d.grid||0,d.battery||0)),500);
   for(let i=0;i<=4;i++){
     const y=p.t+(ch/4)*i;
-    ctx.fillStyle=gc('--brd'); ctx.fillRect(p.l,y,cw,.5);
-    ctx.fillStyle=gc('--t2'); ctx.font='9px DM Mono,monospace';
-    ctx.textAlign='right';
-    const v=Math.round(maxPow*(1-i/4));
-    ctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':v+'', p.l-4, y+3);
-    ctx.textAlign='left';
-    ctx.fillText(Math.round(100*(1-i/4))+'%', w-p.r+4, y+3);
+    ctx.fillStyle=gc('--brd');ctx.fillRect(p.l,y,cw,.5);
+    ctx.fillStyle=gc('--t2');ctx.font='9px DM Mono,monospace';
+    ctx.textAlign='right';const v=Math.round(maxPow*(1-i/4));
+    ctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':v+'',p.l-4,y+3);
+    ctx.textAlign='left';ctx.fillText(Math.round(100*(1-i/4))+'%',w-p.r+4,y+3);
   }
-
   items.forEach((d,i)=>{
-    const cx = p.l + i*slot + slot/2;
-    const x1 = cx - bw*1.5 - 1;
-    const cols = [
-      [d.solar||0,   '#f59e0b'],
-      [d.battery||0, '#06b6d4'],
-      [d.grid||0,    '#ef4444'],
-    ];
-    cols.forEach(([v,color],j)=>{
+    const cx=p.l+i*slot+slot/2,x1=cx-bw*1.5-1;
+    [[d.solar||0,'#f59e0b'],[d.battery||0,'#06b6d4'],[d.grid||0,'#ef4444']].forEach(([v,color],j)=>{
       if(v<5)return;
       const bh=Math.max(2,(v/maxPow)*ch);
-      ctx.fillStyle=color;
-      ctx.fillRect(x1+j*(bw+1), p.t+ch-bh, bw, bh);
+      ctx.fillStyle=color;ctx.fillRect(x1+j*(bw+1),p.t+ch-bh,bw,bh);
     });
   });
-
-  ctx.beginPath(); ctx.strokeStyle='#8b5cf6'; ctx.lineWidth=2; ctx.lineJoin='round';
+  ctx.beginPath();ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.lineJoin='round';
   items.forEach((d,i)=>{
-    const x = i===0 ? p.l : i===n-1 ? p.l+cw : p.l+i*slot+slot/2;
+    const x=i===0?p.l:i===n-1?p.l+cw:p.l+i*slot+slot/2;
     const y=p.t+ch-((d.soc||0)/100)*ch;
     i?ctx.lineTo(x,y):ctx.moveTo(x,y);
   });
   ctx.stroke();
-  ctx.lineTo(p.l+cw,p.t+ch); ctx.lineTo(p.l,p.t+ch); ctx.closePath();
+  ctx.lineTo(p.l+cw,p.t+ch);ctx.lineTo(p.l,p.t+ch);ctx.closePath();
   const sg=ctx.createLinearGradient(0,p.t,0,p.t+ch);
-  sg.addColorStop(0,'rgba(139,92,246,.15)'); sg.addColorStop(1,'rgba(139,92,246,0)');
-  ctx.fillStyle=sg; ctx.fill();
-
-  ctx.fillStyle=gc('--t2'); ctx.font='9px DM Mono,monospace'; ctx.textAlign='center';
+  sg.addColorStop(0,'rgba(139,92,246,.15)');sg.addColorStop(1,'rgba(139,92,246,0)');
+  ctx.fillStyle=sg;ctx.fill();
+  ctx.fillStyle=gc('--t2');ctx.font='9px DM Mono,monospace';ctx.textAlign='center';
   const step=Math.max(1,Math.ceil(n/8));
   items.forEach((d,i)=>{
     if(i%step!==0&&i!==n-1)return;
-    ctx.fillText(d.time.slice(0,5), p.l+i*slot+slot/2, h-6);
+    ctx.fillText(d.time.slice(0,5),p.l+i*slot+slot/2,h-6);
   });
 }
 
-
-async function loadSchedule() {
-  try {
-    const r = await fetch('/api/schedule');
-    const data = await r.json();
-    if (!data.schedule || !data.schedule.length) return;
-    const card = document.getElementById('schedule-card');
-    if(card) card.style.display = 'block';
+async function loadSchedule(){
+  try{
+    const r=await fetch('/api/schedule');const data=await r.json();
+    if(!data.schedule?.length)return;
+    const card=document.getElementById('schedule-card');if(card)card.style.display='block';
     drawSchedule(data.schedule);
-  } catch(e) {}
+  }catch(e){}
 }
+
+async function loadPrices(){
+  try{
+    const r=await fetch('/api/prices');const data=await r.json();
+    if(!data.prices||data.error)return;
+    const card=document.getElementById('prices-card');if(card)card.style.display='block';
+    const now=new Date();
+    const cur=data.prices.find(p=>new Date(p.start)<=now&&new Date(p.end)>now);
+    if(cur){
+      document.getElementById('price-now-val').textContent=cur.price?.toFixed(4)||'–';
+      const badge=document.getElementById('price-now-badge');
+      badge.textContent=cur.isCheap?'✓ tania':cur.isExpensive?'↑ droga':'normalna';
+      badge.className='price-badge '+(cur.isCheap?'price-cheap':cur.isExpensive?'price-exp':'price-norm');
+      const pros=document.getElementById('price-prosumer');
+      if(pros)pros.textContent='Prosument: '+(cur.priceProsumer?.toFixed(4)||'–')+' zł/kWh';
+    }
+    const hoursEl=document.getElementById('price-hours');
+    if(hoursEl){
+      const todayStr=now.toLocaleDateString('sv-SE');
+      const tomorrowStr=new Date(now.getTime()+86400000).toLocaleDateString('sv-SE');
+      const renderGroup=(prices,label)=>{
+        if(!prices.length)return'';
+        const cells=prices.map(p=>{
+          const h=new Date(p.start).getHours();
+          const isCur=cur&&p.start===cur.start;
+          const bg=isCur?'rgba(245,158,11,.12)':p.isCheap?'rgba(16,185,129,.08)':p.isExpensive?'rgba(239,68,68,.08)':'var(--bg)';
+          const border=isCur?'2px solid var(--pv)':p.isCheap?'1px solid rgba(16,185,129,.3)':p.isExpensive?'1px solid rgba(239,68,68,.3)':'1px solid var(--brd)';
+          const color=isCur?'var(--pv)':p.isCheap?'var(--grid-in)':p.isExpensive?'var(--grid-out)':'var(--t1)';
+          return`<div style="padding:7px 4px;border-radius:8px;border:${border};text-align:center;background:${bg}"><div style="font-family:var(--mono);font-size:9px;color:var(--t2)">${String(h).padStart(2,'0')}:00</div><div style="font-family:var(--mono);font-size:12px;font-weight:500;margin-top:2px;color:${color}">${p.price?.toFixed(3)||'–'}</div></div>`;
+        }).join('');
+        return`<div style="font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin:10px 0 5px">${label}</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:5px">${cells}</div>`;
+      };
+      const todayP=data.prices.filter(p=>new Date(p.start).toLocaleDateString('sv-SE')===todayStr&&p.price!=null);
+      const tomorrowP=data.prices.filter(p=>new Date(p.start).toLocaleDateString('sv-SE')===tomorrowStr&&p.price!=null);
+      hoursEl.innerHTML=renderGroup(todayP,'Dziś')+renderGroup(tomorrowP,'Jutro');
+    }
+  }catch(e){}
+}
+
+async function loadEfficiency(){
+  try{
+    const r=await fetch('/api/efficiency');const d=await r.json();
+    if(d.error)return;
+    const card=document.getElementById('eff-card');if(card)card.style.display='block';
+    const sv=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    const sb=(id,pct)=>{const e=document.getElementById(id);if(e)e.style.width=Math.min(100,pct||0)+'%';};
+    sv('eff-solar',d.solarKwh>0?d.solarKwh.toFixed(1):'–');
+    sv('eff-consumption',(d.consumptionKwh||0).toFixed(1));
+    if(d.consumptionKwh>0)sb('eff-solar-bar',d.solarKwh/d.consumptionKwh*100);
+    sv('eff-forecast',d.forecastKwh>0?d.forecastKwh.toFixed(1):'–');
+    if(d.weather?.length){
+      const cur=d.weather.find(w=>w.hour===new Date().getHours());
+      sv('eff-weather',(cur?.weather||'–')+' · '+(d.peakSunHours||0)+'h');
+    }
+    sv('eff-independence',d.independence>0?d.independence.toFixed(1):'–');
+    sb('eff-independence-bar',d.independence);
+    sv('eff-fromgrid',d.fromGridKwh>0?d.fromGridKwh.toFixed(1):'–');
+    sv('eff-togrid','do sieci: '+(d.toGridKwh||0).toFixed(1)+' kWh');
+    sv('eff-batchg',d.batChgKwh>0?d.batChgKwh.toFixed(1):'–');
+    sv('eff-batdsg','rozł: '+(d.batDsgKwh||0).toFixed(1)+' kWh');
+    sv('eff-co2',d.co2g>0?d.co2g.toLocaleString('pl-PL'):'–');
+  }catch(e){}
+}
+
+setupTT();
+connect();
+setTimeout(poll,500);
+setTimeout(()=>{drawHist();if(curData)drawEChart(curData);},100);
+loadPrices();
+setInterval(loadPrices,15*60*1000);
+loadSchedule();
+setInterval(loadSchedule,15*60*1000);
+loadEfficiency();
+setInterval(loadEfficiency,5*60*1000);
 </script>
 </body>
 </html>
