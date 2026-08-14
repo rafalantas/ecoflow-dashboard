@@ -90,6 +90,64 @@ let energyCache = {};
 let pricesCache = { data: null, fetchedAt: 0 };
 let scheduleCache = { data: null, fetchedAt: 0 };
 
+// ─── EcoFlow Official API ───
+const EF_OFFICIAL_HOST = 'https://api.ecoflow.com';
+
+function efSign(params) {
+  const nonce = String(Math.floor(Math.random() * 900000) + 100000);
+  const timestamp = String(Date.now());
+  const flat = {};
+  function flatten(obj, prefix) {
+    for (const k of Object.keys(obj)) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      const v = obj[k];
+      if (Array.isArray(v)) {
+        v.forEach((item, i) => {
+          if (v !== null && typeof item === 'object') flatten(item, `${key}[${i}]`);
+          else flat[`${key}[${i}]`] = item;
+        });
+      } else if (v !== null && typeof v === 'object') {
+        flatten(v, key);
+      } else {
+        flat[key] = v;
+      }
+    }
+  }
+  flatten(params, '');
+  const parts = Object.keys(flat).sort().map(k => `${k}=${flat[k]}`);
+  parts.push(`accessKey=${ACCESS_KEY}`, `nonce=${nonce}`, `timestamp=${timestamp}`);
+  const sign = crypto.createHmac('sha256', SECRET_KEY).update(parts.join('&')).digest('hex');
+  return { nonce, timestamp, sign };
+}
+
+async function efGet(path, params = {}) {
+  const { nonce, timestamp, sign } = efSign(params);
+  const qs = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&');
+  const url = `${EF_OFFICIAL_HOST}${path}${qs ? '?' + qs : ''}`;
+  const r = await axios.get(url, {
+    headers: { accessKey: ACCESS_KEY, nonce, timestamp, sign },
+    timeout: 8000
+  });
+  return r.data;
+}
+
+async function efPost(path, body) {
+  const { nonce, timestamp, sign } = efSign(body);
+  const r = await axios.post(`${EF_OFFICIAL_HOST}${path}`, body, {
+    headers: { accessKey: ACCESS_KEY, nonce, timestamp, sign,
+      'Content-Type': 'application/json;charset=UTF-8' },
+    timeout: 8000
+  });
+  return r.data;
+}
+
+async function efHistorical(code, beginTime, endTime) {
+  const r = await efPost('/iot-open/sign/device/quota/data', {
+    sn: DEVICE_SN, params: { beginTime, endTime, code }
+  });
+  return r?.data?.data || [];
+}
+
 // Token prywatnego API
 let privateToken = null;
 let tokenExpiry = 0;
@@ -102,6 +160,99 @@ const wss    = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json(deviceState));
 app.get('/api/history', (_, res) => res.json(history));
+
+app.get('/api/efficiency', async (req, res) => {
+  try {
+    const now = new Date();
+    const todayUTC = now.toISOString().slice(0, 10);
+    const beginTime = `${todayUTC} 00:00:00`;
+    const endTime   = `${todayUTC} 23:59:59`;
+    const PANEL_MAX_W = 2030;
+
+    const CODES = {
+      independence: 'BK621-App-HOME-INDEPENDENCE-PERCENT-FLOW-indep-progress_bar-NOTDISTINGUISH-MASTER_DATA',
+      solar:        'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA',
+      consumption:  'BK621-App-HOME-LOAD-ENERGY-FLOW-consumption-prop_arc-NOTDISTINGUISH-MASTER_DATA',
+      grid:         'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA',
+      battery:      'BK621-App-HOME-SOC-ENERGY-FLOW-battery-prop_bar-NOTDISTINGUISH-MASTER_DATA',
+      co2:          'BK621-App-HOME-CO2-WEIGHT-FLOW-impact-progress_arc-NOTDISTINGUISH-MASTER_DATA',
+    };
+
+    const results = {};
+    await Promise.all(Object.entries(CODES).map(async ([key, code]) => {
+      try {
+        const data = await efHistorical(code, beginTime, endTime);
+        results[key] = data;
+      } catch(e) { results[key] = []; }
+    }));
+
+    const getVal = (arr, extra) => {
+      const item = extra !== undefined
+        ? arr.find(d => String(d.extra) === String(extra))
+        : arr[0];
+      return item ? parseFloat(item.indexValue) : 0;
+    };
+
+    const solarWh      = getVal(results.solar, undefined);
+    const consumptionWh= getVal(results.consumption, undefined);
+    const fromGridWh   = getVal(results.grid, '1');
+    const toGridWh     = getVal(results.grid, '2');
+    const batChgWh     = getVal(results.battery, '2');
+    const batDsgWh     = getVal(results.battery, '1');
+    const independence = getVal(results.independence, undefined);
+    const co2g         = getVal(results.co2, undefined);
+
+    // Efektywnosc chwilowa
+    const instantEff = deviceState.pvTotal > 0
+      ? Math.round(deviceState.pvTotal / PANEL_MAX_W * 1000) / 10 : 0;
+
+    // Efektywnosc dzienna = solar / consumption
+    const dailyEff = consumptionWh > 0
+      ? Math.round(solarWh / consumptionWh * 1000) / 10 : 0;
+
+    // Prognoza pogodowa
+    let forecastKwh = 0, peakSunHours = 0, weather = [];
+    if (privateToken) {
+      try {
+        const nonce = crypto.randomBytes(8).toString('hex');
+        const timestamp = String(Date.now());
+        const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
+        const wh = {'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
+          'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
+          'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
+        const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
+          { headers: wh, params: { beginTime: `${todayUTC} 00:00:00`, endTime: `${todayUTC} 23:59:59`,
+            spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
+        if (wr.data.code === '0') {
+          const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
+            'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
+          weather = (wr.data.data || []).map(w => ({
+            hour: new Date(w.timestamp*1000).getHours(), weather: w.weather }));
+          peakSunHours = Math.round(weather.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
+          forecastKwh = Math.round(PANEL_MAX_W * peakSunHours / 100) / 10;
+        }
+      } catch(e) {}
+    }
+
+    res.json({
+      instantEff, dailyEff,
+      solarKwh: Math.round(solarWh/100)/10,
+      consumptionKwh: Math.round(consumptionWh/100)/10,
+      fromGridKwh: Math.round(fromGridWh/100)/10,
+      toGridKwh: Math.round(toGridWh/100)/10,
+      batChgKwh: Math.round(batChgWh/100)/10,
+      batDsgKwh: Math.round(batDsgWh/100)/10,
+      independence: Math.round(independence*10)/10,
+      co2g: Math.round(co2g),
+      forecastKwh, peakSunHours, weather,
+      pvNow: deviceState.pvTotal, panelMax: PANEL_MAX_W
+    });
+  } catch(e) {
+    console.error('Efficiency error:', e.message);
+    res.json({ error: e.message });
+  }
+});
+
 
 app.get('/api/schedule', async (req, res) => {
   const now = Date.now();
@@ -340,7 +491,17 @@ function applyParams(params) {
   // Bateria
   set('bmsBattSoc',   'soc',      v => Math.round(v));
   set('f32ShowSoc',   'socExact', r1);
-  set('powGetBpCms',  'battPower', r1);
+  // battPower z filtrem skokow
+  if (params.powGetBpCms !== undefined) {
+    const newVal = r1(params.powGetBpCms);
+    const prev   = deviceState.battPower || 0;
+    if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) {
+      deviceState.battPower = newVal;
+    } else {
+      console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
+    }
+    updated = true;
+  }
   set('cmsChgRemTime','chgRemTime', v => v);
   set('cmsDsgRemTime','dsgRemTime', v => v);
   set('bmsChgDsgState','chgDsgState', v => v);
