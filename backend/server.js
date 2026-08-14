@@ -234,7 +234,8 @@ app.get('/api/efficiency', async (req, res) => {
           // Peak sun hours = suma efektywnosci tylko dla godzin 7-19 (faktyczne nasłonecznienie)
           const sunHours = weather.filter(w => w.hour >= 7 && w.hour <= 19);
           peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
-          forecastKwh = Math.round(PANEL_MAX_W * peakSunHours / 1000 * 10) / 10;
+          // Wspolczynnik 0.75 uwzglednia straty (temperatura, inverter, kable, kat padania)
+          forecastKwh = Math.round(PANEL_MAX_W * peakSunHours / 1000 * 0.75 * 10) / 10;
         }
       } catch(e) {}
     }
