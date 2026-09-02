@@ -9,6 +9,7 @@ const axios     = require('axios');
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT       = process.env.PORT          || 8080;
 const DEVICE_SN  = process.env.DEVICE_SN     || '';
+const DEVICE_SN2 = process.env.DEVICE_SN2    || '';
 const ACCESS_KEY = process.env.EF_ACCESS_KEY || '';
 const SECRET_KEY = process.env.EF_SECRET_KEY || '';
 const EF_EMAIL   = process.env.EF_EMAIL      || '';
@@ -50,6 +51,14 @@ function md5Sign(token) {
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
+let deviceState2 = {
+  soc: 0, battPower: 0, chgDsgState: 0,
+  maxChgSoc: 95, minDsgSoc: 20, connected: false,
+  battSoh: null, battCycles: null, cellVol: [],
+  maxCellTemp: null, minCellTemp: null,
+  accuChgEnergy: null, accuDsgEnergy: null, vBat: null,
+};
+
 let deviceState = {
   connected: false, lastUpdate: null, lastMqttData: null,
   // PV
@@ -194,7 +203,7 @@ const server = http.createServer(app);
 const wss    = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, '../frontend/public')));
-app.get('/api/state',   (_, res) => res.json(deviceState));
+app.get('/api/state',   (_, res) => res.json({...deviceState, device2: deviceState2}));
 app.get('/api/history', (_, res) => res.json(history));
 
 app.get('/api/efficiency', async (req, res) => {
@@ -886,6 +895,32 @@ async function startMqtt() {
   });
 
   client.on('message', (topic, payload) => {
+    // Drugi Ultra X
+    if (DEVICE_SN2 && topic.includes(DEVICE_SN2)) {
+      try {
+        const msg = JSON.parse(payload.toString());
+        const p = msg.params || msg;
+        if (p.cmsBattSoc != null) deviceState2.soc = Math.round(p.cmsBattSoc);
+        if (p.powGetBpCms != null) deviceState2.battPower = Math.round(p.powGetBpCms);
+        if (p.bmsChgDsgState != null) deviceState2.chgDsgState = p.bmsChgDsgState;
+        if (p.cmsMaxChgSoc != null) deviceState2.maxChgSoc = p.cmsMaxChgSoc;
+        if (p.cmsMinDsgSoc != null) deviceState2.minDsgSoc = p.cmsMinDsgSoc;
+        if (p.bmsBattSoh != null) deviceState2.battSoh = Math.round(p.bmsBattSoh * 10) / 10;
+        if (p.cycles != null) deviceState2.battCycles = p.cycles;
+        if (p.accuChgEnergy != null) deviceState2.accuChgEnergy = p.accuChgEnergy;
+        if (p.accuDsgEnergy != null) deviceState2.accuDsgEnergy = p.accuDsgEnergy;
+        if (p.cellVol) deviceState2.cellVol = p.cellVol;
+        if (p.maxCellTemp != null) deviceState2.maxCellTemp = p.maxCellTemp;
+        if (p.minCellTemp != null) deviceState2.minCellTemp = p.minCellTemp;
+        if (p.vBat != null) deviceState2.vBat = p.vBat;
+        deviceState2.connected = true;
+        // Zaktualizuj soc w deviceState jako srednia
+        deviceState.socCombined = Math.round((deviceState.soc + deviceState2.soc) / 2);
+        deviceState.battPowerCombined = (deviceState.battPower || 0) + (deviceState2.battPower || 0);
+        broadcast({ type: 'state2', data: deviceState2 });
+      } catch(e) {}
+      return;
+    }
     try {
       const str = payload.toString('utf8');
       if (!str.startsWith('{')) return;
