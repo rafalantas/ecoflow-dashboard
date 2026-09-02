@@ -709,6 +709,51 @@ async function startMqtt() {
 
   client.on('error', e => console.error('MQTT error:', e.message));
   client.on('close', () => { deviceState.connected = false; broadcast({ type: 'status', connected: false }); });
+
+  // Drugi klient MQTT dla SN2 (osobne polaczenie, inny clientId)
+  if (DEVICE_SN2) {
+    const client2 = mqtt.connect(`mqtts://mqtt-e.ecoflow.com:${creds.port}`, {
+      clientId: `open-${uuidv4()}`,
+      username: creds.certificateAccount,
+      password: creds.certificatePassword,
+      rejectUnauthorized: false,
+      reconnectPeriod: 10000,
+    });
+    const topic2 = `/open/${creds.certificateAccount}/${DEVICE_SN2}/quota`;
+    client2.on('connect', () => {
+      client2.subscribe(topic2);
+      console.log('🔋 MQTT2 polaczony dla banku 2');
+    });
+    client2.on('message', (t, payload) => {
+      try {
+        const data = JSON.parse(payload.toString());
+        const p = data.params || data;
+        if (p.bmsBattSoc != null && p.bmsBattSoc > 0) deviceState2.soc = Math.round(p.bmsBattSoc);
+        else if (p.f32ShowSoc != null && p.f32ShowSoc > 0) deviceState2.soc = Math.round(p.f32ShowSoc);
+        else if (p.soc != null && p.soc > 0) deviceState2.soc = Math.round(p.soc);
+        if (p.powGetBpCms != null) deviceState2.battPower = Math.round(p.powGetBpCms);
+        if (p.bmsChgDsgState != null) deviceState2.chgDsgState = p.bmsChgDsgState;
+        if (p.chgDsgState != null) deviceState2.chgDsgState = p.chgDsgState;
+        if (p.bmsBattSoh != null) deviceState2.battSoh = Math.round(p.bmsBattSoh * 10) / 10;
+        if (p.soh != null && deviceState2.battSoh == null) deviceState2.battSoh = Math.round(p.soh * 10) / 10;
+        if (p.cycles != null) deviceState2.battCycles = p.cycles;
+        if (p.accuChgEnergy != null) deviceState2.accuChgEnergy = p.accuChgEnergy;
+        if (p.accuDsgEnergy != null) deviceState2.accuDsgEnergy = p.accuDsgEnergy;
+        if (p.cellVol) deviceState2.cellVol = p.cellVol;
+        if (p.bmsMaxCellTemp != null) deviceState2.maxCellTemp = p.bmsMaxCellTemp;
+        if (p.bmsMinCellTemp != null) deviceState2.minCellTemp = p.bmsMinCellTemp;
+        if (p.maxCellTemp != null) deviceState2.maxCellTemp = p.maxCellTemp;
+        if (p.minCellTemp != null) deviceState2.minCellTemp = p.minCellTemp;
+        if (p.vBat != null) deviceState2.vBat = p.vBat;
+        if (p.vol != null) deviceState2.vBat = p.vol;
+        if (p.bmsChgRemTime != null) deviceState2.chgRemTime = p.bmsChgRemTime;
+        if (p.bmsDsgRemTime != null) deviceState2.dsgRemTime = p.bmsDsgRemTime;
+        deviceState2.connected = true;
+        broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
+      } catch(e) {}
+    });
+    client2.on('error', e => console.error('MQTT2 error:', e.message));
+  }
 }
 
 function startDemo() {
