@@ -8,6 +8,7 @@ services:
     environment:
       - TZ=Europe/Warsaw
       - DEVICE_SN=${DEVICE_SN}
+      - DEVICE_SN2=${DEVICE_SN2}
       - EF_ACCESS_KEY=${EF_ACCESS_KEY}
       - EF_SECRET_KEY=${EF_SECRET_KEY}
       - EF_EMAIL=${EF_EMAIL}
