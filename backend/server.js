@@ -19,7 +19,6 @@ const METER_SN   = process.env.METER_SN      || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
 const PSTRYK_KEY = process.env.PSTRYK_API_KEY || '';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function uuidv4() {
   return crypto.randomUUID ? crypto.randomUUID() :
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -57,44 +56,31 @@ let deviceState2 = {
   battSoh: null, battCycles: null, cellVol: [],
   maxCellTemp: null, minCellTemp: null,
   accuChgEnergy: null, accuDsgEnergy: null, vBat: null,
+  chgRemTime: 0, dsgRemTime: 0,
 };
 
 let deviceState = {
   connected: false, lastUpdate: null, lastMqttData: null,
-  // PV
   pv1Power: 0, pv2Power: 0, pv3Power: 0, pv4Power: 0, pvTotal: 0,
   pv1Vol: 0, pv2Vol: 0, pv3Vol: 0, pv4Vol: 0,
   pv1Amp: 0, pv2Amp: 0, pv3Amp: 0, pv4Amp: 0,
   pv1Active: false, pv2Active: false, pv3Active: false, pv4Active: false,
-  // Bateria
-  soc: 0, socExact: 0, battPower: 0,
-  chgRemTime: 0, dsgRemTime: 0,
-  chgDsgState: 0, // 0=idle 1=dsg 2=chg
+  soc: 0, socExact: 0, battPower: 0, cmsBattSoc: 0,
+  chgRemTime: 0, dsgRemTime: 0, chgDsgState: 0,
   cellTemp: [], cellVol: [], maxCellTemp: 0, minCellTemp: 0,
-  // Sieć
   gridPower: 0, gridVol: 0, gridFreq: 0,
   feedPower: 0, fromGrid: 0, gridStatus: '',
-  // Zużycie
   sysLoad: 0, loadFromPv: 0, loadFromGrid: 0, loadFromBat: 0,
-  // Bateria - zdrowie
-  battSoh: 100, battCycles: 0, accuChgEnergy: 0, accuDsgEnergy: 0,
-  vBat: 0,
-  // Inne
+  battSoh: 100, battCycles: 0, accuChgEnergy: 0, accuDsgEnergy: 0, vBat: 0,
   invTemp: 0, maxChgSoc: 95, minDsgSoc: 20,
-  // Licznik
   meterL1: 0, meterL2: 0, meterL3: 0, meterTotal: 0,
   meterTodayImport: 0, meterTodayExport: 0,
   meterTotalImport: 0, meterTotalExport: 0,
 };
 
-// Historia real-time sesji
 let history = { pv: [], feed: [], soc: [], ts: [] };
 const MAX_HIST = 300;
-
-// Snapshoty godzinowe do wykresu dziennego
 let dailySnapshots = {};
-
-// Cache energii
 let energyCache = {};
 let pricesCache = { data: null, fetchedAt: 0 };
 let scheduleCache = { data: null, fetchedAt: 0 };
@@ -159,8 +145,9 @@ async function efHistorical(code, beginTime, endTime) {
 
 // Token prywatnego API
 let privateToken = null;
+let tokenExpiry = 0;
 
-// Cache pogody dziennej
+// Cache pogody
 let weatherCache = { date: null, weather: [], peakSunHours: 0 };
 
 async function refreshWeatherCache() {
@@ -182,20 +169,18 @@ async function refreshWeatherCache() {
         spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
     if (wr.data.code === '0' && wr.data.data?.length) {
       const newWeather = wr.data.data.map(w => ({
-        hour: parseInt(w.dt.slice(11,13)), weather: w.weather })); // dt = czas lokalny
-      // Merge z istniejącym cache (zachowaj godziny które juz minęły)
+        hour: parseInt(w.dt.slice(11,13)), weather: w.weather }));
       const nowH = now.getHours();
       const existing = weatherCache.weather.filter(w => w.hour < nowH);
       const merged = [...existing, ...newWeather.filter(w => !existing.find(e => e.hour === w.hour))];
       merged.sort((a,b) => a.hour - b.hour);
-      const sunHours = merged.filter(w => w.hour >= 6 && w.hour <= 20); // CEST lokalny
+      const sunHours = merged.filter(w => w.hour >= 6 && w.hour <= 20);
       const peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
       weatherCache = { date: localDate, weather: merged, peakSunHours };
       console.log(`☀️  Weather cache: ${peakSunHours}h peak sun (${merged.length} godzin)`);
     }
   } catch(e) { console.error('Weather cache error:', e.message); }
 }
-let tokenExpiry = 0;
 
 // ─── Server ───────────────────────────────────────────────────────────────────
 const app    = express();
@@ -209,7 +194,6 @@ app.get('/api/history', (_, res) => res.json(history));
 app.get('/api/efficiency', async (req, res) => {
   try {
     const now = new Date();
-    // Uzyj lokalnego czasu kontenera (TZ=Europe/Warsaw) dla zakresu dat
     const pad = n => String(n).padStart(2,'0');
     const localDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
     const todayUTC = now.toISOString().slice(0, 10);
@@ -228,33 +212,26 @@ app.get('/api/efficiency', async (req, res) => {
 
     const results = {};
     await Promise.all(Object.entries(CODES).map(async ([key, code]) => {
-      try {
-        const data = await efHistorical(code, beginTime, endTime);
-        results[key] = data;
-      } catch(e) { results[key] = []; }
+      try { results[key] = await efHistorical(code, beginTime, endTime); }
+      catch(e) { results[key] = []; }
     }));
 
     const getVal = (arr, extra) => {
-      const item = extra !== undefined
-        ? arr.find(d => String(d.extra) === String(extra))
-        : arr[0];
+      const item = extra !== undefined ? arr.find(d => String(d.extra) === String(extra)) : arr[0];
       return item ? parseFloat(item.indexValue) : 0;
     };
 
-    const solarWh      = getVal(results.solar, undefined);
-    const consumptionWh= getVal(results.consumption, undefined);
-    const fromGridWh   = getVal(results.grid, '1');
-    const toGridWh     = getVal(results.grid, '2');
-    const batChgWh     = getVal(results.battery, '2');
-    const batDsgWh     = getVal(results.battery, '1');
-    const independence = getVal(results.independence, undefined);
-    const co2g         = getVal(results.co2, undefined);
+    const solarWh       = getVal(results.solar, undefined);
+    const consumptionWh = getVal(results.consumption, undefined);
+    const fromGridWh    = getVal(results.grid, '1');
+    const toGridWh      = getVal(results.grid, '2');
+    const batChgWh      = getVal(results.battery, '2');
+    const batDsgWh      = getVal(results.battery, '1');
+    const independence  = getVal(results.independence, undefined);
+    const co2g          = getVal(results.co2, undefined);
 
-    // Efektywnosc chwilowa
     const instantEff = deviceState.pvTotal > 0
       ? Math.round(deviceState.pvTotal / PANEL_MAX_W * 1000) / 10 : 0;
-
-    // Efektywnosc dzienna = solar / consumption
     const dailyEff = consumptionWh > 0
       ? Math.round(solarWh / consumptionWh * 1000) / 10 : 0;
 
@@ -263,8 +240,6 @@ app.get('/api/efficiency', async (req, res) => {
     try {
       const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
         'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
-
-      // Krok 1: historia ostatnich 7 dni
       const histDays = [];
       for (let i = 1; i <= 7; i++) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -277,66 +252,31 @@ app.get('/api/efficiency', async (req, res) => {
       }
 
       if (histDays.length >= 3) {
-        // Srednia wazona
         let sumW = 0, sumV = 0;
         histDays.forEach((v, i) => { const w = histDays.length - i; sumW += w; sumV += v * w; });
         const histAvg = sumV / sumW;
 
-        // Krok 2: pogoda dzisiaj przez prywatne API
         let weatherFactor = 1.0;
-        if (privateToken) {
-          try {
-            const nonce = crypto.randomBytes(8).toString('hex');
-            const timestamp = String(Date.now());
-            const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
-            const wh = {'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
-              'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
-              'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
-            const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
-              { headers: wh, params: { beginTime: `${localDate} 07:00:00`, endTime: `${localDate} 20:00:00`,
-                spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
-            if (wr.data.code === '0' && wr.data.data?.length) {
-              weather = wr.data.data.map(w => ({
-                hour: parseInt(w.dt.slice(11,13)), weather: w.weather })); // dt = lokalny
-              const sunHours = weather.filter(w => w.hour >= 6 && w.hour <= 20); // CEST lokalny
-              peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
-              // Srednia pogodowa dla typowego dnia (zakl. 8h przy 1.0)
-              // Srednia liczba godzin slonecznych dla Hajnówki wg miesiaca
+        // Uzyj cache pogody
+        if (weatherCache.weather.length > 0) {
+          weather = weatherCache.weather;
+          peakSunHours = weatherCache.peakSunHours;
           const avgSunByMonth = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
           const typicalSunHours = avgSunByMonth[new Date().getMonth()];
-              weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
-            }
-          } catch(e) {}
+          weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
+        } else if (privateToken) {
+          await refreshWeatherCache();
+          if (weatherCache.peakSunHours > 0) {
+            weather = weatherCache.weather;
+            peakSunHours = weatherCache.peakSunHours;
+            const avgSunByMonth = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
+            const typicalSunHours = avgSunByMonth[new Date().getMonth()];
+            weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
+          }
         }
-
         forecastKwh = Math.round(histAvg * weatherFactor * 10) / 10;
       }
     } catch(e) { console.error('Forecast error:', e.message); }
-
-    if (privateToken) {
-      try {
-        const nonce = crypto.randomBytes(8).toString('hex');
-        const timestamp = String(Date.now());
-        const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
-        const wh = {'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
-          'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
-          'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
-        const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
-          { headers: wh, params: { beginTime: `${todayUTC} 00:00:00`, endTime: `${todayUTC} 23:59:59`,
-            spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
-        if (wr.data.code === '0') {
-          const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
-            'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
-          weather = (wr.data.data || []).map(w => ({
-            hour: new Date(w.timestamp*1000).getHours(), weather: w.weather }));
-          // Peak sun hours = suma efektywnosci tylko dla godzin 7-19 (faktyczne nasłonecznienie)
-          const sunHours = weather.filter(w => w.hour >= 6 && w.hour <= 20); // CEST lokalny
-          peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
-          // Wspolczynnik 0.75 uwzglednia straty (temperatura, inverter, kable, kat padania)
-          // forecastKwh z historii - nie nadpisuj, uzywamy tylko peakSunHours i weather do opisu
-        }
-      } catch(e) {}
-    }
 
     res.json({
       instantEff, dailyEff,
@@ -357,22 +297,12 @@ app.get('/api/efficiency', async (req, res) => {
   }
 });
 
-
 app.get('/api/schedule', async (req, res) => {
   const now = Date.now();
-  if (scheduleCache.data && now - scheduleCache.fetchedAt < 15 * 60 * 1000) {
-    return res.json(scheduleCache.data);
-  }
+  if (scheduleCache.data && now - scheduleCache.fetchedAt < 15 * 60 * 1000) return res.json(scheduleCache.data);
   if (!privateToken) return res.json({ error: 'no_token' });
   try {
-    const nonce = crypto.randomBytes(8).toString('hex');
-    const timestamp = String(Date.now());
-    const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
-    const headers = {
-      'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
-      'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
-      'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'
-    };
+    const headers = md5Sign(privateToken);
     const r = await axios.get('https://api-e.ecoflow.com/tou-service/intelligent/data',
       { headers, params: { sn: DEVICE_SN, timezone: 'Europe/Warsaw', full: 1 }, timeout: 10000 });
     if (r.data.code === '0') {
@@ -381,30 +311,21 @@ app.get('/api/schedule', async (req, res) => {
       return res.json(data);
     }
     res.json({ error: r.data.message, schedule: [] });
-  } catch(e) {
-    console.error('Schedule error:', e.message);
-    res.json({ error: e.message, schedule: [] });
-  }
+  } catch(e) { res.json({ error: e.message, schedule: [] }); }
 });
 
 app.get('/api/prices', async (req, res) => {
   const now = Date.now();
-  if (pricesCache.data && now - pricesCache.fetchedAt < 15 * 60 * 1000) {
-    return res.json(pricesCache.data);
-  }
+  if (pricesCache.data && now - pricesCache.fetchedAt < 15 * 60 * 1000) return res.json(pricesCache.data);
   if (!PSTRYK_KEY) return res.json({ error: 'no_key' });
   try {
     const today = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const url = `https://api.pstryk.pl/integrations/meter-data/unified-metrics/?metrics=pricing&resolution=hour&window_start=${today}T00:00:00Z&window_end=${tomorrow}T23:59:59Z`;
-    const r = await axios.get(url, {
-      headers: { 'Authorization': PSTRYK_KEY },
-      timeout: 10000
-    });
+    const r = await axios.get(url, { headers: { 'Authorization': PSTRYK_KEY }, timeout: 10000 });
     const frames = r.data.frames || [];
     const prices = frames.map(f => ({
-      start: f.start,
-      end: f.end,
+      start: f.start, end: f.end,
       price: f.metrics?.pricing?.full_price,
       priceNet: f.metrics?.pricing?.price_net,
       priceProsumer: f.metrics?.pricing?.price_prosumer_gross,
@@ -413,10 +334,7 @@ app.get('/api/prices', async (req, res) => {
     }));
     pricesCache = { data: { prices }, fetchedAt: now };
     res.json({ prices });
-  } catch(e) {
-    console.error('Pstryk prices error:', e.message);
-    res.json({ error: e.message });
-  }
+  } catch(e) { res.json({ error: e.message }); }
 });
 
 app.get('/api/energy', async (req, res) => {
@@ -425,15 +343,10 @@ app.get('/api/energy', async (req, res) => {
   const refDate = req.query.date || today;
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
-  if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) {
-    return res.json(energyCache[cacheKey]);
-  }
+  if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);
   try {
     const data = await fetchEnergyForPeriod(period, refDate);
-    if (data) {
-      energyCache[cacheKey] = { ...data, fetchedAt: Date.now() };
-      return res.json(energyCache[cacheKey]);
-    }
+    if (data) { energyCache[cacheKey] = { ...data, fetchedAt: Date.now() }; return res.json(energyCache[cacheKey]); }
     res.json({ error: 'no_data' });
   } catch(e) { res.json({ error: e.message }); }
 });
@@ -443,30 +356,23 @@ function broadcast(data) {
   wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
 }
 
-// ─── MQTT timeout ─────────────────────────────────────────────────────────────
-const MQTT_TIMEOUT = 5 * 60 * 1000;
 setInterval(() => {
   if (deviceState.connected && deviceState.lastMqttData) {
-    if (Date.now() - deviceState.lastMqttData > MQTT_TIMEOUT) {
+    if (Date.now() - deviceState.lastMqttData > 5 * 60 * 1000) {
       deviceState.connected = false;
       broadcast({ type: 'status', connected: false });
-      console.log('⚠️  MQTT timeout — offline');
     }
   }
 }, 60000);
 
-// ─── History ──────────────────────────────────────────────────────────────────
 function recordHistory() {
   history.ts.push(new Date().toISOString());
   history.pv.push(deviceState.pvTotal);
   history.feed.push(deviceState.feedPower);
   history.soc.push(deviceState.soc);
-  if (history.ts.length > MAX_HIST) {
-    ['ts','pv','feed','soc'].forEach(k => history[k].shift());
-  }
+  if (history.ts.length > MAX_HIST) ['ts','pv','feed','soc'].forEach(k => history[k].shift());
 }
 
-// ─── Daily snapshots ──────────────────────────────────────────────────────────
 function recordSnapshot(date, totalWh) {
   if (!dailySnapshots[date]) dailySnapshots[date] = [];
   const snaps = dailySnapshots[date];
@@ -487,91 +393,53 @@ function buildHourlyChart(date) {
   }).filter(Boolean);
 }
 
-// ─── Apply Meter params ──────────────────────────────────────────────────────
 function applyMeterParams(params) {
   let updated = false;
   const r1 = v => Math.round(v * 10) / 10;
-
   if (params.gridConnectionPowerL1 !== undefined) { deviceState.meterL1 = r1(params.gridConnectionPowerL1); updated = true; }
   if (params.gridConnectionPowerL2 !== undefined) { deviceState.meterL2 = r1(params.gridConnectionPowerL2); updated = true; }
   if (params.gridConnectionPowerL3 !== undefined) { deviceState.meterL3 = r1(params.gridConnectionPowerL3); updated = true; }
   if (params.powGetSysGrid !== undefined)         { deviceState.meterTotal = r1(params.powGetSysGrid); updated = true; }
-
   if (params.gridConnectionDataRecord) {
     const rec = params.gridConnectionDataRecord;
-    // todayActive = net import (moze byc ujemny eksport)
-    // todayActive = calkowite zuzycie domu
-    if (rec.todayActive != null) {
-      deviceState.meterTodayConsumption = Math.max(0, Math.round(rec.todayActive));
-    }
-    // totalActiveEnergy = laczne zuzycie
-    if (rec.totalActiveEnergy != null) {
-      deviceState.meterTotalConsumption = Math.max(0, Math.round(rec.totalActiveEnergy));
-    }
-    // totalReactiveEnergy = eksport do sieci (feed-in)
-    if (rec.totalReactiveEnergy != null && rec.totalReactiveEnergy > 0) {
-      deviceState.meterTodayExport = Math.round(rec.totalReactiveEnergy);
-    }
+    if (rec.todayActive != null) deviceState.meterTodayConsumption = Math.max(0, Math.round(rec.todayActive));
+    if (rec.totalActiveEnergy != null) deviceState.meterTotalConsumption = Math.max(0, Math.round(rec.totalActiveEnergy));
+    if (rec.totalReactiveEnergy != null && rec.totalReactiveEnergy > 0) deviceState.meterTodayExport = Math.round(rec.totalReactiveEnergy);
     updated = true;
   }
-
   if (updated) {
-    if (deviceState.feedPower === 0 && deviceState.meterTotal > 0) {
-      deviceState.fromGrid = deviceState.meterTotal;
-    }
+    if (deviceState.feedPower === 0 && deviceState.meterTotal > 0) deviceState.fromGrid = deviceState.meterTotal;
     deviceState.connected = true;
     deviceState.lastMqttData = Date.now();
     broadcast({ type: 'state', data: deviceState });
   }
 }
 
-// ─── Grid balance calculator ─────────────────────────────────────────────────
 function calcGridBalance() {
-  const pv   = deviceState.pvTotal      || 0;
-  const load = deviceState.sysLoad      || 0;
-  const bat  = deviceState.battPower    || 0;
-  const chg  = deviceState.chgDsgState  || 0;
-  const meter = deviceState.meterTotal  || 0;
-
-  // Jesli licznik daje dane - uzyj go jako zrodla prawdy dla poboru z sieci
-  if (meter > 20) {
-    deviceState.fromGrid  = meter;
-    deviceState.feedPower = 0;
-    return;
-  }
-
-  // Fallback: bilans energetyczny
+  const pv    = deviceState.pvTotal   || 0;
+  const load  = deviceState.sysLoad   || 0;
+  const bat   = deviceState.battPower || 0;
+  const chg   = deviceState.chgDsgState || 0;
+  const meter = deviceState.meterTotal || 0;
+  if (meter > 20) { deviceState.fromGrid = meter; deviceState.feedPower = 0; return; }
   const batCharging    = chg === 2 ? Math.max(0, bat)           : (bat > 20  ? bat : 0);
   const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : (bat < -20 ? Math.abs(bat) : 0);
   const net = pv + batDischarging - load - batCharging;
-  if (net > 20) {
-    deviceState.feedPower = Math.round(net);
-    deviceState.fromGrid  = 0;
-  } else if (net < -20) {
-    deviceState.feedPower = 0;
-    deviceState.fromGrid  = Math.round(-net);
-  } else {
-    deviceState.feedPower = 0;
-    deviceState.fromGrid  = 0;
-  }
+  if (net > 20)       { deviceState.feedPower = Math.round(net);  deviceState.fromGrid = 0; }
+  else if (net < -20) { deviceState.feedPower = 0; deviceState.fromGrid = Math.round(-net); }
+  else                { deviceState.feedPower = 0; deviceState.fromGrid = 0; }
 }
 
-// Timer - przeliczaj co 3s i broadcastuj jesli zmiana
 setInterval(() => {
-  const prevFeed = deviceState.feedPower;
-  const prevFrom = deviceState.fromGrid;
+  const prevFeed = deviceState.feedPower, prevFrom = deviceState.fromGrid;
   calcGridBalance();
-  if (deviceState.feedPower !== prevFeed || deviceState.fromGrid !== prevFrom) {
-    broadcast({ type: 'state', data: deviceState });
-  }
+  if (deviceState.feedPower !== prevFeed || deviceState.fromGrid !== prevFrom) broadcast({ type: 'state', data: deviceState });
 }, 3000);
 
-// ─── Apply MQTT params ────────────────────────────────────────────────────────
 function applyParams(params) {
   let updated = false;
   const r1 = v => Math.round(v * 10) / 10;
   const r2 = v => Math.round(v * 100) / 100;
-
   const set = (key, field, fn = r1) => {
     if (params[key] !== undefined && params[key] !== null) {
       const val = fn(params[key]);
@@ -579,7 +447,6 @@ function applyParams(params) {
     }
   };
 
-  // PV
   set('powGetPv',   'pv1Power'); set('powGetPv2',  'pv2Power');
   set('powGetPv3',  'pv3Power'); set('powGetPv4',  'pv4Power');
   set('powGetPvSum','pvTotal');
@@ -592,18 +459,20 @@ function applyParams(params) {
   if (params.plugInInfoPv3Flag !== undefined) { deviceState.pv3Active = !!params.plugInInfoPv3Flag; updated = true; }
   if (params.plugInInfoPv4Flag !== undefined) { deviceState.pv4Active = !!params.plugInInfoPv4Flag; updated = true; }
 
-  // Bateria
-  set('bmsBattSoc',   'soc',      v => Math.round(v));
-  set('f32ShowSoc',   'socExact', r1);
-  // battPower z filtrem skokow
+  // Bateria - SOC z bmsBattSoc (bank 1), cmsBattSoc (system = srednia)
+  set('bmsBattSoc',  'soc',       v => Math.round(v));
+  set('cmsBattSoc',  'cmsBattSoc', v => Math.round(v));
+  // SOC banku 2 = cmsBattSoc*2 - bmsBattSoc
+  if (params.cmsBattSoc != null && params.bmsBattSoc != null && params.cmsBattSoc > 0) {
+    const s2 = Math.round(params.cmsBattSoc * 2 - params.bmsBattSoc);
+    if (s2 >= 0 && s2 <= 100) { deviceState2.soc = s2; updated = true; }
+  }
+  set('f32ShowSoc',  'socExact', r1);
   if (params.powGetBpCms !== undefined) {
     const newVal = r1(params.powGetBpCms);
     const prev   = deviceState.battPower || 0;
-    if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) {
-      deviceState.battPower = newVal;
-    } else {
-      console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
-    }
+    if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) deviceState.battPower = newVal;
+    else console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
     updated = true;
   }
   set('cmsChgRemTime','chgRemTime', v => v);
@@ -615,48 +484,34 @@ function applyParams(params) {
   if (params.cellTemp) { deviceState.cellTemp = params.cellTemp; updated = true; }
   if (params.cellVol)  { deviceState.cellVol  = params.cellVol;  updated = true; }
 
-  // Sieć
   set('gridConnectionVol',  'gridVol',  r1);
   set('gridConnectionFreq', 'gridFreq', r2);
   if (params.gridConnectionSta !== undefined) { deviceState.gridStatus = params.gridConnectionSta; updated = true; }
-  if (params.gridConnectionPower !== undefined) {
-    deviceState.gridPower = r1(params.gridConnectionPower);
-    updated = true;
-  }
+  if (params.gridConnectionPower !== undefined) { deviceState.gridPower = r1(params.gridConnectionPower); updated = true; }
 
-
-
-
-  // Zużycie
   set('powGetSysLoad',         'sysLoad',     r1);
   set('powGetSysLoadFromPv',   'loadFromPv',  r1);
   set('powGetSysLoadFromGrid', 'loadFromGrid',r1);
   set('powGetSysLoadFromBp',   'loadFromBat', r1);
-  // Aktualizuj fromGrid z loadFromGrid gdy gridConnectionPower nie przychodzi
   if (params.powGetSysLoadFromGrid !== undefined && params.gridConnectionPower === undefined) {
-    deviceState.fromGrid = r1(params.powGetSysLoadFromGrid);
-    updated = true;
+    deviceState.fromGrid = r1(params.powGetSysLoadFromGrid); updated = true;
   }
 
-  // Bateria - zdrowie i statystyki
   set('bmsBattSoh',    'battSoh',       v => Math.round(v * 10) / 10);
   set('cycles',        'battCycles',    v => v);
   set('accuChgEnergy', 'accuChgEnergy', v => v);
   set('accuDsgEnergy', 'accuDsgEnergy', v => v);
-  // Inne
   set('invTempNtc',   'invTemp', v => v);
   set('cmsMaxChgSoc', 'maxChgSoc', v => v);
   set('cmsMinDsgSoc', 'minDsgSoc', v => v);
 
   if (updated) {
-    // Przelicz bilans sieci ze swiezych wartosci
     calcGridBalance();
-
     deviceState.lastUpdate   = new Date().toISOString();
     deviceState.lastMqttData = Date.now();
     recordHistory();
     broadcast({ type: 'state', data: deviceState });
-    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${deviceState.feedPower>0?'+':''}${deviceState.gridPower.toFixed(0)}W`);
+    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc}%/${deviceState2.soc}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${deviceState.gridPower.toFixed(0)}W`);
   }
 }
 
@@ -670,9 +525,9 @@ async function loginPrivateApi() {
     }, { headers: { 'lang': 'en_US', 'content-type': 'application/json' }, timeout: 10000 });
     if (resp.data.code === '0' && resp.data.data?.token) {
       privateToken = resp.data.data.token;
-    refreshWeatherCache().catch(()=>{});
       tokenExpiry  = Date.now() + 25 * 24 * 3600 * 1000;
       console.log('✅ Login EcoFlow OK');
+      refreshWeatherCache().catch(()=>{});
       return true;
     }
     return false;
@@ -694,137 +549,58 @@ async function privatePost(url, body) {
 }
 
 // ─── Energy API ───────────────────────────────────────────────────────────────
-const VALUE_CODES = {
-  day:   'SPACE-APP-SOLAR-ENERGY-VALUE-DAY',
-  week:  'SPACE-APP-SOLAR-ENERGY-VALUE-WEEK',
-  month: 'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH',
-  year:  'SPACE-APP-SOLAR-ENERGY-VALUE-YEAR',
-};
-const BAR_CODES = {
-  day:   'SPACE-APP-SOLAR-ENERGY-BAR-DAY',
-  week:  'SPACE-APP-SOLAR-ENERGY-BAR-WEEK',
-  month: 'SPACE-APP-SOLAR-ENERGY-BAR-MONTH',
-  year:  'SPACE-APP-SOLAR-ENERGY-BAR-YEAR',
-};
+const VALUE_CODES = { day:'SPACE-APP-SOLAR-ENERGY-VALUE-DAY', week:'SPACE-APP-SOLAR-ENERGY-VALUE-WEEK', month:'SPACE-APP-SOLAR-ENERGY-VALUE-MONTH', year:'SPACE-APP-SOLAR-ENERGY-VALUE-YEAR' };
+const BAR_CODES   = { day:'SPACE-APP-SOLAR-ENERGY-BAR-DAY',   week:'SPACE-APP-SOLAR-ENERGY-BAR-WEEK',   month:'SPACE-APP-SOLAR-ENERGY-BAR-MONTH',   year:'SPACE-APP-SOLAR-ENERGY-BAR-YEAR' };
 
 function getDateRange(period, refDate) {
   const d = new Date(refDate + 'T12:00:00');
   const fmt = d => d.toISOString().slice(0,10);
   if (period === 'day')   return { begin: refDate, end: refDate, label: d.toLocaleDateString('pl-PL', {day:'numeric',month:'long',year:'numeric'}) };
-  if (period === 'week')  {
-    const sun = new Date(d); sun.setDate(d.getDate() - d.getDay());
-    const sat = new Date(sun); sat.setDate(sun.getDate() + 6);
-    return { begin: fmt(sun), end: fmt(sat), label: `${fmt(sun).slice(5).replace('-','.')} – ${fmt(sat).slice(5).replace('-','.')} ${sat.getFullYear()}` };
-  }
-  if (period === 'month') {
-    const begin = refDate.slice(0,7) + '-01';
-    const end   = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10);
-    return { begin, end, label: d.toLocaleDateString('pl-PL', {month:'long', year:'numeric'}) };
-  }
-  const begin = `${d.getFullYear()}-01-01`, end = `${d.getFullYear()}-12-31`;
-  return { begin, end, label: String(d.getFullYear()) };
+  if (period === 'week')  { const sun = new Date(d); sun.setDate(d.getDate()-d.getDay()); const sat = new Date(sun); sat.setDate(sun.getDate()+6); return { begin: fmt(sun), end: fmt(sat), label: `${fmt(sun).slice(5).replace('-','.')} – ${fmt(sat).slice(5).replace('-','.')} ${sat.getFullYear()}` }; }
+  if (period === 'month') { const begin = refDate.slice(0,7)+'-01', end = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10); return { begin, end, label: d.toLocaleDateString('pl-PL', {month:'long', year:'numeric'}) }; }
+  return { begin: `${d.getFullYear()}-01-01`, end: `${d.getFullYear()}-12-31`, label: String(d.getFullYear()) };
 }
 
 async function fetchEnergyForPeriod(period, refDate) {
   if (!SPACE_ID || !privateToken) return null;
   const range = getDateRange(period, refDate);
   const out   = { period, label: range.label, begin: range.begin, end: range.end };
-
   const callEnergy = async (code) => {
-    const r = await privatePost('/app/space/data/single/index/', {
-      code, spaceId: SPACE_ID, params: { beginTime: range.begin, endTime: range.end },
-    });
+    const r = await privatePost('/app/space/data/single/index/', { code, spaceId: SPACE_ID, params: { beginTime: range.begin, endTime: range.end } });
     return (r?.code === '0' && Array.isArray(r.data)) ? r.data : null;
   };
-
-  // Zużycie domu kWh
   const loadCode = VALUE_CODES[period].replace('SOLAR-ENERGY', 'LOAD-ENERGY');
   const ld = await callEnergy(loadCode);
-  if (ld) {
-    const m = ld.find(d => d.indexName === 'master_data');
-    out.loadKwh = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
-  }
-
-  // Łączna produkcja kWh
+  if (ld) { const m = ld.find(d => d.indexName === 'master_data'); out.loadKwh = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null; }
   const vd = await callEnergy(VALUE_CODES[period]);
   if (vd) {
-    const m = vd.find(d => d.indexName === 'master_data');
-    const s = vd.find(d => d.indexName === 'sup_data');
-    out.totalKwh     = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
-    out.changePercent= s?.indexValue != null ? Math.round(s.indexValue * 10) / 10 : null;
+    const m = vd.find(d => d.indexName === 'master_data'), s = vd.find(d => d.indexName === 'sup_data');
+    out.totalKwh = m?.indexValue != null ? Math.round(m.indexValue) / 1000 : null;
+    out.changePercent = s?.indexValue != null ? Math.round(s.indexValue * 10) / 10 : null;
     if (period === 'day' && m?.indexValue != null) recordSnapshot(range.begin, Math.round(m.indexValue));
   }
-
-  // Wykres słupkowy
   const bd = await callEnergy(BAR_CODES[period]);
-  if (bd && bd.length > 0) {
-    out.chart = bd.filter(d => d.indexName === 'chart_data' && d.time)
-      .map(d => ({ time: d.time, wh: Math.round(d.indexValue || 0) }))
-      .sort((a, b) => a.time.localeCompare(b.time));
-  }
-
-  // Fallback dzienny z snapshots
-  if (period === 'day' && (!out.chart || out.chart.length <= 1)) {
-    const hc = buildHourlyChart(range.begin);
-    if (hc.length > 0) out.chart = hc;
-  }
-
-  // Zyski
+  if (bd?.length > 0) out.chart = bd.filter(d => d.indexName === 'chart_data' && d.time).map(d => ({ time: d.time, wh: Math.round(d.indexValue || 0) })).sort((a,b) => a.time.localeCompare(b.time));
+  if (period === 'day' && (!out.chart || out.chart.length <= 1)) { const hc = buildHourlyChart(range.begin); if (hc.length > 0) out.chart = hc; }
   const earningsCode = period === 'year' ? 'SPACE-APP-EARNINGS-MONEY-VALUE-YEAR' : 'SPACE-APP-EARNINGS-MONEY-VALUE-MONTH';
-  const mBegin = range.begin.slice(0,7) + '-01';
-  const ed = await privatePost('/app/space/data/single/index/', {
-    code: earningsCode, spaceId: SPACE_ID,
-    params: { beginTime: period === 'year' ? range.begin : mBegin, endTime: range.end },
-  });
+  const mBegin = range.begin.slice(0,7)+'-01';
+  const ed = await privatePost('/app/space/data/single/index/', { code: earningsCode, spaceId: SPACE_ID, params: { beginTime: period === 'year' ? range.begin : mBegin, endTime: range.end } });
   if (ed?.code === '0' && Array.isArray(ed.data)) {
     const m = ed.data.find(d => d.indexName === 'master_data');
-    if (m?.indexValue != null) {
-      const monthEarnings = Math.round(m.indexValue * 100) / 100;
-      out.currency = (m.unit && m.unit !== '$' && m.unit !== '€') ? m.unit : 'zł';
-      if (period === 'month' || period === 'year') {
-        out.earnings = monthEarnings;
-      } else {
-        out.earnings = null; // zbyt niedokladne dla day/week
-      }
-    }
+    if (m?.indexValue != null) { out.currency = (m.unit && m.unit !== '$' && m.unit !== '€') ? m.unit : 'zł'; out.earnings = (period === 'month' || period === 'year') ? Math.round(m.indexValue * 100) / 100 : null; }
   }
-
-  // Efektywność
   if (period !== 'year') {
     if (period === 'day') {
-      const rs = await privatePost('/iot-service/index/common/query', {
-        code: 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-MONTH-Sup_DATA',
-        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-      });
-      if (rs?.code === '0' && Array.isArray(rs.data)) {
-        const master = rs.data.find(d => d.indexName === 'master_data');
-        out.efficiency = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
-      }
+      const rs = await privatePost('/iot-service/index/common/query', { code: 'BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-MONTH-Sup_DATA', params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' } });
+      if (rs?.code === '0' && Array.isArray(rs.data)) { const master = rs.data.find(d => d.indexName === 'master_data'); out.efficiency = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null; }
     } else {
       const periodKey = period === 'week' ? 'WEEK' : 'MONTH';
-      const rs = await privatePost('/iot-service/index/common/query', {
-        code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Sup_DATA`,
-        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-      });
-      if (rs?.code === '0' && Array.isArray(rs.data)) {
-        const master = rs.data.find(d => d.indexName === 'master_data');
-        const sup    = rs.data.find(d => d.indexName === 'sup_data');
-        out.efficiency       = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null;
-        out.efficiencyChange = sup?.indexValue    != null ? Math.round(sup.indexValue * 10)    / 10 : null;
-      }
-      const rc = await privatePost('/iot-service/index/common/query', {
-        code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Chart_DATA`,
-        params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' },
-      });
-      if (rc?.code === '0' && Array.isArray(rc.data)) {
-        out.efficiencyChart = rc.data
-          .filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null)
-          .map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 }))
-          .sort((a, b) => a.time.localeCompare(b.time));
-      }
+      const rs = await privatePost('/iot-service/index/common/query', { code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Sup_DATA`, params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' } });
+      if (rs?.code === '0' && Array.isArray(rs.data)) { const master = rs.data.find(d => d.indexName === 'master_data'), sup = rs.data.find(d => d.indexName === 'sup_data'); out.efficiency = master?.indexValue != null ? Math.round(master.indexValue * 10) / 10 : null; out.efficiencyChange = sup?.indexValue != null ? Math.round(sup.indexValue * 10) / 10 : null; }
+      const rc = await privatePost('/iot-service/index/common/query', { code: `BK62x-APP-efficiency-SOLAR-ENERGY-FLOW-${periodKey}-Chart_DATA`, params: { spaceId: SPACE_ID, sn: DEVICE_SN, beginTime: range.begin, endTime: range.end, timezone: 'Europe/Warsaw' } });
+      if (rc?.code === '0' && Array.isArray(rc.data)) out.efficiencyChart = rc.data.filter(d => d.indexName === 'chart_data' && d.time && d.indexValue != null).map(d => ({ time: d.time, pct: Math.round(d.indexValue * 10) / 10 })).sort((a,b) => a.time.localeCompare(b.time));
     }
   }
-
   return out;
 }
 
@@ -834,14 +610,15 @@ async function startMqtt() {
 
   let creds;
   try {
-    const resp = await axios.get(`${API_HOST}/iot-open/sign/certification`,
+    const resp = await axios.get(`https://api.ecoflow.com/iot-open/sign/certification`,
       { headers: hmacSign(), timeout: 10000 });
     if (resp.data.code !== '0') throw new Error(resp.data.message);
     creds = resp.data.data;
     console.log(`✅ MQTT OK — ${creds.certificateAccount}`);
   } catch(e) { console.error('❌ Creds:', e.message); setTimeout(startMqtt, 30000); return; }
 
-  const client = mqtt.connect(`mqtts://${creds.url}:${creds.port}`, {
+  // Uzywamy mqtt-e.ecoflow.com zamiast creds.url dla pelnych danych
+  const client = mqtt.connect(`mqtts://mqtt-e.ecoflow.com:${creds.port}`, {
     clientId: `open-${uuidv4()}`,
     username: creds.certificateAccount,
     password: creds.certificatePassword,
@@ -860,63 +637,56 @@ async function startMqtt() {
     client.subscribe(quotaTopic);
     client.subscribe(statusTopic);
     if (meterTopic) { client.subscribe(meterTopic); console.log('📊 Licznik: ' + METER_SN); }
-    // Pobierz wszystkie quota natychmiast i ponow po 3s
+    if (DEVICE_SN2) {
+      const topic2 = `/open/${creds.certificateAccount}/${DEVICE_SN2}/quota`;
+      client.subscribe(topic2);
+      console.log('🔋 Drugi bank: ' + DEVICE_SN2);
+    }
+
     const fetchQuota = async () => {
       try {
-        // Sprobuj quota/all
-        const r = await axios.get(`${API_HOST}/iot-open/sign/device/quota/all`,
+        const r = await axios.get(`https://api.ecoflow.com/iot-open/sign/device/quota/all`,
           { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
         if (r.data.data && Object.keys(r.data.data).length > 0) {
           applyParams(r.data.data);
-          console.log('Quota zaladowane: ' + Object.keys(r.data.data).length + ' parametrow');
-          return true;
-        }
-        // Fallback: zapytaj o konkretne pola
-        const fields = ['bmsBattSoc','f32ShowSoc','powGetPvSum','powGetPv3','powGetPv4',
-          'gridConnectionPower','sysGridConnectionPower','powGetSysLoadFromGrid',
-          'powGetSysLoad','bmsChgDsgState','powGetBpCms','cmsChgRemTime','cmsDsgRemTime',
-          'gridConnectionVol','gridConnectionFreq','bmsMaxCellTemp','bmsMinCellTemp',
-          'bmsBattSoh','cycles','accuChgEnergy','accuDsgEnergy','plugInInfoPv3Flag',
-          'plugInInfoPv4Flag','plugInInfoPv3Vol','plugInInfoPv4Vol','cmsMaxChgSoc','cmsMinDsgSoc'];
-        const r2 = await axios.post(`${API_HOST}/iot-open/sign/device/quota`,
-          { sn: DEVICE_SN, params: fields },
-          { headers: hmacSign(), timeout: 10000 });
-        if (r2.data.data && Object.keys(r2.data.data).length > 0) {
-          applyParams(r2.data.data);
-          console.log('Quota (fields) zaladowane: ' + Object.keys(r2.data.data).length + ' parametrow');
           return true;
         }
       } catch(e) { console.error('Quota error:', e.message); }
       return false;
     };
     fetchQuota().then(ok => { if (!ok) setTimeout(fetchQuota, 3000); });
-    // Odswiezaj quota co 30s
     setInterval(fetchQuota, 30000);
   });
 
   client.on('message', (topic, payload) => {
-    // Drugi Ultra X
+    // Drugi Ultra X przez oficjalne MQTT
     if (DEVICE_SN2 && topic.includes(DEVICE_SN2)) {
       try {
         const msg = JSON.parse(payload.toString());
         const p = msg.params || msg;
-        if (p.cmsBattSoc != null) deviceState2.soc = Math.round(p.cmsBattSoc);
+        // bmsBattSoc to SOC tego konkretnego banku (slave)
+        if (p.bmsBattSoc != null && p.bmsBattSoc > 0) deviceState2.soc = Math.round(p.bmsBattSoc);
+        else if (p.f32ShowSoc != null && p.f32ShowSoc > 0) deviceState2.soc = Math.round(p.f32ShowSoc);
         if (p.powGetBpCms != null) deviceState2.battPower = Math.round(p.powGetBpCms);
         if (p.bmsChgDsgState != null) deviceState2.chgDsgState = p.bmsChgDsgState;
+        if (p.chgDsgState != null) deviceState2.chgDsgState = p.chgDsgState;
         if (p.cmsMaxChgSoc != null) deviceState2.maxChgSoc = p.cmsMaxChgSoc;
         if (p.cmsMinDsgSoc != null) deviceState2.minDsgSoc = p.cmsMinDsgSoc;
         if (p.bmsBattSoh != null) deviceState2.battSoh = Math.round(p.bmsBattSoh * 10) / 10;
+        if (p.soh != null) deviceState2.battSoh = Math.round(p.soh * 10) / 10;
         if (p.cycles != null) deviceState2.battCycles = p.cycles;
         if (p.accuChgEnergy != null) deviceState2.accuChgEnergy = p.accuChgEnergy;
         if (p.accuDsgEnergy != null) deviceState2.accuDsgEnergy = p.accuDsgEnergy;
         if (p.cellVol) deviceState2.cellVol = p.cellVol;
         if (p.maxCellTemp != null) deviceState2.maxCellTemp = p.maxCellTemp;
         if (p.minCellTemp != null) deviceState2.minCellTemp = p.minCellTemp;
+        if (p.bmsMaxCellTemp != null) deviceState2.maxCellTemp = p.bmsMaxCellTemp;
+        if (p.bmsMinCellTemp != null) deviceState2.minCellTemp = p.bmsMinCellTemp;
         if (p.vBat != null) deviceState2.vBat = p.vBat;
+        if (p.vol != null) deviceState2.vBat = p.vol;
+        if (p.bmsChgRemTime != null) deviceState2.chgRemTime = p.bmsChgRemTime;
+        if (p.bmsDsgRemTime != null) deviceState2.dsgRemTime = p.bmsDsgRemTime;
         deviceState2.connected = true;
-        // Zaktualizuj soc w deviceState jako srednia
-        deviceState.socCombined = Math.round((deviceState.soc + deviceState2.soc) / 2);
-        deviceState.battPowerCombined = (deviceState.battPower || 0) + (deviceState2.battPower || 0);
         broadcast({ type: 'state2', data: deviceState2 });
       } catch(e) {}
       return;
@@ -932,20 +702,13 @@ async function startMqtt() {
       }
       const params = data.params || data;
       if (!params || typeof params !== 'object') return;
-      // Rozrozniaj licznik od Stream X
-      if (meterTopic && topic === meterTopic) {
-        applyMeterParams(params);
-      } else {
-        applyParams(params);
-      }
+      if (meterTopic && topic === meterTopic) applyMeterParams(params);
+      else applyParams(params);
     } catch(e) {}
   });
 
   client.on('error', e => console.error('MQTT error:', e.message));
-  client.on('close', () => {
-    deviceState.connected = false;
-    broadcast({ type: 'status', connected: false });
-  });
+  client.on('close', () => { deviceState.connected = false; broadcast({ type: 'status', connected: false }); });
 }
 
 function startDemo() {
@@ -955,39 +718,24 @@ function startDemo() {
     t += 0.05;
     const pv = Math.max(0, 800 + 400*Math.sin(t) + Math.random()*20);
     soc = Math.min(95, soc + 0.01);
-    applyParams({
-      powGetPvSum: pv, powGetPv3: pv*0.52, powGetPv4: pv*0.48,
-      plugInInfoPv3Flag: true, plugInInfoPv4Flag: true,
-      gridConnectionPower: pv > 200 ? 100 : -50,
-      bmsBattSoc: soc, f32ShowSoc: soc,
-      powGetBpCms: pv > 200 ? 200 : -100,
-      bmsChgDsgState: pv > 200 ? 2 : 1,
-      cmsChgRemTime: 120, cmsDsgRemTime: 300,
-      gridConnectionVol: 230, gridConnectionFreq: 50,
-      powGetSysLoad: 300, powGetSysLoadFromPv: Math.min(pv, 300),
-      powGetSysLoadFromGrid: Math.max(0, 300-pv),
-      invTempNtc: 35, bmsMaxCellTemp: 25,
-    });
+    applyParams({ powGetPvSum: pv, powGetPv3: pv*0.52, powGetPv4: pv*0.48, plugInInfoPv3Flag: true, plugInInfoPv4Flag: true, gridConnectionPower: pv > 200 ? 100 : -50, bmsBattSoc: soc, f32ShowSoc: soc, cmsBattSoc: soc - 10, powGetBpCms: pv > 200 ? 200 : -100, bmsChgDsgState: pv > 200 ? 2 : 1, cmsChgRemTime: 120, cmsDsgRemTime: 300, gridConnectionVol: 230, gridConnectionFreq: 50, powGetSysLoad: 300, powGetSysLoadFromPv: Math.min(pv, 300), powGetSysLoadFromGrid: Math.max(0, 300-pv), invTempNtc: 35, bmsMaxCellTemp: 25 });
   }, 2000);
 }
+
+// Odswiezaj cache pogody co godzine
+setInterval(refreshWeatherCache, 60*60*1000);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 server.listen(PORT, async () => {
   console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
-
   startMqtt();
-
   if (EF_EMAIL && EF_PASSWORD) {
     await loginPrivateApi();
     const today = new Date().toISOString().slice(0,10);
     const autoRefresh = async () => {
       try {
         const data = await fetchEnergyForPeriod('day', today);
-        if (data) {
-          energyCache[`day:${today}`] = { ...data, fetchedAt: Date.now() };
-          console.log(`Auto-refresh: ${data.totalKwh||0} kWh, snapshots: ${dailySnapshots[today]?.length||0}`);
-          broadcast({ type: 'energy', data });
-        }
+        if (data) { energyCache[`day:${today}`] = { ...data, fetchedAt: Date.now() }; broadcast({ type: 'energy', data }); }
       } catch(e) {}
     };
     setTimeout(async () => { await autoRefresh(); setInterval(autoRefresh, 5*60*1000); }, 10000);
