@@ -186,10 +186,16 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
   <div class="card">
     <div class="card-title">// bateria</div>
     <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-      <div style="flex-shrink:0;min-width:120px">
+      <div style="flex-shrink:0;min-width:160px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Ultra X · 1</div>
         <div class="bat-soc-big" id="b-soc">–<span class="bat-soc-u">%</span></div>
-        <div style="width:160px;margin:8px 0">
+        <div style="width:160px;margin:6px 0 2px">
           <div class="bat-bar"><div class="bat-bar-f" id="b-bar"></div></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin:10px 0 4px">Ultra X · 2</div>
+        <div class="bat-soc-big" id="b2-soc" style="font-size:40px">–<span class="bat-soc-u">%</span></div>
+        <div style="width:160px;margin:6px 0 2px">
+          <div class="bat-bar"><div class="bat-bar-f" id="b2-bar"></div></div>
         </div>
         <div class="bat-range" id="b-range">20% – 95%</div>
       </div>
@@ -199,15 +205,37 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <div class="bs"><div class="bs-lbl" id="b-time-lbl">Czas</div><div class="bs-val" id="b-time">–</div></div>
         <div class="bs"><div class="bs-lbl">Temp. cel.</div><div class="bs-val" id="b-temp">–</div></div>
         <div class="bs"><div class="bs-lbl">Napięcie bat.</div><div class="bs-val" id="b-volt">–</div></div>
-        <div class="bs"><div class="bs-lbl">SOH</div><div class="bs-val" id="b-soh">–</div></div>
+        <div class="bs"><div class="bs-lbl">SOH</div><div class="bs-val" id="b-soh-main">–</div></div>
       </div>
     </div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:12px" id="b-cells"></div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)">
-      <div class="be"><div class="be-lbl">Cykle</div><div class="be-val" id="b-cyc">–<span class="u"> ×</span></div></div>
-      <div class="be"><div class="be-lbl">Naładowano łącznie</div><div class="be-val" id="b-ce">–<span class="u"> kWh</span></div></div>
-      <div class="be"><div class="be-lbl">Rozładowano łącznie</div><div class="be-val" id="b-de">–<span class="u"> kWh</span></div></div>
-      <div class="be"><div class="be-lbl">Pojemność</div><div class="be-val">3.84<span class="u"> kWh</span></div></div>
+  
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)">
+      <!-- Zakładki banków -->
+      <div style="display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--brd)">
+        <button id="btab1" onclick="switchBat(1)" style="font-family:var(--mono);font-size:11px;padding:6px 16px;border:none;background:transparent;color:var(--bat);cursor:pointer;border-bottom:2px solid var(--bat);margin-bottom:-1px;letter-spacing:.05em;font-weight:500">Ultra X · 1</button>
+        <button id="btab2" onclick="switchBat(2)" style="font-family:var(--mono);font-size:11px;padding:6px 16px;border:none;background:transparent;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:.05em">Ultra X · 2</button>
+        <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-family:var(--mono);font-size:10px;color:var(--t2)">Łącznie: <span id="b-combined-kwh" style="color:var(--bat);margin-left:5px">–</span> / 7.68 kWh</div>
+      </div>
+      <!-- Panel banku 1 -->
+      <div id="bpanel1">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="be"><div class="be-lbl">Cykle</div><div class="be-val" id="b-cyc">–<span class="u"> ×</span></div></div>
+          <div class="be"><div class="be-lbl">SOH</div><div class="be-val" id="b-soh">–<span class="u"> %</span></div></div>
+          <div class="be"><div class="be-lbl">Naładowano</div><div class="be-val" id="b-ce">–<span class="u"> kWh</span></div></div>
+          <div class="be"><div class="be-lbl">Rozładowano</div><div class="be-val" id="b-de">–<span class="u"> kWh</span></div></div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px" id="b-cells"></div>
+      </div>
+      <!-- Panel banku 2 -->
+      <div id="bpanel2" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="be"><div class="be-lbl">Cykle</div><div class="be-val" id="b2-cyc">–<span class="u"> ×</span></div></div>
+          <div class="be"><div class="be-lbl">SOH</div><div class="be-val" id="b2-soh">–<span class="u"> %</span></div></div>
+          <div class="be"><div class="be-lbl">Naładowano</div><div class="be-val" id="b2-ce">–<span class="u"> kWh</span></div></div>
+          <div class="be"><div class="be-lbl">Rozładowano</div><div class="be-val" id="b2-de">–<span class="u"> kWh</span></div></div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px" id="b2-cells"></div>
+      </div>
     </div>
   </div>
 
@@ -445,6 +473,16 @@ function update(s){
   });
 
   document.getElementById('b-soc').innerHTML=`${soc}<span class="bat-soc-u">%</span>`;
+  // Drugi Ultra X
+  if(s.device2) {
+    const soc2 = s.device2.soc || 0;
+    const b2 = document.getElementById('b2-soc');
+    const b2bar = document.getElementById('b2-bar');
+    const bcomb = document.getElementById('b-combined-kwh');
+    if(b2) b2.innerHTML=`${soc2}<span class="bat-soc-u">%</span>`;
+    if(b2bar){ b2bar.style.width=soc2+'%'; b2bar.style.background=soc2>60?'var(--bat)':soc2>25?'var(--pv)':'var(--grid-out)'; }
+    if(bcomb){ const kwh = Math.round((soc+soc2)/2*7.68/10)/10; bcomb.textContent=kwh.toFixed(2); }
+  }
   const bf=document.getElementById('b-bar'); bf.style.width=soc+'%';
   bf.style.background=soc>60?'var(--bat)':soc>25?'var(--pv)':'var(--grid-out)';
   document.getElementById('b-range').textContent=`${s.minDsgSoc||20}% – ${s.maxChgSoc||95}%`;
@@ -457,11 +495,22 @@ function update(s){
   else{if(bTimeLbl)bTimeLbl.textContent='Czas';if(bTimeVal)bTimeVal.textContent='–';}
   document.getElementById('b-temp').textContent=s.maxCellTemp?`${s.minCellTemp}–${s.maxCellTemp} °C`:'–';
   if(s.vBat) document.getElementById('b-volt').textContent=(s.vBat/1000).toFixed(2)+' V';
+  const bsohMain=document.getElementById('b-soh-main'); if(bsohMain&&s.battSoh!=null)bsohMain.textContent=s.battSoh.toFixed(1)+'%';
+  // Bateria 1 statystyki
   if(s.cellVol?.length) document.getElementById('b-cells').innerHTML=s.cellVol.map((v,i)=>`<span class="cell-chip">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
   if(s.battSoh!=null) document.getElementById('b-soh').innerHTML=`${s.battSoh.toFixed(1)}<span class="u"> %</span>`;
   if(s.battCycles!=null) document.getElementById('b-cyc').innerHTML=`${s.battCycles}<span class="u"> ×</span>`;
   if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${(s.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
+  // Bateria 2 statystyki
+  if(s.device2) {
+    const d2 = s.device2;
+    if(d2.cellVol?.length) document.getElementById('b2-cells').innerHTML=d2.cellVol.map((v,i)=>`<span class="cell-chip">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
+    if(d2.battSoh!=null) document.getElementById('b2-soh').innerHTML=`${d2.battSoh.toFixed(1)}<span class="u"> %</span>`;
+    if(d2.battCycles!=null) document.getElementById('b2-cyc').innerHTML=`${d2.battCycles}<span class="u"> ×</span>`;
+    if(d2.accuChgEnergy!=null) document.getElementById('b2-ce').innerHTML=`${(d2.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
+    if(d2.accuDsgEnergy!=null) document.getElementById('b2-de').innerHTML=`${(d2.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
+  }
 
   if(s.meterL1||s.meterL2||s.meterL3||s.meterTotal){
     const ml1=s.meterL1||0,ml2=s.meterL2||0,ml3=s.meterL3||0,mtot=s.meterTotal||0;
@@ -866,6 +915,14 @@ async function loadEfficiency(){
     sv('eff-batdsg','rozł: '+(d.batDsgKwh||0).toFixed(1)+' kWh');
     sv('eff-co2',d.co2g>0?d.co2g.toLocaleString('pl-PL'):'–');
   }catch(e){}
+}
+
+function switchBat(n) {
+  document.getElementById('bpanel1').style.display = n===1 ? '' : 'none';
+  document.getElementById('bpanel2').style.display = n===2 ? '' : 'none';
+  const t1 = document.getElementById('btab1'), t2 = document.getElementById('btab2');
+  if(t1){ t1.style.color = n===1?'var(--bat)':'var(--t2)'; t1.style.borderBottomColor = n===1?'var(--bat)':'transparent'; t1.style.fontWeight = n===1?'500':'400'; }
+  if(t2){ t2.style.color = n===2?'var(--bat)':'var(--t2)'; t2.style.borderBottomColor = n===2?'var(--bat)':'transparent'; t2.style.fontWeight = n===2?'500':'400'; }
 }
 
 setupTT();
