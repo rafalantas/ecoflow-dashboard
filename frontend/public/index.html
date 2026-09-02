@@ -161,10 +161,9 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <text id="sv-grid" x="54" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--t1)">– W</text>
         <rect x="456" y="148" width="100" height="74" rx="12" fill="var(--sur)" stroke="var(--brd)" stroke-width="1.5" id="rect-bat"/>
         <text x="506" y="174" text-anchor="middle" font-size="20">🔋</text>
-        <text x="506" y="187" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--bat)" letter-spacing="1">BATERIA</text>
-        <text id="sv-bat" x="506" y="201" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" font-weight="500" fill="var(--bat)">– %</text>
-        <text id="sv-bat2" x="506" y="213" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" fill="var(--bat)" opacity="0.7">– %</text>
-        <text id="sv-bat-sub" x="506" y="224" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)">idle</text>
+        <text x="506" y="190" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="var(--bat)" letter-spacing="1">BATERIA</text>
+        <text id="sv-bat" x="506" y="207" text-anchor="middle" font-family="DM Mono,monospace" font-size="14" font-weight="500" fill="var(--bat)">– %</text>
+        <text id="sv-bat-sub" x="506" y="220" text-anchor="middle" font-family="DM Mono,monospace" font-size="9" fill="var(--t2)">idle</text>
         <rect x="226" y="95" width="108" height="20" rx="6" fill="var(--bg)" id="lv-pv-bg" style="display:none"/>
         <text id="lv-pv" x="280" y="108" text-anchor="middle" font-family="DM Mono,monospace" font-size="11" font-weight="500" fill="var(--pv)" style="display:none"></text>
         <rect x="127" y="172" width="62" height="20" rx="6" fill="var(--bg)" id="lv-grid-bg" style="display:none"/>
@@ -442,8 +441,7 @@ function update(s){
   svSet('sv-pv', pvActive?Math.round(pv)+' W':'– W');
   svColor('sv-pv', pvActive?'var(--pv)':'var(--t2)');
   svStroke('rect-pv', pvActive?'var(--pv)':'var(--brd)');
-  svSet('sv-bat', soc+' %');
-  if(s.device2) { const e=document.getElementById('sv-bat2'); if(e) e.textContent=s.device2.soc+'%'; }
+  svSet('sv-bat', (s.cmsBattSoc||soc)+' %');
   svSet('sv-bat-sub', batChg?`↑ ${Math.round(Math.abs(batPwr))}W`:batDsg?`↓ ${Math.round(Math.abs(batPwr))}W`:'idle');
   svStroke('rect-bat', (batChg||batDsg)?'var(--bat)':'var(--brd)');
   svSet('sv-grid', gval>0?Math.round(gval)+' W':'– W');
