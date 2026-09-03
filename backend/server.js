@@ -66,7 +66,7 @@ let deviceState = {
   pv1Amp: 0, pv2Amp: 0, pv3Amp: 0, pv4Amp: 0,
   pv1Active: false, pv2Active: false, pv3Active: false, pv4Active: false,
   soc: 0, socExact: 0, battPower: 0, cmsBattSoc: 0,
-  chgRemTime: 0, dsgRemTime: 0, chgDsgState: 0,
+  chgRemTime: 0, dsgRemTime: 0, chgRemTime1: 0, dsgRemTime1: 0, chgDsgState: 0,
   cellTemp: [], cellVol: [], maxCellTemp: 0, minCellTemp: 0,
   gridPower: 0, gridVol: 0, gridFreq: 0,
   feedPower: 0, fromGrid: 0, gridStatus: '',
@@ -475,8 +475,10 @@ function applyParams(params) {
     else console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
     updated = true;
   }
-  set('cmsChgRemTime','chgRemTime', v => v);
-  set('cmsDsgRemTime','dsgRemTime', v => v);
+  set('cmsChgRemTime','chgRemTime',  v => v);  // system
+  set('cmsDsgRemTime','dsgRemTime',  v => v);  // system
+  set('bmsChgRemTime','chgRemTime1', v => v);  // bank 1
+  set('bmsDsgRemTime','dsgRemTime1', v => v);  // bank 1
   set('bmsChgDsgState','chgDsgState', v => v);
   set('bmsMaxCellTemp','maxCellTemp', v => v);
   set('vBat','vBat', v => v);
