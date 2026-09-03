@@ -238,7 +238,11 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <div class="be"><div class="be-lbl">Naładowano łącznie</div><div class="be-val" id="b-ce">–<span class="u"> kWh</span></div></div>
         <div class="be"><div class="be-lbl">Rozładowano łącznie</div><div class="be-val" id="b-de">–<span class="u"> kWh</span></div></div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap" id="b-cells"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div class="be"><div class="be-lbl">Do pełna</div><div class="be-val" id="b1-chg-time">–</div></div>
+        <div class="be"><div class="be-lbl">Do pustej</div><div class="be-val" id="b1-dsg-time">–</div></div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px" id="b-cells"></div>
     </div>
 
     <!-- PANEL BANKU 2 -->
@@ -259,7 +263,11 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
         <div class="be"><div class="be-lbl">Naładowano łącznie</div><div class="be-val" id="b2-ce">–<span class="u"> kWh</span></div></div>
         <div class="be"><div class="be-lbl">Rozładowano łącznie</div><div class="be-val" id="b2-de">–<span class="u"> kWh</span></div></div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap" id="b2-cells"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div class="be"><div class="be-lbl">Do pełna</div><div class="be-val" id="b2-chg-time">–</div></div>
+        <div class="be"><div class="be-lbl">Do pustej</div><div class="be-val" id="b2-dsg-time">–</div></div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px" id="b2-cells"></div>
     </div>
   </div>
 
@@ -510,9 +518,9 @@ function update(s){
   document.getElementById('b-state').style.color=batChg?'var(--bat)':batDsg?'var(--pv)':'var(--t2)';
   document.getElementById('b-pwr').textContent=batPwr>0?`+${Math.round(batPwr)}W`:batPwr<0?`${Math.round(batPwr)}W`:'0W';
   const bTimeLbl=document.getElementById('b-time-lbl'), bTimeVal=document.getElementById('b-time');
-  if(batChg){if(bTimeLbl)bTimeLbl.textContent='Do pełna';if(bTimeVal)bTimeVal.textContent=ft(s.chgRemTime);}
-  else if(batDsg){if(bTimeLbl)bTimeLbl.textContent='Do pustej';if(bTimeVal)bTimeVal.textContent=ft(s.dsgRemTime);}
-  else{if(bTimeLbl)bTimeLbl.textContent='Czas';if(bTimeVal)bTimeVal.textContent='–';}
+  if(batChg){if(bTimeLbl)bTimeLbl.textContent='System · do pełna';if(bTimeVal)bTimeVal.textContent=ft(s.chgRemTime);}
+  else if(batDsg){if(bTimeLbl)bTimeLbl.textContent='System · do pustej';if(bTimeVal)bTimeVal.textContent=ft(s.dsgRemTime);}
+  else{if(bTimeLbl)bTimeLbl.textContent='Czas systemu';if(bTimeVal)bTimeVal.textContent='–';}
   const s1el=document.getElementById('b-soc1-small'), s2el=document.getElementById('b-soc2-small');
   if(s1el) s1el.textContent=soc;
   if(s2el) s2el.textContent=soc2;
@@ -527,6 +535,12 @@ function update(s){
   if(s.battCycles!=null) document.getElementById('b-cyc').textContent=s.battCycles+' ×';
   if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${(s.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
+  // Czasy bank 1
+  const b1chg = s.chgDsgState===2 ? ft(s.chgRemTime1||s.chgRemTime) : '–';
+  const b1dsg = s.chgDsgState===1 ? ft(s.dsgRemTime1||s.dsgRemTime) : '–';
+  const b1ct=document.getElementById('b1-chg-time'), b1dt=document.getElementById('b1-dsg-time');
+  if(b1ct) b1ct.textContent=b1chg;
+  if(b1dt) b1dt.textContent=b1dsg;
   if(s.cellVol?.length) document.getElementById('b-cells').innerHTML=s.cellVol.map((v,i)=>`<span class="cell-chip">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
 
   // === BANK 2 ===
@@ -542,6 +556,12 @@ function update(s){
     if(d2.battCycles!=null) document.getElementById('b2-cyc').textContent=d2.battCycles+' ×';
     if(d2.accuChgEnergy!=null) document.getElementById('b2-ce').innerHTML=`${(d2.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     if(d2.accuDsgEnergy!=null) document.getElementById('b2-de').innerHTML=`${(d2.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
+    // Czasy bank 2
+    const b2chg = d2.chgDsgState===2 ? ft(d2.chgRemTime) : '–';
+    const b2dsg = d2.chgDsgState===1 ? ft(d2.dsgRemTime) : '–';
+    const b2ct=document.getElementById('b2-chg-time'), b2dt=document.getElementById('b2-dsg-time');
+    if(b2ct) b2ct.textContent=b2chg;
+    if(b2dt) b2dt.textContent=b2dsg;
     if(d2.cellVol?.length) document.getElementById('b2-cells').innerHTML=d2.cellVol.map((v,i)=>`<span class="cell-chip">C${i+1}: ${(v/1000).toFixed(3)}V</span>`).join('');
   }
 
