@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   ecoflow-dashboard:
-    build: .
+    build: ghcr.io/rafalantas/ecoflow-dashboard:latest
     container_name: ecoflow-dashboard
     ports:
       - "8080:8080"
