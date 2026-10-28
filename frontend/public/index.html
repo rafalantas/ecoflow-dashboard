@@ -167,18 +167,16 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
 .bank-tab{min-height:38px;padding:8px 15px;border:0;border-radius:9px;background:transparent;color:var(--t2);font:500 12px var(--sans);cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
 .bank-tab:hover{color:var(--t1);background:color-mix(in srgb,var(--t1) 5%,transparent)}.bank-tab.active{color:var(--t1);background:var(--sur);box-shadow:var(--shadow)}
 .bank-panel{animation:panel-in .24s ease both}.grid-import-label{color:var(--grid-out)}.grid-export-label{color:var(--grid-in)}
-.theme-pill{display:flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid var(--brd);border-radius:99px;color:var(--t2);font:500 10px var(--sans)}.theme-night{display:none}
 .connection-label{font:500 11px var(--sans);color:var(--t2)}.connection-label.on{color:var(--grid-in)}
-.flow-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 4px 2px}.flow-summary-item{color:var(--t2);font-size:11px}.flow-summary-item strong{display:block;margin-top:4px;color:var(--t1);font:500 15px var(--mono);font-variant-numeric:tabular-nums}.flow-summary-item.grid-import strong{color:var(--grid-out)}.flow-summary-item.grid-export strong{color:var(--grid-in)}
 .flow-mobile{display:none}
 @keyframes panel-in{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes value-pop{0%{filter:brightness(1.25)}100%{filter:brightness(1)}}
 .value-updated{animation:value-pop .45s ease-out}
 @media(max-width:820px){.power-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.main{max-width:720px}}
 @media(max-width:640px){.main{padding:14px 12px 32px}.topbar{height:58px;padding:0 14px}.card{padding:17px;border-radius:16px}.power-tile{padding:12px}.power-value{font-size:20px}.pv-card{padding:12px}.bank-tabs{width:100%}.bank-tab{flex:1;padding:8px 10px}.hist-hdr{align-items:flex-start;gap:8px;flex-direction:column}.hist-legend{gap:10px}}
-@media(max-width:480px){.topbar-r{gap:8px}#ts,.connection-label{display:none}.theme-pill{padding:5px 7px}.theme-pill>span:last-child{display:none}.logo{font-size:11px}}
+@media(max-width:480px){.topbar-r{gap:8px}#ts,.connection-label{display:none}.logo{font-size:11px}}
 @media(max-width:640px){#flow-svg{display:none!important}.flow-mobile{display:block;padding:8px 2px 2px}.flow-mobile-source{max-width:210px;margin:0 auto 8px;padding:10px 12px;text-align:center;border:1px solid color-mix(in srgb,var(--pv) 34%,var(--brd));border-radius:13px;background:color-mix(in srgb,var(--pv) 7%,var(--sur))}.flow-mobile-source span,.flow-mobile-node span{display:block;color:var(--t2);font-size:11px;letter-spacing:.04em}.flow-mobile-source strong,.flow-mobile-node strong{display:block;margin-top:3px;color:var(--t1);font:500 14px var(--mono);font-variant-numeric:tabular-nums}.flow-mobile-arrow{text-align:center;color:var(--pv);font:500 12px var(--mono);padding:0 0 8px}.flow-mobile-nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.flow-mobile-node{min-width:0;padding:10px 5px;text-align:center;border:1px solid var(--brd);border-radius:12px;background:var(--sur2)}.flow-mobile-node.grid-import{border-color:color-mix(in srgb,var(--grid-out) 40%,var(--brd))}.flow-mobile-node.grid-export{border-color:color-mix(in srgb,var(--grid-in) 40%,var(--brd))}.flow-mobile-node.grid-import strong{color:var(--grid-out)}.flow-mobile-node.grid-export strong{color:var(--grid-in)}.flow-mobile-node span{font-size:10px}.flow-mobile-node strong{font-size:12px}}
-@media(prefers-color-scheme:dark){.theme-day{display:none}.theme-night{display:inline}.logo::before{box-shadow:0 0 13px color-mix(in srgb,var(--pv) 50%,transparent)}}
+@media(prefers-color-scheme:dark){.logo::before{box-shadow:0 0 13px color-mix(in srgb,var(--pv) 50%,transparent)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.energy-particle{display:none}}
 </style>
 </head>
@@ -190,7 +188,6 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
     <span id="connection-label" class="connection-label">Łączenie…</span>
     <div class="ts" id="ts">—</div>
     <div class="ts" id="git-version" title="Wersja aplikacji">git —</div>
-    <span class="theme-pill"><span class="theme-day">☼ Dzień</span><span class="theme-night">☾ Noc</span><span>· system</span></span>
   </div>
 </div>
 <div class="main">
@@ -250,11 +247,6 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
           <div class="flow-mobile-node"><span>Bateria</span><strong id="mobile-flow-battery">– %</strong></div>
         </div>
       </div>
-    </div>
-    <div class="flow-summary" aria-label="Podsumowanie przepływu energii">
-      <div class="flow-summary-item">Z paneli<strong id="flow-summary-pv">– W</strong></div>
-      <div class="flow-summary-item" id="flow-summary-grid-item">Przepływ z siecią<strong id="flow-summary-grid">– W</strong></div>
-      <div class="flow-summary-item">Zużycie domu<strong id="flow-summary-load">– W</strong></div>
     </div>
   </div>
 
@@ -576,15 +568,10 @@ function update(s){
   if(overviewBattery)overviewBattery.textContent=`${batChg?'+':batDsg?'−':''}${Math.round(Math.abs(batPwr))}`;
   const gridLabel=feedActive?'Oddawanie do sieci':fromActive?'Pobór z sieci':'Przepływ z siecią';
   const gridTile=document.getElementById('overview-grid-tile');
-  const gridSummary=document.getElementById('flow-summary-grid-item');
   if(gridTile)gridTile.className='power-tile grid'+(feedActive?' export':fromActive?' import':'');
   const gridLabelEl=document.getElementById('overview-grid-label');
   if(gridLabelEl)gridLabelEl.textContent=gridLabel;
-  if(gridSummary){gridSummary.classList.toggle('grid-import',fromActive&&!feedActive);gridSummary.classList.toggle('grid-export',feedActive);gridSummary.firstChild.textContent=gridLabel;}
   const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
-  setText('flow-summary-pv',`${Math.round(pv)} W`);
-  setText('flow-summary-grid',`${Math.round(gval)} W`);
-  setText('flow-summary-load',`${Math.round(load)} W`);
   setText('mobile-flow-pv',`${Math.round(pv)} W`);
   setText('mobile-flow-grid',`${Math.round(gval)} W`);
   setText('mobile-flow-load',`${Math.round(load)} W`);
