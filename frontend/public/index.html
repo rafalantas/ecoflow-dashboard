@@ -513,7 +513,7 @@ function update(s){
 
   // === STAN SYSTEMU ===
   const sysSoc = s.cmsBattSoc || soc;
-  const soc2 = s.device2?.soc || 0;
+  const soc2 = s.device2?.soc ?? null;
   const bsys = document.getElementById('b-soc-system');
   const bbsys = document.getElementById('b-bar-system');
   if(bsys) bsys.innerHTML=`${sysSoc}<span class="bat-soc-u">%</span>`;
@@ -530,7 +530,7 @@ function update(s){
   else{if(bTimeLbl)bTimeLbl.textContent='Czas systemu';if(bTimeVal)bTimeVal.textContent='–';}
   const s1el=document.getElementById('b-soc1-small'), s2el=document.getElementById('b-soc2-small');
   if(s1el) s1el.textContent=soc;
-  if(s2el) s2el.textContent=soc2;
+  if(s2el) s2el.textContent=soc2==null?'–':soc2;
 
   // === BANK 1 ===
   const b1=document.getElementById('b-soc'), b1bar=document.getElementById('b-bar');
@@ -554,8 +554,8 @@ function update(s){
   if(s.device2) {
     const d2=s.device2;
     const b2=document.getElementById('b2-soc'), b2bar=document.getElementById('b2-bar');
-    if(b2) b2.innerHTML=`${soc2}<span style="font-size:16px;color:var(--t2)">%</span>`;
-    if(b2bar){ b2bar.style.width=soc2+'%'; b2bar.style.background=soc2>60?'var(--bat)':soc2>25?'var(--pv)':'var(--grid-out)'; }
+    if(b2) b2.innerHTML=`${soc2==null?'–':soc2}<span style="font-size:16px;color:var(--t2)">%</span>`;
+    if(b2bar){ b2bar.style.width=(soc2??0)+'%'; b2bar.style.background=soc2>60?'var(--bat)':soc2>25?'var(--pv)':'var(--grid-out)'; }
     const t2=document.getElementById('b2-temp');
     if(t2) t2.textContent=d2.maxCellTemp?`${d2.minCellTemp||'?'}–${d2.maxCellTemp} °C`:'–';
     if(d2.vBat) document.getElementById('b2-volt').textContent=(d2.vBat/1000).toFixed(2)+' V';
@@ -852,6 +852,7 @@ function connectSocket(){
           if(hist.ts.length>300)['pv','feed','soc','ts'].forEach(k=>hist[k].shift());
           drawHist();
         }
+        if(m.type==='state2'&&ds){ds={...ds,device2:m.data};update(ds);}
         if(m.type==='status')setOn(!!m.connected);
         if(m.type==='energy'){curData=m.data;showEnergy(m.data);}
       }catch(err){}

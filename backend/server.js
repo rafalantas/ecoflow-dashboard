@@ -97,7 +97,7 @@ function md5Sign(token) {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let deviceState2 = {
-  soc: 0, battPower: 0, chgDsgState: 0,
+  soc: null, battPower: 0, chgDsgState: 0,
   maxChgSoc: 95, minDsgSoc: 20, connected: false,
   battSoh: null, battCycles: null, cellVol: [],
   maxCellTemp: null, minCellTemp: null,
@@ -470,7 +470,7 @@ function applyMeterParams(params) {
     if (deviceState.feedPower === 0 && deviceState.meterTotal > 0) deviceState.fromGrid = deviceState.meterTotal;
     deviceState.connected = true;
     deviceState.lastMqttData = Date.now();
-    broadcast({ type: 'state', data: deviceState });
+    broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
   }
 }
 
@@ -492,7 +492,7 @@ function calcGridBalance() {
 setInterval(() => {
   const prevFeed = deviceState.feedPower, prevFrom = deviceState.fromGrid;
   calcGridBalance();
-  if (deviceState.feedPower !== prevFeed || deviceState.fromGrid !== prevFrom) broadcast({ type: 'state', data: deviceState });
+  if (deviceState.feedPower !== prevFeed || deviceState.fromGrid !== prevFrom) broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
 }, 3000);
 
 function applyParams(params) {
@@ -571,7 +571,7 @@ function applyParams(params) {
     deviceState.lastUpdate   = new Date().toISOString();
     deviceState.lastMqttData = Date.now();
     recordHistory();
-    broadcast({ type: 'state', data: deviceState });
+    broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
     console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc}%/${deviceState2.soc}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${deviceState.gridPower.toFixed(0)}W`);
   }
 }
@@ -733,8 +733,10 @@ async function startMqtt() {
         const msg = JSON.parse(payload.toString());
         const p = msg.params || msg;
         // bmsBattSoc to SOC tego konkretnego banku (slave)
-        if (p.bmsBattSoc != null && p.bmsBattSoc > 0) deviceState2.soc = Math.round(p.bmsBattSoc);
-        else if (p.f32ShowSoc != null && p.f32ShowSoc > 0) deviceState2.soc = Math.round(p.f32ShowSoc);
+        const socValue = p.bmsBattSoc ?? p.f32ShowSoc ?? p.soc;
+        if (socValue != null && Number.isFinite(Number(socValue)) && Number(socValue) >= 0 && Number(socValue) <= 100) {
+          deviceState2.soc = Math.round(Number(socValue));
+        }
         if (p.powGetBpCms != null) deviceState2.battPower = Math.round(p.powGetBpCms);
         if (p.bmsChgDsgState != null) deviceState2.chgDsgState = p.bmsChgDsgState;
         if (p.chgDsgState != null) deviceState2.chgDsgState = p.chgDsgState;
@@ -800,9 +802,10 @@ async function startMqtt() {
       try {
         const data = JSON.parse(payload.toString());
         const p = data.params || data;
-        if (p.bmsBattSoc != null && p.bmsBattSoc > 0) deviceState2.soc = Math.round(p.bmsBattSoc);
-        else if (p.f32ShowSoc != null && p.f32ShowSoc > 0) deviceState2.soc = Math.round(p.f32ShowSoc);
-        else if (p.soc != null && p.soc > 0) deviceState2.soc = Math.round(p.soc);
+        const socValue = p.bmsBattSoc ?? p.f32ShowSoc ?? p.soc;
+        if (socValue != null && Number.isFinite(Number(socValue)) && Number(socValue) >= 0 && Number(socValue) <= 100) {
+          deviceState2.soc = Math.round(Number(socValue));
+        }
         if (p.powGetBpCms != null) deviceState2.battPower = Math.round(p.powGetBpCms);
         if (p.bmsChgDsgState != null) deviceState2.chgDsgState = p.bmsChgDsgState;
         if (p.chgDsgState != null) deviceState2.chgDsgState = p.chgDsgState;
