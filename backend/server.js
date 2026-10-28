@@ -8,6 +8,9 @@ const axios     = require('axios');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT       = process.env.PORT          || 8080;
+const DASHBOARD_USER = process.env.DASHBOARD_USER || 'admin';
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '';
+const GIT_COMMIT = process.env.GIT_COMMIT || 'unknown';
 const DEVICE_SN  = process.env.DEVICE_SN     || '';
 const DEVICE_SN2 = process.env.DEVICE_SN2    || '';
 const ACCESS_KEY = process.env.EF_ACCESS_KEY || '';
@@ -19,12 +22,55 @@ const METER_SN   = process.env.METER_SN      || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
 const PSTRYK_KEY = process.env.PSTRYK_API_KEY || '';
 
+function isAuthorized(req) {
+  if (!DASHBOARD_PASSWORD) return true;
+  const header = req.headers.authorization || '';
+  const match = header.match(/^Basic\s+(.+)$/i);
+  if (!match) return false;
+  let supplied;
+  try { supplied = Buffer.from(match[1], 'base64').toString('utf8'); }
+  catch (_) { return false; }
+  const separator = supplied.indexOf(':');
+  if (separator < 0) return false;
+  const user = Buffer.from(supplied.slice(0, separator));
+  const password = Buffer.from(supplied.slice(separator + 1));
+  const expectedUser = Buffer.from(DASHBOARD_USER);
+  const expectedPassword = Buffer.from(DASHBOARD_PASSWORD);
+  return user.length === expectedUser.length && password.length === expectedPassword.length &&
+    crypto.timingSafeEqual(user, expectedUser) && crypto.timingSafeEqual(password, expectedPassword);
+}
+
 function uuidv4() {
   return crypto.randomUUID ? crypto.randomUUID() :
     'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
       const r = Math.random() * 16 | 0;
       return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
     });
+}
+
+function warsawDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function addCalendarDays(dateString, days) {
+  const date = new Date(`${dateString}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function warsawMidnightUtc(dateString) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const noonUtc = new Date(Date.UTC(year, month - 1, day, 12));
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(noonUtc);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  const offsetMinutes = Number(values.hour) * 60 + Number(values.minute) - 720;
+  return new Date(Date.UTC(year, month - 1, day) - offsetMinutes * 60000).toISOString();
 }
 
 function hmacSign(params = {}) {
@@ -156,8 +202,7 @@ async function refreshWeatherCache() {
     'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
   try {
     const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const localDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const localDate = warsawDate(now);
     const nonce = crypto.randomBytes(8).toString('hex');
     const timestamp = String(Date.now());
     const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
@@ -185,18 +230,31 @@ async function refreshWeatherCache() {
 // ─── Server ───────────────────────────────────────────────────────────────────
 const app    = express();
 const server = http.createServer(app);
-const wss    = new WebSocket.Server({ server });
+const wss    = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+  if (!isAuthorized(req)) {
+    socket.end('HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="EcoFlow Dashboard"\r\nConnection: close\r\n\r\n');
+    return;
+  }
+  wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+});
+
+app.use((req, res, next) => {
+  if (isAuthorized(req)) return next();
+  res.set('WWW-Authenticate', 'Basic realm="EcoFlow Dashboard", charset="UTF-8"');
+  res.status(401).send('Wymagane logowanie.');
+});
 
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json({...deviceState, device2: deviceState2}));
 app.get('/api/history', (_, res) => res.json(history));
+app.get('/api/version', (_, res) => res.json({ commit: GIT_COMMIT }));
 
 app.get('/api/efficiency', async (req, res) => {
   try {
     const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const localDate = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-    const todayUTC = now.toISOString().slice(0, 10);
+    const localDate = warsawDate(now);
     const beginTime = `${localDate} 00:00:00`;
     const endTime   = `${localDate} 23:59:59`;
     const PANEL_MAX_W = 2030;
@@ -242,8 +300,7 @@ app.get('/api/efficiency', async (req, res) => {
         'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
       const histDays = [];
       for (let i = 1; i <= 7; i++) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        const ds = d.toISOString().slice(0, 10);
+        const ds = addCalendarDays(localDate, -i);
         const hd = await efHistorical(
           'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA',
           `${ds} 00:00:00`, `${ds} 23:59:59`
@@ -319,9 +376,11 @@ app.get('/api/prices', async (req, res) => {
   if (pricesCache.data && now - pricesCache.fetchedAt < 15 * 60 * 1000) return res.json(pricesCache.data);
   if (!PSTRYK_KEY) return res.json({ error: 'no_key' });
   try {
-    const today = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    const url = `https://api.pstryk.pl/integrations/meter-data/unified-metrics/?metrics=pricing&resolution=hour&window_start=${today}T00:00:00Z&window_end=${tomorrow}T23:59:59Z`;
+    const today = warsawDate();
+    const dayAfterTomorrow = addCalendarDays(today, 2);
+    const windowStart = warsawMidnightUtc(today);
+    const windowEnd = new Date(Date.parse(warsawMidnightUtc(dayAfterTomorrow)) - 1000).toISOString();
+    const url = `https://api.pstryk.pl/integrations/meter-data/unified-metrics/?metrics=pricing&resolution=hour&window_start=${windowStart}&window_end=${windowEnd}`;
     const r = await axios.get(url, { headers: { 'Authorization': PSTRYK_KEY }, timeout: 10000 });
     const frames = r.data.frames || [];
     const prices = frames.map(f => ({
@@ -339,7 +398,7 @@ app.get('/api/prices', async (req, res) => {
 
 app.get('/api/energy', async (req, res) => {
   const period  = req.query.period || 'day';
-  const today   = new Date().toISOString().slice(0, 10);
+  const today   = warsawDate();
   const refDate = req.query.date || today;
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
@@ -555,12 +614,12 @@ const VALUE_CODES = { day:'SPACE-APP-SOLAR-ENERGY-VALUE-DAY', week:'SPACE-APP-SO
 const BAR_CODES   = { day:'SPACE-APP-SOLAR-ENERGY-BAR-DAY',   week:'SPACE-APP-SOLAR-ENERGY-BAR-WEEK',   month:'SPACE-APP-SOLAR-ENERGY-BAR-MONTH',   year:'SPACE-APP-SOLAR-ENERGY-BAR-YEAR' };
 
 function getDateRange(period, refDate) {
-  const d = new Date(refDate + 'T12:00:00');
+  const d = new Date(refDate + 'T12:00:00Z');
   const fmt = d => d.toISOString().slice(0,10);
   if (period === 'day')   return { begin: refDate, end: refDate, label: d.toLocaleDateString('pl-PL', {day:'numeric',month:'long',year:'numeric'}) };
-  if (period === 'week')  { const sun = new Date(d); sun.setDate(d.getDate()-d.getDay()); const sat = new Date(sun); sat.setDate(sun.getDate()+6); return { begin: fmt(sun), end: fmt(sat), label: `${fmt(sun).slice(5).replace('-','.')} – ${fmt(sat).slice(5).replace('-','.')} ${sat.getFullYear()}` }; }
-  if (period === 'month') { const begin = refDate.slice(0,7)+'-01', end = new Date(d.getFullYear(), d.getMonth()+1, 0).toISOString().slice(0,10); return { begin, end, label: d.toLocaleDateString('pl-PL', {month:'long', year:'numeric'}) }; }
-  return { begin: `${d.getFullYear()}-01-01`, end: `${d.getFullYear()}-12-31`, label: String(d.getFullYear()) };
+  if (period === 'week')  { const monday = new Date(d); monday.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); const sunday = new Date(monday); sunday.setUTCDate(monday.getUTCDate()+6); return { begin: fmt(monday), end: fmt(sunday), label: `${fmt(monday).slice(5).replace('-','.')} – ${fmt(sunday).slice(5).replace('-','.')} ${sunday.getUTCFullYear()}` }; }
+  if (period === 'month') { const begin = refDate.slice(0,7)+'-01', end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 0)).toISOString().slice(0,10); return { begin, end, label: d.toLocaleDateString('pl-PL', {month:'long', year:'numeric', timeZone:'Europe/Warsaw'}) }; }
+  return { begin: `${d.getUTCFullYear()}-01-01`, end: `${d.getUTCFullYear()}-12-31`, label: String(d.getUTCFullYear()) };
 }
 
 async function fetchEnergyForPeriod(period, refDate) {
@@ -620,11 +679,23 @@ async function startMqtt() {
   } catch(e) { console.error('❌ Creds:', e.message); setTimeout(startMqtt, 30000); return; }
 
   // Uzywamy mqtt-e.ecoflow.com zamiast creds.url dla pelnych danych
+  let quotaPollInterval = null;
+  let quotaRetryTimeout = null;
+  const fetchQuota = async () => {
+    try {
+      const r = await axios.get('https://api.ecoflow.com/iot-open/sign/device/quota/all',
+        { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
+      if (r.data.data && Object.keys(r.data.data).length > 0) {
+        applyParams(r.data.data);
+        return true;
+      }
+    } catch(e) { console.error('Quota error:', e.message); }
+    return false;
+  };
   const client = mqtt.connect(`mqtts://mqtt-e.ecoflow.com:${creds.port}`, {
     clientId: `open-${uuidv4()}`,
     username: creds.certificateAccount,
     password: creds.certificatePassword,
-    rejectUnauthorized: false,
     reconnectPeriod: 5000,
   });
 
@@ -645,19 +716,14 @@ async function startMqtt() {
       console.log('🔋 Drugi bank: ' + DEVICE_SN2);
     }
 
-    const fetchQuota = async () => {
-      try {
-        const r = await axios.get(`https://api.ecoflow.com/iot-open/sign/device/quota/all`,
-          { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
-        if (r.data.data && Object.keys(r.data.data).length > 0) {
-          applyParams(r.data.data);
-          return true;
-        }
-      } catch(e) { console.error('Quota error:', e.message); }
-      return false;
-    };
-    fetchQuota().then(ok => { if (!ok) setTimeout(fetchQuota, 3000); });
-    setInterval(fetchQuota, 30000);
+    if (!quotaPollInterval) quotaPollInterval = setInterval(fetchQuota, 30000);
+    if (quotaRetryTimeout) clearTimeout(quotaRetryTimeout);
+    fetchQuota().then(ok => {
+      if (!ok && !quotaRetryTimeout) quotaRetryTimeout = setTimeout(() => {
+        quotaRetryTimeout = null;
+        fetchQuota();
+      }, 3000);
+    });
   });
 
   client.on('message', (topic, payload) => {
@@ -710,7 +776,12 @@ async function startMqtt() {
   });
 
   client.on('error', e => console.error('MQTT error:', e.message));
-  client.on('close', () => { deviceState.connected = false; broadcast({ type: 'status', connected: false }); });
+  client.on('close', () => {
+    deviceState.connected = false;
+    if (quotaPollInterval) { clearInterval(quotaPollInterval); quotaPollInterval = null; }
+    if (quotaRetryTimeout) { clearTimeout(quotaRetryTimeout); quotaRetryTimeout = null; }
+    broadcast({ type: 'status', connected: false });
+  });
 
   // Drugi klient MQTT dla SN2 (osobne polaczenie, inny clientId)
   if (DEVICE_SN2) {
@@ -718,7 +789,6 @@ async function startMqtt() {
       clientId: `open-${uuidv4()}`,
       username: creds.certificateAccount,
       password: creds.certificatePassword,
-      rejectUnauthorized: false,
       reconnectPeriod: 10000,
     });
     const topic2 = `/open/${creds.certificateAccount}/${DEVICE_SN2}/quota`;
@@ -778,9 +848,9 @@ server.listen(PORT, async () => {
   startMqtt();
   if (EF_EMAIL && EF_PASSWORD) {
     await loginPrivateApi();
-    const today = new Date().toISOString().slice(0,10);
     const autoRefresh = async () => {
       try {
+        const today = warsawDate();
         const data = await fetchEnergyForPeriod('day', today);
         if (data) { energyCache[`day:${today}`] = { ...data, fetchedAt: Date.now() }; broadcast({ type: 'energy', data }); }
       } catch(e) {}

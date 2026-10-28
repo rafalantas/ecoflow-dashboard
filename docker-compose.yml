@@ -7,6 +7,8 @@ services:
       - "8080:8080"
     environment:
       - TZ=Europe/Warsaw
+      - DASHBOARD_USER=${DASHBOARD_USER:-admin}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-}
       - DEVICE_SN=${DEVICE_SN}
       - DEVICE_SN2=${DEVICE_SN2}
       - EF_ACCESS_KEY=${EF_ACCESS_KEY}
@@ -19,6 +21,7 @@ services:
     restart: unless-stopped
 
   cloudflared:
+    profiles: ["tunnel"]
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped

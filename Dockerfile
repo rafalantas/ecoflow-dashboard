@@ -1,5 +1,9 @@
 FROM node:20-alpine
 
+ARG GIT_COMMIT=unknown
+ENV NODE_ENV=production \
+    GIT_COMMIT=${GIT_COMMIT}
+
 WORKDIR /app
 
 COPY package*.json ./

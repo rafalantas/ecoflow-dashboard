@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EcoFlow STREAM Ultra X</title>
+<title>EcoFlow STREAM Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -124,10 +124,11 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 </head>
 <body>
 <div class="topbar">
-  <div class="logo">STREAM <span>Ultra X</span></div>
+  <div class="logo">EcoFlow <span>STREAM</span></div>
   <div class="topbar-r">
     <div class="dot" id="dot"></div>
     <div class="ts" id="ts">—</div>
+    <div class="ts" id="git-version" title="Wersja aplikacji">git —</div>
   </div>
 </div>
 <div class="main">
@@ -445,9 +446,15 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 </div>
 
 <script data-cfasync="false">
-let ds={}, curP='day', curD=new Date().toISOString().slice(0,10), curData=null;
+function warsawDate(date=new Date()){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
+  const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+let ds={}, curP='day', curD=warsawDate(), curData=null;
 let hist={pv:[],feed:[],soc:[],ts:[]};
 let wsOK=false;
+let wsRetry=null;
 
 function gc(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
 window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
@@ -726,10 +733,10 @@ function setupTT(){
 function offsetDate(p,o){
   const d=new Date(curD+'T12:00:00');
   if(p==='day'){d.setDate(d.getDate()+o)}
-  else if(p==='week'){d.setDate(d.getDate()-d.getDay()+o*7)}
+  else if(p==='week'){d.setDate(d.getDate()-(d.getDay()+6)%7+o*7)}
   else if(p==='month'){d.setDate(1);d.setMonth(d.getMonth()+o)}
   else{d.setFullYear(d.getFullYear()+o,0,1)}
-  return d.toISOString().slice(0,10);
+  return warsawDate(d);
 }
 function switchP(p,btn){
   curP=p;curD=offsetDate(p,0);
@@ -819,9 +826,18 @@ function poll(){
 function connect(){
   fetch('/api/state').then(r=>r.json()).then(s=>{update(s);setOn(s.connected);});
   fetch('/api/history').then(r=>r.json()).then(h=>{
-    hist={pv:h.pv||[],feed:h.feed||[],soc:h.soc||[],ts:h.timestamps||[]};drawHist();
+    hist={pv:h.pv||[],feed:h.feed||[],soc:h.soc||[],ts:h.ts||[]};drawHist();
   });
   loadEnergy();
+  connectSocket();
+  if(!window.dashboardPollTimer) window.dashboardPollTimer=setInterval(()=>{if(!wsOK)poll();},3000);
+  fetch('/api/version').then(r=>r.json()).then(v=>{
+    const el=document.getElementById('git-version');
+    if(el&&v.commit){el.textContent=`git ${v.commit==='unknown'?'?':v.commit.slice(0,7)}`;el.title=`Commit: ${v.commit}`;}
+  }).catch(()=>{});
+}
+
+function connectSocket(){
   try{
     const proto=location.protocol==='https:'?'wss':'ws';
     const ws=new WebSocket(`${proto}://${location.host}`);
@@ -836,14 +852,13 @@ function connect(){
           if(hist.ts.length>300)['pv','feed','soc','ts'].forEach(k=>hist[k].shift());
           drawHist();
         }
-        if(m.type==='status'&&m.connected)setOn(true);
+        if(m.type==='status')setOn(!!m.connected);
         if(m.type==='energy'){curData=m.data;showEnergy(m.data);}
       }catch(err){}
     };
-    ws.onclose=()=>{wsOK=false;setTimeout(connect,5000);};
+    ws.onclose=()=>{wsOK=false;if(wsRetry)clearTimeout(wsRetry);wsRetry=setTimeout(connectSocket,5000);};
     ws.onerror=()=>{wsOK=false;};
   }catch(e){}
-  setInterval(()=>{if(!wsOK)poll();},3000);
 }
 
 window.addEventListener('load',()=>{drawHist();if(curData)drawEChart(curData);});
