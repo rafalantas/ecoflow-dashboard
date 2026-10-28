@@ -521,7 +521,7 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
       <div class="hist-legend">
         <div class="li"><div class="ld" style="background:var(--pv)"></div>PV</div>
         <div class="li"><div class="ld" style="background:var(--grid-in)"></div>Feed-in</div>
-        <div class="li"><div class="ld" style="background:var(--bat)"></div>SOC×10</div>
+        <div class="li"><div class="ld" style="background:var(--bat)"></div>SOC %</div>
       </div>
     </div>
     <canvas id="hchart" height="140" style="width:100%;display:block"></canvas>
@@ -731,31 +731,44 @@ function drawHist(){
   const dpr=window.devicePixelRatio||1,w=hcv.offsetWidth,h=140;
   hcv.width=w*dpr;hcv.height=h*dpr;hctx.scale(dpr,dpr);hctx.clearRect(0,0,w,h);
   const n=hist.pv.length;if(n<2)return;
-  const mx=Math.max(...hist.pv,...hist.feed,...hist.soc.map(s=>s*10),100);
-  const p={t:8,b:20,l:44,r:8},cw=w-p.l-p.r,ch=h-p.t-p.b;
+  const maxPower=Math.max(0,...hist.pv,...hist.feed);
+  const rawStep=Math.max(maxPower,100)/4;
+  const stepBase=Math.pow(10,Math.floor(Math.log10(rawStep)));
+  const powerStep=Math.ceil(rawStep/stepBase)*stepBase;
+  const powerMax=powerStep*4;
+  const p={t:12,b:22,l:44,r:34},cw=w-p.l-p.r,ch=h-p.t-p.b;
   for(let i=0;i<=4;i++){
     const y=p.t+(ch/4)*i;
     hctx.fillStyle=gc('--brd');hctx.fillRect(p.l,y,cw,.5);
     hctx.fillStyle=gc('--t2');hctx.font='9px DM Mono,monospace';hctx.textAlign='right';
-    const v=Math.round(mx*(1-i/4));hctx.fillText(v>=1000?(v/1000).toFixed(1)+'k':v+'',p.l-4,y+3);
+    const watts=Math.round(powerMax*(1-i/4));
+    hctx.fillText(watts>=1000?(watts/1000).toFixed(watts%1000?1:0)+'k':watts+'',p.l-5,y+3);
+    hctx.textAlign='left';hctx.fillText(`${100-i*25}%`,p.l+cw+5,y+3);
   }
-  const area=(data,color,alpha)=>{
-    if(!data.some(v=>v>0))return;
+  hctx.fillStyle=gc('--t2');hctx.font='8px DM Mono,monospace';
+  hctx.textAlign='right';hctx.fillText('W',p.l-5,8);
+  hctx.textAlign='left';hctx.fillText('%',p.l+cw+5,8);
+  const series=(data,color,scale,alpha=0)=>{
+    if(!data.length)return;
+    const yAt=v=>p.t+ch-(Math.max(0,Math.min(scale,v))/scale)*ch;
     hctx.beginPath();hctx.strokeStyle=color;hctx.lineWidth=1.8;hctx.lineJoin='round';
-    data.forEach((v,i)=>{const x=p.l+(i/(n-1))*cw,y=p.t+ch-(v/mx)*ch;i?hctx.lineTo(x,y):hctx.moveTo(x,y)});
+    data.forEach((v,i)=>{const x=p.l+(i/(n-1))*cw,y=yAt(Number(v)||0);i?hctx.lineTo(x,y):hctx.moveTo(x,y)});
     hctx.stroke();
-    hctx.lineTo(p.l+((n-1)/(n-1))*cw,p.t+ch);hctx.lineTo(p.l,p.t+ch);hctx.closePath();
-    const g=hctx.createLinearGradient(0,p.t,0,p.t+ch);
-    g.addColorStop(0,rgba(color,alpha));g.addColorStop(1,rgba(color,0));
-    hctx.fillStyle=g;hctx.fill();
+    if(alpha){
+      hctx.lineTo(p.l+cw,p.t+ch);hctx.lineTo(p.l,p.t+ch);hctx.closePath();
+      const g=hctx.createLinearGradient(0,p.t,0,p.t+ch);
+      g.addColorStop(0,rgba(color,alpha));g.addColorStop(1,rgba(color,0));
+      hctx.fillStyle=g;hctx.fill();
+    }
   };
-  area(hist.soc.map(s=>s*10),gc('--bat'),.12);
-  area(hist.feed,gc('--grid-in'),.15);
-  area(hist.pv,gc('--pv'),.18);
+  series(hist.pv,gc('--pv'),powerMax,.12);
+  series(hist.feed,gc('--grid-in'),powerMax,.10);
+  series(hist.soc,gc('--bat'),100);
   if(hist.ts.length>1){
     hctx.fillStyle=gc('--t2');hctx.font='9px DM Mono,monospace';hctx.textAlign='center';
-    [0,Math.floor((n-1)/2),n-1].forEach(i=>{
+    [0,Math.floor((n-1)/2),n-1].forEach((i,j)=>{
       if(!hist.ts[i])return;
+      hctx.textAlign=j===0?'left':j===2?'right':'center';
       hctx.fillText(new Date(hist.ts[i]).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}),p.l+(i/(n-1))*cw,h-4);
     });
   }
