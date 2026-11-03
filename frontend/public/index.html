@@ -544,6 +544,12 @@ window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
 
 function f(v,d=0){return v!=null&&v!==0?(d?v.toFixed(d):Math.round(v)):'–'}
 function ft(m){if(!m||m<=0)return'–';const h=Math.floor(m/60),mm=m%60;return h?h+'h '+mm+'m':mm+'m'}
+function batteryFlows(power,state){
+  power=Number(power)||0;state=Number(state)||0;
+  if(state===2)return{charging:Math.abs(power),discharging:0};
+  if(state===1)return{charging:0,discharging:Math.abs(power)};
+  return{charging:power>20?power:0,discharging:power< -20?Math.abs(power):0};
+}
 
 function update(s){
   ds=s;
@@ -552,9 +558,12 @@ function update(s){
   if(dotEl){dotEl.classList.add('pulse');setTimeout(()=>dotEl.classList.remove('pulse'),400);}
 
   const pv=s.pvTotal||0, feed=s.feedPower||0, from=s.fromGrid||0;
-  const load=s.sysLoad||0, soc=s.soc||(s.socExact?Math.round(s.socExact):0), batPwr=s.battPower||0, chg=s.chgDsgState||0;
+  const load=s.sysLoad||0, soc=s.soc||(s.socExact?Math.round(s.socExact):0);
+  const bank1Flow=batteryFlows(s.battPower,s.chgDsgState),bank2Flow=batteryFlows(s.device2?.battPower,s.device2?.chgDsgState);
+  const batCharge=bank1Flow.charging+bank2Flow.charging,batDischarge=bank1Flow.discharging+bank2Flow.discharging;
+  const batPwr=batCharge-batDischarge,batChg=batCharge>20&&batCharge>=batDischarge,batDsg=batDischarge>20&&batDischarge>batCharge;
   const fromPv=s.loadFromPv||0, fromBat=s.loadFromBat||0, fromGrd=s.loadFromGrid||0;
-  const pvActive=pv>5, batChg=chg===2||(chg===0&&batPwr>20), batDsg=chg===1||(chg===0&&batPwr<-20);
+  const pvActive=pv>5;
   const feedActive=feed>5, fromActive=from>5||fromGrd>5;
   const gval=feedActive?feed:from;
 

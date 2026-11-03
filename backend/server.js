@@ -477,12 +477,18 @@ function applyMeterParams(params) {
 function calcGridBalance() {
   const pv    = deviceState.pvTotal   || 0;
   const load  = deviceState.sysLoad   || 0;
-  const bat   = deviceState.battPower || 0;
-  const chg   = deviceState.chgDsgState || 0;
   const meter = deviceState.meterTotal || 0;
   if (meter > 20) { deviceState.fromGrid = meter; deviceState.feedPower = 0; return; }
-  const batCharging    = chg === 2 ? Math.max(0, bat)           : (bat > 20  ? bat : 0);
-  const batDischarging = chg === 1 ? Math.max(0, Math.abs(bat)) : (bat < -20 ? Math.abs(bat) : 0);
+  const bankFlows = bank => {
+    const power = Number(bank.battPower) || 0;
+    const state = Number(bank.chgDsgState) || 0;
+    if (state === 2) return { charging: Math.abs(power), discharging: 0 };
+    if (state === 1) return { charging: 0, discharging: Math.abs(power) };
+    return { charging: power > 20 ? power : 0, discharging: power < -20 ? Math.abs(power) : 0 };
+  };
+  const banks = [bankFlows(deviceState), bankFlows(deviceState2)];
+  const batCharging = banks.reduce((sum, bank) => sum + bank.charging, 0);
+  const batDischarging = banks.reduce((sum, bank) => sum + bank.discharging, 0);
   const net = pv + batDischarging - load - batCharging;
   if (net > 20)       { deviceState.feedPower = Math.round(net);  deviceState.fromGrid = 0; }
   else if (net < -20) { deviceState.feedPower = 0; deviceState.fromGrid = Math.round(-net); }
