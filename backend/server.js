@@ -112,7 +112,7 @@ let deviceState = {
   pv1Amp: 0, pv2Amp: 0, pv3Amp: 0, pv4Amp: 0,
   pv1Active: false, pv2Active: false, pv3Active: false, pv4Active: false,
   soc: 0, socExact: 0, battPower: 0, cmsBattSoc: 0,
-  chgRemTime: 0, dsgRemTime: 0, chgRemTime1: 0, dsgRemTime1: 0, chgDsgState: 0,
+  chgRemTime: 0, dsgRemTime: 0, chgRemTime1: 0, dsgRemTime1: 0, remainTime1: 0, chgDsgState: 0,
   cellTemp: [], cellVol: [], maxCellTemp: 0, minCellTemp: 0,
   gridPower: 0, gridVol: 0, gridFreq: 0,
   feedPower: 0, fromGrid: 0, gridStatus: '',
@@ -544,6 +544,7 @@ function applyParams(params) {
   set('cmsDsgRemTime','dsgRemTime',  v => v);  // system
   set('bmsChgRemTime','chgRemTime1', v => v);  // bank 1
   set('bmsDsgRemTime','dsgRemTime1', v => v);  // bank 1
+  set('remainTime',   'remainTime1', v => v);  // bank 1 - dynamiczny (chg lub dsg)
   set('bmsChgDsgState','chgDsgState', v => v);
   set('bmsMaxCellTemp','maxCellTemp', v => v);
   set('vBat','vBat', v => v);
@@ -762,6 +763,7 @@ async function startMqtt() {
         if (p.vol != null) deviceState2.vBat = p.vol;
         if (p.bmsChgRemTime != null) deviceState2.chgRemTime = p.bmsChgRemTime;
         if (p.bmsDsgRemTime != null) deviceState2.dsgRemTime = p.bmsDsgRemTime;
+        if (p.remainTime != null && p.remainTime > 0 && p.remainTime < 9000) deviceState2.remainTime = p.remainTime;
         deviceState2.connected = true;
         broadcast({ type: 'state2', data: deviceState2 });
       } catch(e) {}
@@ -829,6 +831,7 @@ async function startMqtt() {
         if (p.vol != null) deviceState2.vBat = p.vol;
         if (p.bmsChgRemTime != null) deviceState2.chgRemTime = p.bmsChgRemTime;
         if (p.bmsDsgRemTime != null) deviceState2.dsgRemTime = p.bmsDsgRemTime;
+        if (p.remainTime != null && p.remainTime > 0 && p.remainTime < 9000) deviceState2.remainTime = p.remainTime;
         deviceState2.connected = true;
         broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
       } catch(e) {}
