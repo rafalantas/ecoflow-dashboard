@@ -1,8 +1,6 @@
 FROM node:20-alpine
 
-ARG GIT_COMMIT=unknown
-ENV NODE_ENV=production \
-    GIT_COMMIT=${GIT_COMMIT}
+ENV NODE_ENV=production
 
 WORKDIR /app
 
@@ -10,6 +8,9 @@ COPY package*.json ./
 RUN npm install --production
 
 COPY . .
+
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
 
 EXPOSE 8080
 
