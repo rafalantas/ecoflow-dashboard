@@ -354,24 +354,26 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
       <div class="meter-phase" style="border-top:3px solid var(--phase-1)">
         <div class="mp-lbl" style="color:var(--phase-1)">Faza L1</div>
         <div class="mp-val" id="m-l1">–<span class="u"> W</span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l1-pct"></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px" id="m-l1-volt">–</div>
         <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden"><div id="m-l1-bar" style="height:100%;background:var(--phase-1);border-radius:2px;width:0%;transition:width .5s"></div></div>
       </div>
       <div class="meter-phase" style="border-top:3px solid var(--phase-2)">
         <div class="mp-lbl" style="color:var(--phase-2)">Faza L2</div>
         <div class="mp-val" id="m-l2">–<span class="u"> W</span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l2-pct"></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px" id="m-l2-volt">–</div>
         <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden"><div id="m-l2-bar" style="height:100%;background:var(--phase-2);border-radius:2px;width:0%;transition:width .5s"></div></div>
       </div>
       <div class="meter-phase" style="border-top:3px solid var(--phase-3)">
         <div class="mp-lbl" style="color:var(--phase-3)">Faza L3</div>
         <div class="mp-val" id="m-l3">–<span class="u"> W</span></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px" id="m-l3-pct"></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:4px" id="m-l3-volt">–</div>
         <div style="height:3px;background:var(--brd);border-radius:2px;margin-top:4px;overflow:hidden"><div id="m-l3-bar" style="height:100%;background:var(--phase-3);border-radius:2px;width:0%;transition:width .5s"></div></div>
       </div>
       <div class="meter-phase" style="border-top:3px solid var(--grid-out)">
         <div class="mp-lbl" style="color:var(--grid-out)">Łącznie</div>
         <div class="mp-val" id="m-tot" style="color:var(--grid-out)">–<span class="u"> W</span></div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:4px" id="m-import">↓ – kWh</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t2);margin-top:2px" id="m-export">↑ – kWh</div>
       </div>
     </div>
   </div>
@@ -728,6 +730,15 @@ function update(s){
     document.getElementById('m-l2').innerHTML=`${f(ml2)}<span class="u"> W</span>`;
     document.getElementById('m-l3').innerHTML=`${f(ml3)}<span class="u"> W</span>`;
     document.getElementById('m-tot').innerHTML=`${f(mtot)}<span class="u"> W</span>`;
+    // Napięcia faz
+    const vl1=document.getElementById('m-l1-volt'), vl2=document.getElementById('m-l2-volt'), vl3=document.getElementById('m-l3-volt');
+    if(vl1&&s.meterVoltL1) vl1.textContent=s.meterVoltL1.toFixed(1)+' V';
+    if(vl2&&s.meterVoltL2) vl2.textContent=s.meterVoltL2.toFixed(1)+' V';
+    if(vl3&&s.meterVoltL3) vl3.textContent=s.meterVoltL3.toFixed(1)+' V';
+    // Import/Export
+    const imp=document.getElementById('m-import'), exp=document.getElementById('m-export');
+    if(imp&&s.meterTotalImport) imp.textContent='↓ '+(s.meterTotalImport/1000).toFixed(1)+' kWh';
+    if(exp&&s.meterTotalExport) exp.textContent='↑ '+(s.meterTotalExport/1000).toFixed(1)+' kWh';
     [[1,ml1],[2,ml2],[3,ml3]].forEach(([n,v])=>{
       const barEl=document.getElementById('m-l'+n+'-bar');
       if(barEl) barEl.style.width=Math.min(100,Math.round(v/mx3*100))+'%';
