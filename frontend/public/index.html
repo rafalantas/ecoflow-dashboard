@@ -544,13 +544,15 @@ window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
 
 function f(v,d=0){return v!=null&&v!==0?(d?v.toFixed(d):Math.round(v)):'–'}
 function ft(m){const total=Math.round(Number(m));if(!Number.isFinite(total)||total<=0)return'–';const h=Math.floor(total/60),mm=total%60;return h?h+'h '+mm+'m':mm+'m'}
-function bankDsgRuntime(m,usableKwh,powerW){
+function bankDsgRuntime(m,usableKwh,powerW,hasBank2){
   const reported=Number(m)||0;
-  if(usableKwh<=0||powerW<=20)return{minutes:0,estimated:false};
-  const expected=usableKwh*60000/powerW;
-  return reported>0&&reported<=expected*3
-    ? {minutes:reported,estimated:false}
-    : {minutes:expected,estimated:true};
+  // EcoFlow can report a stale sentinel such as 5939 minutes. A direct
+  // per-bank timer is preferable to a power-derived estimate (power may be
+  // aggregate system telemetry when multiple banks are connected).
+  if(reported>0&&reported<=24*60)return{minutes:reported,estimated:false};
+  if(!hasBank2&&usableKwh>0&&powerW>20)
+    return{minutes:usableKwh*60000/powerW,estimated:true};
+  return{minutes:0,estimated:false};
 }
 function combinedBankRuntime(bank1,bank2,hasBank2){
   const banks=hasBank2?[bank1,bank2]:[bank1];
@@ -647,8 +649,15 @@ function update(s){
   const bank1Energy=3.84*Math.max(0,(soc-minSoc1)/100);
   const bank2Energy=3.84*Math.max(0,((soc2??0)-minSoc2)/100);
   const hasBank2=!!s.device2?.connected||soc2!=null;
-  const bank1Runtime=bankDsgRuntime(s.dsgRemTime1,bank1Energy,bank1Flow.discharging);
-  const bank2Runtime=bankDsgRuntime(s.device2?.dsgRemTime,bank2Energy,bank2Flow.discharging);
+  const bank1Runtime=bankDsgRuntime(s.dsgRemTime1,bank1Energy,bank1Flow.discharging,hasBank2);
+  const bank2Runtime=bankDsgRuntime(s.device2?.dsgRemTime,bank2Energy,bank2Flow.discharging,hasBank2);
+  // If one bank's timer is invalid, use the other bank's timer as a clearly
+  // marked approximation only when their SOCs are close. Never infer an
+  // individual bank's runtime from potentially shared system power.
+  if(hasBank2&&soc2!=null&&Math.abs(soc-soc2)<=5){
+    if(!bank1Runtime.minutes&&bank2Runtime.minutes)Object.assign(bank1Runtime,{minutes:bank2Runtime.minutes,estimated:true});
+    if(!bank2Runtime.minutes&&bank1Runtime.minutes)Object.assign(bank2Runtime,{minutes:bank1Runtime.minutes,estimated:true});
+  }
   const systemDsgTime=batDsg?combinedBankRuntime(
     {energy:bank1Energy,minutes:bank1Runtime.minutes},
     {energy:bank2Energy,minutes:bank2Runtime.minutes},
