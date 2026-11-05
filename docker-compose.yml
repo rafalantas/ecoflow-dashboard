@@ -21,7 +21,6 @@ services:
     restart: unless-stopped
 
   cloudflared:
-    profiles: ["cloudflare"]
     image: cloudflare/cloudflared:latest
     pull_policy: always
     container_name: ecoflow-dashboard-cloudflared

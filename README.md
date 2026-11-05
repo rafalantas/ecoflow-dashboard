@@ -27,7 +27,7 @@ W Portainerze użyj repozytorium `https://github.com/rafalantas/ecoflow-dashboar
 - `EF_SPACE_ID` — identyfikator przestrzeni EcoFlow, jeśli konto używa innego niż domyślny.
 - `METER_SN` — numer seryjny licznika EcoFlow.
 - `PSTRYK_API_KEY` — ceny energii z Pstryk.
-- `CLOUDFLARE_TUNNEL_TOKEN` — token tunelu Cloudflare. Aby uruchomić tunel, ustaw token i uruchom `docker compose --profile cloudflare up -d`. Możesz dodatkowo ograniczyć dostęp regułami Cloudflare Access.
+- `CLOUDFLARE_TUNNEL_TOKEN` — token tunelu Cloudflare. Usługa tunelu uruchamia się razem ze stosem przez `docker compose up -d`; w Portainerze ustaw token w zmiennych stosu i wybierz „Pull and redeploy”. Możesz dodatkowo ograniczyć dostęp regułami Cloudflare Access.
 
 ## Dane i interfejs
 
