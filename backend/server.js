@@ -526,6 +526,10 @@ function applyParams(params) {
 
   // Bateria - SOC z bmsBattSoc (bank 1), cmsBattSoc (system = srednia)
   set('bmsBattSoc',  'soc',       v => Math.round(v));
+  // Fallback gdy bmsBattSoc nie przychodzi
+  if (params.bmsBattSoc == null && params.cmsBattSoc != null && params.cmsBattSoc > 0 && deviceState.soc === 0) {
+    deviceState.soc = Math.round(params.cmsBattSoc); updated = true;
+  }
   set('cmsBattSoc',  'cmsBattSoc', v => Math.round(v));
   // SOC banku 2 = cmsBattSoc*2 - bmsBattSoc
   if (params.cmsBattSoc != null && params.bmsBattSoc != null && params.cmsBattSoc > 0) {
@@ -544,7 +548,7 @@ function applyParams(params) {
   set('cmsDsgRemTime','dsgRemTime',  v => v);  // system
   set('bmsChgRemTime','chgRemTime1', v => v);  // bank 1
   set('bmsDsgRemTime','dsgRemTime1', v => v);  // bank 1
-  set('remainTime',   'remainTime1', v => v);  // bank 1 - dynamiczny (chg lub dsg)
+  // remainTime z BMS jest w godzinach - nie uzywamy
   set('bmsChgDsgState','chgDsgState', v => v);
   set('bmsMaxCellTemp','maxCellTemp', v => v);
   set('vBat','vBat', v => v);
@@ -761,8 +765,8 @@ async function startMqtt() {
         if (p.bmsMinCellTemp != null) deviceState2.minCellTemp = p.bmsMinCellTemp;
         if (p.vBat != null) deviceState2.vBat = p.vBat;
         if (p.vol != null) deviceState2.vBat = p.vol;
-        if (p.bmsChgRemTime != null) deviceState2.chgRemTime = p.bmsChgRemTime;
-        if (p.bmsDsgRemTime != null) deviceState2.dsgRemTime = p.bmsDsgRemTime;
+        if (p.bmsChgRemTime != null && p.bmsChgRemTime > 0 && p.bmsChgRemTime < 2000) deviceState2.chgRemTime = p.bmsChgRemTime;
+        if (p.bmsDsgRemTime != null && p.bmsDsgRemTime > 0 && p.bmsDsgRemTime < 2000) deviceState2.dsgRemTime = p.bmsDsgRemTime;
         if (p.remainTime != null && p.remainTime > 0 && p.remainTime < 9000) deviceState2.remainTime = p.remainTime;
         deviceState2.connected = true;
         broadcast({ type: 'state2', data: deviceState2 });
@@ -829,8 +833,8 @@ async function startMqtt() {
         if (p.minCellTemp != null) deviceState2.minCellTemp = p.minCellTemp;
         if (p.vBat != null) deviceState2.vBat = p.vBat;
         if (p.vol != null) deviceState2.vBat = p.vol;
-        if (p.bmsChgRemTime != null) deviceState2.chgRemTime = p.bmsChgRemTime;
-        if (p.bmsDsgRemTime != null) deviceState2.dsgRemTime = p.bmsDsgRemTime;
+        if (p.bmsChgRemTime != null && p.bmsChgRemTime > 0 && p.bmsChgRemTime < 2000) deviceState2.chgRemTime = p.bmsChgRemTime;
+        if (p.bmsDsgRemTime != null && p.bmsDsgRemTime > 0 && p.bmsDsgRemTime < 2000) deviceState2.dsgRemTime = p.bmsDsgRemTime;
         if (p.remainTime != null && p.remainTime > 0 && p.remainTime < 9000) deviceState2.remainTime = p.remainTime;
         deviceState2.connected = true;
         broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
@@ -854,12 +858,184 @@ function startDemo() {
 // Odswiezaj cache pogody co godzine
 setInterval(refreshWeatherCache, 60*60*1000);
 
+
+// ─── Prywatne MQTT z protobuf ─────────────────────────────────────────────────
+let efDecoder = null;
+
+async function initDecoder() {
+  try {
+    efDecoder = require('./ef_decoder');
+    await efDecoder.init();
+  } catch(e) { console.error('❌ ef_decoder:', e.message); }
+}
+
+function decodeAndApply(payload, isSN2, isMeter) {
+  if (!efDecoder) return;
+  try {
+    const results = efDecoder.decode(payload, isMeter);
+    if (!results.length) return;
+    let updated = false;
+
+    results.forEach(msg => {
+      const dp  = msg.DisplayPropertyUpload;
+      const bms = msg.BMSHeartBeatReport;
+      const cms = msg.CMSHeartBeatReport;
+
+      if (isMeter && dp) {
+        if (dp.totalPower != null) { deviceState.meterTotal = Math.round(dp.totalPower*10)/10; updated=true; }
+        if (dp.powerL1    != null) { deviceState.meterL1    = Math.round(dp.powerL1   *10)/10; updated=true; }
+        if (dp.powerL2    != null) { deviceState.meterL2    = Math.round(dp.powerL2   *10)/10; updated=true; }
+        if (dp.powerL3    != null) { deviceState.meterL3    = Math.round(dp.powerL3   *10)/10; updated=true; }
+        if (dp.energy) {
+          if (dp.energy.lifeTimeEnergyConsumption != null) deviceState.meterTotalImport = dp.energy.lifeTimeEnergyConsumption;
+          if (dp.energy.lifeTimeEnergyDelivery    != null) deviceState.meterTotalExport  = dp.energy.lifeTimeEnergyDelivery;
+          updated = true;
+        }
+        return;
+      }
+
+      if (!isSN2 && dp) {
+        if (dp.bmsBattSoc  != null) { deviceState.soc        = Math.round(dp.bmsBattSoc);  updated=true; }
+        if (dp.cmsBattSoc  != null) { deviceState.cmsBattSoc = Math.round(dp.cmsBattSoc);  updated=true; }
+        if (dp.powGetPvSum != null) { deviceState.pvTotal    = Math.round(dp.powGetPvSum);  updated=true; }
+        if (dp.powGetPv3   != null) { deviceState.pv3Power   = Math.round(dp.powGetPv3);    updated=true; }
+        if (dp.powGetPv4   != null) { deviceState.pv4Power   = Math.round(dp.powGetPv4);    updated=true; }
+        if (dp.powGetBpCms != null) { deviceState.battPower  = Math.round(dp.powGetBpCms);  updated=true; }
+        if (dp.powGetSysLoad         != null) { deviceState.sysLoad      = Math.round(dp.powGetSysLoad);         updated=true; }
+        if (dp.powGetSysLoadFromPv   != null) { deviceState.loadFromPv   = Math.round(dp.powGetSysLoadFromPv);   updated=true; }
+        if (dp.powGetSysLoadFromGrid != null) { deviceState.loadFromGrid = Math.round(dp.powGetSysLoadFromGrid); updated=true; }
+        if (dp.powGetSysLoadFromBp   != null) { deviceState.loadFromBat  = Math.round(dp.powGetSysLoadFromBp);   updated=true; }
+        if (dp.gridConnectionPower   != null) { deviceState.gridPower    = Math.round(dp.gridConnectionPower);   updated=true; }
+        if (dp.gridConnectionVol     != null) { deviceState.gridVol      = Math.round(dp.gridConnectionVol*10)/10; updated=true; }
+        if (dp.gridConnectionFreq    != null) { deviceState.gridFreq     = Math.round(dp.gridConnectionFreq*100)/100; updated=true; }
+        if (dp.bmsChgDsgState != null) { deviceState.chgDsgState  = dp.bmsChgDsgState; updated=true; }
+        if (dp.bmsMaxCellTemp != null) { deviceState.maxCellTemp  = dp.bmsMaxCellTemp;  updated=true; }
+        if (dp.bmsMinCellTemp != null) { deviceState.minCellTemp  = dp.bmsMinCellTemp;  updated=true; }
+        if (dp.cmsDsgRemTime  != null && dp.cmsDsgRemTime  < 9000) { deviceState.dsgRemTime  = dp.cmsDsgRemTime;  updated=true; }
+        if (dp.cmsChgRemTime  != null && dp.cmsChgRemTime  < 9000) { deviceState.chgRemTime  = dp.cmsChgRemTime;  updated=true; }
+        if (dp.bmsDsgRemTime  != null && dp.bmsDsgRemTime  < 2000) { deviceState.dsgRemTime1 = dp.bmsDsgRemTime;  updated=true; }
+        if (dp.bmsChgRemTime  != null && dp.bmsChgRemTime  < 2000) { deviceState.chgRemTime1 = dp.bmsChgRemTime;  updated=true; }
+        if (dp.plugInInfoPv3Flag != null) { deviceState.pv3Active = !!dp.plugInInfoPv3Flag; updated=true; }
+        if (dp.plugInInfoPv4Flag != null) { deviceState.pv4Active = !!dp.plugInInfoPv4Flag; updated=true; }
+        if (dp.plugInInfoPv3Vol  != null) { deviceState.pv3Vol = dp.plugInInfoPv3Vol; updated=true; }
+        if (dp.plugInInfoPv4Vol  != null) { deviceState.pv4Vol = dp.plugInInfoPv4Vol; updated=true; }
+        if (dp.plugInInfoPv3Amp  != null) { deviceState.pv3Amp = dp.plugInInfoPv3Amp; updated=true; }
+        if (dp.plugInInfoPv4Amp  != null) { deviceState.pv4Amp = dp.plugInInfoPv4Amp; updated=true; }
+        if (dp.cmsBattSoc != null && dp.bmsBattSoc != null && dp.cmsBattSoc > 0) {
+          const s2 = Math.round(dp.cmsBattSoc * 2 - dp.bmsBattSoc);
+          if (s2 >= 0 && s2 <= 100) { deviceState2.soc = s2; updated=true; }
+        }
+      }
+
+      if (isSN2 && dp) {
+        if (dp.bmsBattSoc != null && dp.bmsBattSoc > 0) { deviceState2.soc = Math.round(dp.bmsBattSoc); updated=true; }
+        if (dp.bmsChgDsgState != null) { deviceState2.chgDsgState = dp.bmsChgDsgState; updated=true; }
+        if (dp.bmsDsgRemTime  != null && dp.bmsDsgRemTime < 2000) { deviceState2.dsgRemTime = dp.bmsDsgRemTime; updated=true; }
+        if (dp.bmsChgRemTime  != null && dp.bmsChgRemTime < 2000) { deviceState2.chgRemTime = dp.bmsChgRemTime; updated=true; }
+      }
+
+      if (bms) {
+        const tgt = isSN2 ? deviceState2 : deviceState;
+        if (bms.soc    != null) { tgt.soc         = Math.round(bms.soc);        updated=true; }
+        if (bms.soh    != null) { tgt.battSoh      = Math.round(bms.soh*10)/10; updated=true; }
+        if (bms.cycles != null) { tgt.battCycles   = bms.cycles;                 updated=true; }
+        if (bms.cellVol)        { tgt.cellVol      = bms.cellVol;                updated=true; }
+        if (bms.cellTemp)       { tgt.cellTemp     = bms.cellTemp;               updated=true; }
+        if (bms.maxCellTemp != null) { tgt.maxCellTemp = bms.maxCellTemp;        updated=true; }
+        if (bms.minCellTemp != null) { tgt.minCellTemp = bms.minCellTemp;        updated=true; }
+        if (bms.vol != null)    { tgt.vBat         = bms.vol;                    updated=true; }
+        if (bms.accuChgEnergy != null) { tgt.accuChgEnergy = bms.accuChgEnergy; updated=true; }
+        if (bms.accuDsgEnergy != null) { tgt.accuDsgEnergy = bms.accuDsgEnergy; updated=true; }
+        if (bms.chgDsgState   != null) { tgt.chgDsgState   = bms.chgDsgState;   updated=true; }
+        if (!isSN2 && bms.remainTime != null && bms.remainTime > 0 && bms.remainTime < 2000) {
+          deviceState.dsgRemTime1 = bms.remainTime; updated=true;
+        }
+        if (isSN2 && bms.remainTime != null && bms.remainTime > 0 && bms.remainTime < 2000) {
+          deviceState2.dsgRemTime = bms.remainTime; updated=true;
+        }
+        if (isSN2) deviceState2.connected = true;
+      }
+
+      if (!isSN2 && cms?.v1p0) {
+        const v = cms.v1p0;
+        if (v.lcdShowSoc    != null) { deviceState.cmsBattSoc = Math.round(v.lcdShowSoc);  updated=true; }
+        if (v.dsgRemainTime != null && v.dsgRemainTime < 9000) { deviceState.dsgRemTime = v.dsgRemainTime; updated=true; }
+        if (v.chgRemainTime != null && v.chgRemainTime < 9000) { deviceState.chgRemTime = v.chgRemainTime; updated=true; }
+      }
+    });
+
+    if (updated) {
+      deviceState.lastMqttData = Date.now();
+      deviceState.connected    = true;
+      deviceState.lastUpdate   = new Date().toISOString();
+      calcGridBalance();
+      recordHistory();
+      broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
+    }
+  } catch(e) {}
+}
+
+async function startPrivateMqtt() {
+  if (!efDecoder) return;
+  if (!privateToken) { setTimeout(startPrivateMqtt, 5000); return; }
+
+  let privCreds;
+  try {
+    const r = await axios.get('https://api.ecoflow.com/iot-auth/app/certification', {
+      headers: { 'Authorization': 'Bearer ' + privateToken, 'lang': 'en_US' }
+    });
+    if (r.data.code !== '0') throw new Error(r.data.message);
+    privCreds = r.data.data;
+    console.log('✅ Prywatne MQTT creds OK — ' + privCreds.certificateAccount);
+  } catch(e) {
+    console.error('❌ Prywatne MQTT creds:', e.message);
+    setTimeout(startPrivateMqtt, 30000);
+    return;
+  }
+
+  let userId = '';
+  try {
+    const pwdB64 = Buffer.from(EF_PASSWORD).toString('base64');
+    const r = await axios.post('https://api-e.ecoflow.com/auth/login', {
+      email: EF_EMAIL, password: pwdB64, scene: 'IOT_APP', userType: 'ECOFLOW'
+    }, { headers: { 'lang': 'en_US', 'content-type': 'application/json' } });
+    userId = r.data.data?.user?.userId || '';
+  } catch(e) {}
+
+  const privClient = mqtt.connect('mqtts://mqtt-e.ecoflow.com:8883', {
+    clientId: 'ANDROID_' + uuidv4().toUpperCase() + '_' + userId,
+    username: privCreds.certificateAccount,
+    password: privCreds.certificatePassword,
+    rejectUnauthorized: false,
+    reconnectPeriod: 10000,
+  });
+
+  privClient.on('connect', () => {
+    console.log('✅ Prywatne MQTT połączone!');
+    if (DEVICE_SN)  privClient.subscribe('/app/device/property/' + DEVICE_SN);
+    if (DEVICE_SN2) privClient.subscribe('/app/device/property/' + DEVICE_SN2);
+    if (METER_SN)   privClient.subscribe('/app/device/property/' + METER_SN);
+  });
+
+  privClient.on('message', (topic, payload) => {
+    if (DEVICE_SN  && topic.includes(DEVICE_SN))  decodeAndApply(payload, false, false);
+    else if (DEVICE_SN2 && topic.includes(DEVICE_SN2)) decodeAndApply(payload, true,  false);
+    else if (METER_SN   && topic.includes(METER_SN))   decodeAndApply(payload, false, true);
+  });
+
+  privClient.on('error', e => console.error('Prywatne MQTT error:', e.message));
+  privClient.on('close', () => console.log('Prywatne MQTT rozłączone'));
+}
+
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 server.listen(PORT, async () => {
   console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
   startMqtt();
   if (EF_EMAIL && EF_PASSWORD) {
     await loginPrivateApi();
+    await initDecoder();
+    setTimeout(startPrivateMqtt, 2000);
     const autoRefresh = async () => {
       try {
         const today = warsawDate();
