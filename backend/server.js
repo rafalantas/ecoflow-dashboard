@@ -577,6 +577,13 @@ function applyParams(params) {
   set('cmsMaxChgSoc', 'maxChgSoc', v => v);
   set('cmsMinDsgSoc', 'minDsgSoc', v => v);
 
+  // Filtruj nierealne czasy (5939 = idle default)
+  if (deviceState.chgDsgState === 0) {
+    if (deviceState.dsgRemTime  >= 5939) deviceState.dsgRemTime  = 0;
+    if (deviceState.chgRemTime  >= 5939) deviceState.chgRemTime  = 0;
+    if (deviceState.dsgRemTime1 >= 5939) deviceState.dsgRemTime1 = 0;
+    if (deviceState.chgRemTime1 >= 5939) deviceState.chgRemTime1 = 0;
+  }
   if (updated) {
     calcGridBalance();
     deviceState.lastUpdate   = new Date().toISOString();
