@@ -544,11 +544,13 @@ window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
 
 function f(v,d=0){return v!=null&&v!==0?(d?v.toFixed(d):Math.round(v)):'–'}
 function ft(m){const total=Math.round(Number(m));if(!Number.isFinite(total)||total<=0)return'–';const h=Math.floor(total/60),mm=total%60;return h?h+'h '+mm+'m':mm+'m'}
-function validBankDsgTime(m,usableKwh,powerW){
+function bankDsgRuntime(m,usableKwh,powerW){
   const reported=Number(m)||0;
-  if(reported<=0||usableKwh<=0||powerW<=20)return 0;
+  if(usableKwh<=0||powerW<=20)return{minutes:0,estimated:false};
   const expected=usableKwh*60000/powerW;
-  return reported<=expected*3?reported:0;
+  return reported>0&&reported<=expected*3
+    ? {minutes:reported,estimated:false}
+    : {minutes:expected,estimated:true};
 }
 function batteryFlows(power,state){
   power=Number(power)||0;state=Number(state)||0;
@@ -668,7 +670,8 @@ function update(s){
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   // Czasy bank 1
   const b1chg = s.chgDsgState===2 ? ft(s.chgRemTime1||s.chgRemTime) : '–';
-  const b1dsg = ft(validBankDsgTime(s.dsgRemTime1,bank1Energy,bank1Flow.discharging));
+  const bank1Runtime=bankDsgRuntime(s.dsgRemTime1,bank1Energy,bank1Flow.discharging);
+  const b1dsg=bank1Runtime.minutes?`${bank1Runtime.estimated?'~':''}${ft(bank1Runtime.minutes)}`:'–';
   const b1ct=document.getElementById('b1-chg-time'), b1dt=document.getElementById('b1-dsg-time');
   if(b1ct) b1ct.textContent=b1chg;
   if(b1dt) b1dt.textContent=b1dsg;
@@ -689,7 +692,8 @@ function update(s){
     if(d2.accuDsgEnergy!=null) document.getElementById('b2-de').innerHTML=`${(d2.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     // Czasy bank 2
     const b2chg = d2.chgDsgState===2 ? ft(d2.chgRemTime) : '–';
-    const b2dsg = ft(validBankDsgTime(d2.dsgRemTime,bank2Energy,bank2Flow.discharging));
+    const bank2Runtime=bankDsgRuntime(d2.dsgRemTime,bank2Energy,bank2Flow.discharging);
+    const b2dsg=bank2Runtime.minutes?`${bank2Runtime.estimated?'~':''}${ft(bank2Runtime.minutes)}`:'–';
     const b2ct=document.getElementById('b2-chg-time'), b2dt=document.getElementById('b2-dsg-time');
     if(b2ct) b2ct.textContent=b2chg;
     if(b2dt) b2dt.textContent=b2dsg;
