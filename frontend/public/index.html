@@ -552,6 +552,14 @@ function bankDsgRuntime(m,usableKwh,powerW){
     ? {minutes:reported,estimated:false}
     : {minutes:expected,estimated:true};
 }
+function combinedBankRuntime(bank1,bank2,hasBank2){
+  const banks=hasBank2?[bank1,bank2]:[bank1];
+  const active=banks.filter(bank=>bank.energy>0);
+  if(!active.length||active.some(bank=>bank.minutes<=0))return 0;
+  const energy=active.reduce((sum,bank)=>sum+bank.energy,0);
+  const dischargeRate=active.reduce((sum,bank)=>sum+bank.energy/bank.minutes,0);
+  return dischargeRate>0?energy/dischargeRate:0;
+}
 function batteryFlows(power,state){
   power=Number(power)||0;state=Number(state)||0;
   if(state===2)return{charging:Math.abs(power),discharging:0};
@@ -638,8 +646,14 @@ function update(s){
   const minSoc1=Number(s.minDsgSoc??20),minSoc2=Number(s.device2?.minDsgSoc??minSoc1);
   const bank1Energy=3.84*Math.max(0,(soc-minSoc1)/100);
   const bank2Energy=3.84*Math.max(0,((soc2??0)-minSoc2)/100);
-  const systemEnergyKwh=7.68*Math.max(0,(sysSoc-minSoc1)/100);
-  const systemDsgTime=batDsg&&Math.abs(batPwr)>20?systemEnergyKwh*60000/Math.abs(batPwr):0;
+  const hasBank2=!!s.device2?.connected||soc2!=null;
+  const bank1Runtime=bankDsgRuntime(s.dsgRemTime1,bank1Energy,bank1Flow.discharging);
+  const bank2Runtime=bankDsgRuntime(s.device2?.dsgRemTime,bank2Energy,bank2Flow.discharging);
+  const systemDsgTime=batDsg?combinedBankRuntime(
+    {energy:bank1Energy,minutes:bank1Runtime.minutes},
+    {energy:bank2Energy,minutes:bank2Runtime.minutes},
+    hasBank2
+  ):0;
   const bsys = document.getElementById('b-soc-system');
   const bbsys = document.getElementById('b-bar-system');
   if(bsys) bsys.innerHTML=`${sysSoc}<span class="bat-soc-u">%</span>`;
@@ -670,7 +684,6 @@ function update(s){
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   // Czasy bank 1
   const b1chg = s.chgDsgState===2 ? ft(s.chgRemTime1||s.chgRemTime) : '–';
-  const bank1Runtime=bankDsgRuntime(s.dsgRemTime1,bank1Energy,bank1Flow.discharging);
   const b1dsg=bank1Runtime.minutes?`${bank1Runtime.estimated?'~':''}${ft(bank1Runtime.minutes)}`:'–';
   const b1ct=document.getElementById('b1-chg-time'), b1dt=document.getElementById('b1-dsg-time');
   if(b1ct) b1ct.textContent=b1chg;
@@ -692,7 +705,6 @@ function update(s){
     if(d2.accuDsgEnergy!=null) document.getElementById('b2-de').innerHTML=`${(d2.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     // Czasy bank 2
     const b2chg = d2.chgDsgState===2 ? ft(d2.chgRemTime) : '–';
-    const bank2Runtime=bankDsgRuntime(d2.dsgRemTime,bank2Energy,bank2Flow.discharging);
     const b2dsg=bank2Runtime.minutes?`${bank2Runtime.estimated?'~':''}${ft(bank2Runtime.minutes)}`:'–';
     const b2ct=document.getElementById('b2-chg-time'), b2dt=document.getElementById('b2-dsg-time');
     if(b2ct) b2ct.textContent=b2chg;
