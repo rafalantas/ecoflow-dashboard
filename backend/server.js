@@ -19,6 +19,7 @@ const EF_EMAIL   = process.env.EF_EMAIL      || '';
 const EF_PASSWORD= process.env.EF_PASSWORD   || '';
 const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
 const METER_SN   = process.env.METER_SN      || '';
+const EF_USER_ID = process.env.EF_USER_ID    || '2042232479813939201';
 const API_HOST   = 'https://api-e.ecoflow.com';
 const PSTRYK_KEY = process.env.PSTRYK_API_KEY || '';
 
@@ -1000,14 +1001,7 @@ async function startPrivateMqtt() {
     return;
   }
 
-  let userId = '';
-  try {
-    const pwdB64 = Buffer.from(EF_PASSWORD).toString('base64');
-    const r = await axios.post('https://api-e.ecoflow.com/auth/login', {
-      email: EF_EMAIL, password: pwdB64, scene: 'IOT_APP', userType: 'ECOFLOW'
-    }, { headers: { 'lang': 'en_US', 'content-type': 'application/json' } });
-    userId = r.data.data?.user?.userId || '';
-  } catch(e) {}
+  const userId = EF_USER_ID;
 
   const privClient = mqtt.connect('mqtts://mqtt-e.ecoflow.com:8883', {
     clientId: 'ANDROID_' + uuidv4().toUpperCase() + '_' + userId,
