@@ -409,6 +409,14 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
           </div>
         </div>
         <div class="ek">
+          <div class="ek-lbl">Zarobek dziś</div>
+          <div style="display:flex;align-items:baseline;gap:3px">
+            <span id="eff-earnings-today" class="ek-val" style="color:var(--grid-in)">–</span>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">zł</span>
+          </div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">łącznie: <span id="eff-earnings-life">–</span> zł</div>
+        </div>
+        <div class="ek">
           <div class="ek-lbl">Z sieci</div>
           <div style="display:flex;align-items:baseline;gap:3px">
             <span id="eff-fromgrid" class="ek-val" style="color:var(--grid-out)">–</span>
@@ -1158,6 +1166,8 @@ async function loadEfficiency(){
     sv('eff-batchg',d.batChgKwh>0?d.batChgKwh.toFixed(1):'–');
     sv('eff-batdsg','rozł: '+(d.batDsgKwh||0).toFixed(1)+' kWh');
     sv('eff-co2',d.co2g>0?d.co2g.toLocaleString('pl-PL'):'–');
+    sv('eff-earnings-today', d.earningsToday>0?d.earningsToday.toFixed(2):'–');
+    sv('eff-earnings-life',  d.earningsLifetime>0?d.earningsLifetime.toFixed(2):'–');
   }catch(e){}
 }
 

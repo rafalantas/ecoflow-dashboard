@@ -336,6 +336,29 @@ app.get('/api/efficiency', async (req, res) => {
       }
     } catch(e) { console.error('Forecast error:', e.message); }
 
+    // Zarobki dzienne
+    let earningsToday = 0, earningsLifetime = 0;
+    try {
+      if (privateToken) {
+        const nonce2 = crypto.randomBytes(8).toString('hex');
+        const timestamp2 = String(Date.now());
+        const sign2 = crypto.createHash('md5').update('nonce='+nonce2+'&timestamp='+timestamp2).digest('hex');
+        const eh = { 'Authorization': 'Bearer '+privateToken, 'lang': 'en_US',
+          'X-Timestamp': timestamp2, 'X-Nonce': nonce2, 'X-Sign': sign2,
+          'X-Appid': '9', 'platform': 'android', 'version': '6.10.5' };
+        const er = await axios.post('https://api-e.ecoflow.com/app/space/data/single/index/',
+          { code: 'SPACE-APP-EARNINGS-MONEY-VALUE-MONTH', spaceId: SPACE_ID,
+            params: { beginTime: localDate, endTime: localDate } },
+          { headers: eh, timeout: 5000 });
+        if (er.data?.code === '0' && er.data?.data) {
+          er.data.data.forEach(d => {
+            if (d.extra === '1') earningsToday    = Math.round(d.indexValue * 100) / 100;
+            if (d.extra === '2') earningsLifetime = Math.round(d.indexValue * 100) / 100;
+          });
+        }
+      }
+    } catch(e) {}
+
     res.json({
       instantEff, dailyEff,
       solarKwh: Math.round(solarWh/100)/10,
@@ -347,7 +370,8 @@ app.get('/api/efficiency', async (req, res) => {
       independence: Math.round(independence*10)/10,
       co2g: Math.round(co2g),
       forecastKwh, peakSunHours, weather,
-      pvNow: deviceState.pvTotal, panelMax: PANEL_MAX_W
+      pvNow: deviceState.pvTotal, panelMax: PANEL_MAX_W,
+      earningsToday, earningsLifetime
     });
   } catch(e) {
     console.error('Efficiency error:', e.message);
