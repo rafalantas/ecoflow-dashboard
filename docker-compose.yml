@@ -18,6 +18,11 @@ services:
       - EF_SPACE_ID=${EF_SPACE_ID}
       - METER_SN=${METER_SN}
       - PSTRYK_API_KEY=${PSTRYK_API_KEY}
+      - SOLCAST_API_KEY=${SOLCAST_API_KEY}
+      - SOLCAST_RESOURCE_ID=${SOLCAST_RESOURCE_ID}
+      - EF_USER_ID=${EF_USER_ID}
+      - EF_PRIV_MQTT_ACC=${EF_PRIV_MQTT_ACC}
+      - EF_PRIV_MQTT_PWD=${EF_PRIV_MQTT_PWD}
     restart: unless-stopped
 
   cloudflared:
