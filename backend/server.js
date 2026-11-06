@@ -169,6 +169,45 @@ async function fetchSolcast() {
   return solcastCache;
 }
 
+// Cache Solcast (10 req/dzien limit - cache 2h)
+let solcastCache = { data: null, fetchedAt: 0, fromNow: 0, today: 0, tomorrow: 0 };
+
+async function fetchSolcast() {
+  const now = Date.now();
+  if (solcastCache.data && now - solcastCache.fetchedAt < 2*60*60*1000) return solcastCache;
+  if (!SOLCAST_KEY) return solcastCache;
+  try {
+    const r = await axios.get(
+      'https://api.solcast.com.au/rooftop_sites/'+SOLCAST_SITE+'/forecasts?format=json',
+      { headers: { 'Authorization': 'Bearer '+SOLCAST_KEY }, timeout: 10000 }
+    );
+    if (r.data && r.data.forecasts && r.data.forecasts.length) {
+      const forecasts = r.data.forecasts;
+      const toDate = s => s.slice(0,10);
+      const today    = new Date().toISOString().slice(0,10);
+      const tomorrow = new Date(Date.now()+86400000).toISOString().slice(0,10);
+      const nowUTC   = new Date().toISOString();
+      const sumKwh = (day) => forecasts
+        .filter(f => toDate(f.period_end||'') === day)
+        .reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
+      const fromNow = forecasts
+        .filter(f => toDate(f.period_end||'') === today && f.period_end > nowUTC)
+        .reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
+      solcastCache = {
+        data: forecasts, fetchedAt: now,
+        fromNow:  Math.round(fromNow*10)/10,
+        today:    Math.round(sumKwh(today)*10)/10,
+        tomorrow: Math.round(sumKwh(tomorrow)*10)/10,
+      };
+      console.log('Solcast: fromNow='+solcastCache.fromNow+' today='+solcastCache.today+' jutro='+solcastCache.tomorrow);
+    }
+  } catch(e) {
+    if (e.response && e.response.status === 429) console.log('Solcast: limit 429');
+    else console.error('Solcast error:', e.message);
+  }
+  return solcastCache;
+}
+
 let energyCache = {};
 let pricesCache = { data: null, fetchedAt: 0 };
 let scheduleCache = { data: null, fetchedAt: 0 };
