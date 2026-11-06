@@ -21,7 +21,9 @@ const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
 const METER_SN   = process.env.METER_SN      || '';
 const EF_USER_ID = process.env.EF_USER_ID    || '2042232479813939201';
 const API_HOST   = 'https://api-e.ecoflow.com';
-const PSTRYK_KEY = process.env.PSTRYK_API_KEY || '';
+const PSTRYK_KEY      = process.env.PSTRYK_API_KEY     || '';
+const SOLCAST_KEY     = process.env.SOLCAST_API_KEY    || '';
+const SOLCAST_SITE    = process.env.SOLCAST_RESOURCE_ID || 'b5b9-c2dd-085b-d416';
 
 function isAuthorized(req) {
   if (!DASHBOARD_PASSWORD) return true;
@@ -296,6 +298,7 @@ app.get('/api/efficiency', async (req, res) => {
 
     // Prognoza: historia * korekta pogodowa
     let forecastKwh = 0, peakSunHours = 0, weather = [];
+    if (SOLCAST_KEY) { try { const sc = await fetchSolcast(); if (sc.fromNow >= 0 && sc.fetchedAt > 0) { const solarSoFar = Math.round(solarWh/100)/10; forecastKwh = Math.round((solarSoFar + sc.fromNow)*10)/10; } } catch(e) {} }
     try {
       const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
         'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
