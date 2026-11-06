@@ -918,6 +918,9 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.powerL1    != null) { deviceState.meterL1    = Math.round(dp.powerL1   *10)/10; updated=true; }
         if (dp.powerL2    != null) { deviceState.meterL2    = Math.round(dp.powerL2   *10)/10; updated=true; }
         if (dp.powerL3    != null) { deviceState.meterL3    = Math.round(dp.powerL3   *10)/10; updated=true; }
+        if (dp.voltageL1 != null) { deviceState.meterVoltL1 = Math.round(dp.voltageL1*10)/10; updated=true; }
+        if (dp.voltageL2 != null) { deviceState.meterVoltL2 = Math.round(dp.voltageL2*10)/10; updated=true; }
+        if (dp.voltageL3 != null) { deviceState.meterVoltL3 = Math.round(dp.voltageL3*10)/10; updated=true; }
         if (dp.energy) {
           if (dp.energy.lifeTimeEnergyConsumption != null) deviceState.meterTotalImport = dp.energy.lifeTimeEnergyConsumption;
           if (dp.energy.lifeTimeEnergyDelivery    != null) deviceState.meterTotalExport  = dp.energy.lifeTimeEnergyDelivery;

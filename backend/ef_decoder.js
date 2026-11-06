@@ -71,9 +71,16 @@ function decode(payload, isMeter) {
       const msgName = msgMap[cf]?.[ci];
       if (!msgName || !hdr.pdata?.length) continue;
 
+      // XOR deszyfrowanie gdy encType=1 i src!=32
+      let pdata = Buffer.from(hdr.pdata);
+      if (hdr.encType === 1 && hdr.src !== 32) {
+        const key = (hdr.seq || 0) & 0xFF;
+        pdata = Buffer.from(pdata.map(b => b ^ key));
+      }
+
       try {
         const MsgType = root.lookupType(msgName);
-        const decoded = MsgType.toObject(MsgType.decode(hdr.pdata), {
+        const decoded = MsgType.toObject(MsgType.decode(pdata), {
           longs: Number, enums: Number, defaults: false, arrays: true, objects: true
         });
         results.push({ [msgName]: decoded });
