@@ -138,26 +138,28 @@ async function fetchSolcast() {
   if (solcastCache.data && now - solcastCache.fetchedAt < 2*60*60*1000) return solcastCache;
   if (!SOLCAST_KEY) return solcastCache;
   try {
-    const r = await axios.get(
-      'https://api.solcast.com.au/rooftop_sites/'+SOLCAST_SITE+'/forecasts?format=json',
-      { headers: { 'Authorization': 'Bearer '+SOLCAST_KEY }, timeout: 10000 }
-    );
-    if (r.data && r.data.forecasts && r.data.forecasts.length) {
-      const forecasts = r.data.forecasts;
-      const toDate = s => s.slice(0,10);
+    // Pobierz prognoze i dane historyczne rownoczesnie (2 requesty)
+    const [rf, ra] = await Promise.all([
+      axios.get('https://api.solcast.com.au/rooftop_sites/'+SOLCAST_SITE+'/forecasts?format=json',
+        { headers: { 'Authorization': 'Bearer '+SOLCAST_KEY }, timeout: 10000 }),
+      axios.get('https://api.solcast.com.au/rooftop_sites/'+SOLCAST_SITE+'/estimated_actuals?format=json&hours=24',
+        { headers: { 'Authorization': 'Bearer '+SOLCAST_KEY }, timeout: 10000 }),
+    ]);
+    if (rf.data && rf.data.forecasts && rf.data.forecasts.length) {
+      const actuals  = ra.data.estimated_actuals || [];
+      const forecasts = rf.data.forecasts || [];
       const today    = new Date().toISOString().slice(0,10);
       const tomorrow = new Date(Date.now()+86400000).toISOString().slice(0,10);
       const nowUTC   = new Date().toISOString();
-      const sumKwh = (day) => forecasts
-        .filter(f => toDate(f.period_end||'') === day)
-        .reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
-      const fromNow = forecasts
-        .filter(f => toDate(f.period_end||'') === today && f.period_end > nowUTC)
-        .reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
+      // Aktuale (przeszlosc dziś) + prognoza (pozostala czesc dnia)
+      const kwhActuals  = actuals.filter(f => f.period_end.slice(0,10) === today).reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
+      const kwhForecast = forecasts.filter(f => f.period_end.slice(0,10) === today && f.period_end > nowUTC).reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
+      const fromNow = Math.round((kwhActuals + kwhForecast)*10)/10;
+      const sumKwh = (day) => forecasts.filter(f => f.period_end.slice(0,10) === day).reduce((s,f) => s+(f.pv_estimate||0)*0.5, 0);
       solcastCache = {
         data: forecasts, fetchedAt: now,
         fromNow:  Math.round(fromNow*10)/10,
-        today:    Math.round(sumKwh(today)*10)/10,
+        today:    Math.round(fromNow*10)/10,
         tomorrow: Math.round(sumKwh(tomorrow)*10)/10,
       };
       console.log('Solcast: fromNow='+solcastCache.fromNow+' today='+solcastCache.today+' jutro='+solcastCache.tomorrow);
@@ -337,7 +339,7 @@ app.get('/api/efficiency', async (req, res) => {
 
     // Prognoza: historia * korekta pogodowa
     let forecastKwh = 0, peakSunHours = 0, weather = [];
-    if (SOLCAST_KEY) { try { const sc = await fetchSolcast(); if (sc.fromNow >= 0 && sc.fetchedAt > 0) { const solarSoFar = Math.round(solarWh/100)/10; forecastKwh = Math.round((solarSoFar + sc.fromNow)*10)/10; } } catch(e) {} }
+    if (SOLCAST_KEY) { try { const sc = await fetchSolcast(); if (sc.fetchedAt > 0 && sc.today > 0) { forecastKwh = sc.today; } } catch(e) {} }
     try {
       const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
         'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
@@ -374,7 +376,8 @@ app.get('/api/efficiency', async (req, res) => {
             weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
           }
         }
-        forecastKwh = Math.round(histAvg * weatherFactor * 10) / 10;
+        // Uzyj Solcast jesli dostepny, inaczej stary algorytm
+        if (forecastKwh === 0) forecastKwh = Math.round(histAvg * weatherFactor * 10) / 10;
       }
     } catch(e) { console.error('Forecast error:', e.message); }
 
