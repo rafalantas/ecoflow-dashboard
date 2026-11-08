@@ -323,14 +323,23 @@ app.get('/api/efficiency', async (req, res) => {
       return item ? parseFloat(item.indexValue) : 0;
     };
 
-    const solarWh       = getVal(results.solar, undefined);
-    const consumptionWh = getVal(results.consumption, undefined);
+    let solarWh       = getVal(results.solar, undefined);
+    let consumptionWh = getVal(results.consumption, undefined);
     const fromGridWh    = getVal(results.grid, '1');
     const toGridWh      = getVal(results.grid, '2');
     const batChgWh      = getVal(results.battery, '2');
     const batDsgWh      = getVal(results.battery, '1');
     const independence  = getVal(results.independence, undefined);
     const co2g          = getVal(results.co2, undefined);
+
+    // Fallback: prywatne API gdy oficjalne zwraca 0
+    if ((solarWh === 0 || isNaN(solarWh)) && privateToken) {
+      try {
+        const privData = await fetchEnergyForPeriod('day', localDate);
+        if (privData?.totalKwh > 0) solarWh = privData.totalKwh * 1000;
+        if (privData?.loadKwh > 0) consumptionWh = privData.loadKwh * 1000;
+      } catch(e) {}
+    }
 
     const instantEff = deviceState.pvTotal > 0
       ? Math.round(deviceState.pvTotal / PANEL_MAX_W * 1000) / 10 : 0;
