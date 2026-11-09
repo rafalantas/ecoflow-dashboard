@@ -634,6 +634,11 @@ function update(s){
 
   const pv=s.pvTotal||0, feed=s.feedPower||0, from=s.fromGrid||0;
   const load=s.sysLoad||0, soc=s.soc||(s.socExact?Math.round(s.socExact):0);
+  // Aktualizuj kafelek "Teraz" w sekcji energii
+  const elLoadNow=document.getElementById('eff-load-now');
+  if(elLoadNow) elLoadNow.textContent=(load>0?Math.round(load)+' W':'– W');
+  const elPvNow=document.getElementById('eff-pv-now');
+  if(elPvNow) elPvNow.textContent=(s.pvTotal>0?Math.round(s.pvTotal)+' W':'– W');
   const bank1Flow=batteryFlows(s.battPower,s.chgDsgState),bank2Flow=batteryFlows(s.device2?.battPower,s.device2?.chgDsgState);
   const batCharge=bank1Flow.charging+bank2Flow.charging,batDischarge=bank1Flow.discharging+bank2Flow.discharging;
   const batPwr=batCharge-batDischarge,batChg=batCharge>20&&batCharge>=batDischarge,batDsg=batDischarge>20&&batDischarge>batCharge;
@@ -1230,7 +1235,6 @@ async function loadEfficiency(){
     sb('eff-eff-bar', d.dailyEff||0);
     sv('eff-inst-eff', d.instantEff>0?d.instantEff.toFixed(1)+'%':'–');
     sv('eff-pv-now', d.pvNow>0?d.pvNow+' W':'– W');
-    sv('eff-load-now', d.sysLoad>0?Math.round(d.sysLoad)+' W':'– W');
     const curW=d.weather&&d.weather.length?d.weather[0]:null;
     if(curW){sv('eff-weather',curW.weather);sv('eff-weather2',curW.weather);}
     // Wykres godzinowy
