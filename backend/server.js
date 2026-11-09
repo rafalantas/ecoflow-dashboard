@@ -875,6 +875,9 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (bms.maxCellTemp != null) { tgt.maxCellTemp = bms.maxCellTemp;        updated=true; }
         if (bms.minCellTemp != null) { tgt.minCellTemp = bms.minCellTemp;        updated=true; }
         if (bms.vol != null)    { tgt.vBat         = bms.vol;                    updated=true; }
+        if (bms.amp != null)       { tgt.iBat         = bms.amp;                    updated=true; }
+        if (bms.remainCap != null) { tgt.remainCap     = bms.remainCap;              updated=true; }
+        if (bms.fullCap != null)   { tgt.fullCap       = bms.fullCap;                updated=true; }
         if (bms.accuChgEnergy != null) { tgt.accuChgEnergy = bms.accuChgEnergy; updated=true; }
         if (bms.accuDsgEnergy != null) { tgt.accuDsgEnergy = bms.accuDsgEnergy; updated=true; }
         if (bms.chgDsgState   != null) { tgt.chgDsgState   = bms.chgDsgState;   updated=true; }
