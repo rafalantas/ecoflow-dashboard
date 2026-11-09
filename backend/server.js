@@ -988,6 +988,14 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.bmsBattSoc  != null) { deviceState.soc        = Math.round(dp.bmsBattSoc);  updated=true; }
         if (dp.cmsBattSoc  != null) { deviceState.cmsBattSoc = Math.round(dp.cmsBattSoc);  updated=true; }
         if (dp.powGetPvSum != null) { deviceState.pvTotal    = Math.round(dp.powGetPvSum);  updated=true; }
+        if (dp.powGetPv    != null) { deviceState.pv1Power   = Math.round(dp.powGetPv);     updated=true; }
+        if (dp.powGetPv2   != null) { deviceState.pv2Power   = Math.round(dp.powGetPv2);    updated=true; }
+        if (dp.plugInInfoPvVol  != null) { deviceState.pv1Vol = Math.round(dp.plugInInfoPvVol*10)/10;   updated=true; }
+        if (dp.plugInInfoPv2Vol != null) { deviceState.pv2Vol = Math.round(dp.plugInInfoPv2Vol*10)/10;  updated=true; }
+        if (dp.plugInInfoPvAmp  != null) { deviceState.pv1Amp = Math.round(dp.plugInInfoPvAmp*100)/100; updated=true; }
+        if (dp.plugInInfoPv2Amp != null) { deviceState.pv2Amp = Math.round(dp.plugInInfoPv2Amp*100)/100; updated=true; }
+        if (dp.plugInInfoPvFlag  !== undefined) { deviceState.pv1Active = !!dp.plugInInfoPvFlag;  updated=true; }
+        if (dp.plugInInfoPv2Flag !== undefined) { deviceState.pv2Active = !!dp.plugInInfoPv2Flag; updated=true; }
         if (dp.powGetPv3   != null) { deviceState.pv3Power   = Math.round(dp.powGetPv3);    updated=true; }
         if (dp.powGetPv4   != null) { deviceState.pv4Power   = Math.round(dp.powGetPv4);    updated=true; }
         if (dp.powGetBpCms != null) { deviceState.battPower  = Math.round(dp.powGetBpCms);  updated=true; }
@@ -1007,10 +1015,10 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.bmsChgRemTime  != null && dp.bmsChgRemTime  < 2000) { deviceState.chgRemTime1 = dp.bmsChgRemTime;  updated=true; }
         if (dp.plugInInfoPv3Flag != null) { deviceState.pv3Active = !!dp.plugInInfoPv3Flag; updated=true; }
         if (dp.plugInInfoPv4Flag != null) { deviceState.pv4Active = !!dp.plugInInfoPv4Flag; updated=true; }
-        if (dp.plugInInfoPv3Vol  != null) { deviceState.pv3Vol = dp.plugInInfoPv3Vol; updated=true; }
-        if (dp.plugInInfoPv4Vol  != null) { deviceState.pv4Vol = dp.plugInInfoPv4Vol; updated=true; }
-        if (dp.plugInInfoPv3Amp  != null) { deviceState.pv3Amp = dp.plugInInfoPv3Amp; updated=true; }
-        if (dp.plugInInfoPv4Amp  != null) { deviceState.pv4Amp = dp.plugInInfoPv4Amp; updated=true; }
+        if (dp.plugInInfoPv3Vol  != null) { deviceState.pv3Vol = Math.round(dp.plugInInfoPv3Vol*10)/10; updated=true; }
+        if (dp.plugInInfoPv4Vol  != null) { deviceState.pv4Vol = Math.round(dp.plugInInfoPv4Vol*10)/10; updated=true; }
+        if (dp.plugInInfoPv3Amp  != null) { deviceState.pv3Amp = Math.round(dp.plugInInfoPv3Amp*100)/100; updated=true; }
+        if (dp.plugInInfoPv4Amp  != null) { deviceState.pv4Amp = Math.round(dp.plugInInfoPv4Amp*100)/100; updated=true; }
         if (dp.cmsBattSoc != null && dp.bmsBattSoc != null && dp.cmsBattSoc > 0) {
           const s2 = Math.round(dp.cmsBattSoc * 2 - dp.bmsBattSoc);
           if (s2 >= 0 && s2 <= 100) { deviceState2.soc = s2; updated=true; }
