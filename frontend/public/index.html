@@ -390,7 +390,7 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
           <span style="font-family:var(--mono);font-size:12px;color:var(--t3)">/ <span id="eff-consumption">–</span> kWh</span>
         </div>
         <div class="ek-bar"><div id="eff-solar-bar" class="ek-bar-f" style="background:var(--pv);width:0%"></div></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:5px">prognoza: <span id="eff-forecast">–</span> kWh · <span id="eff-weather">–</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:5px">dziś: <span id="eff-forecast">–</span> kWh · jutro: <span id="eff-forecast-tomorrow">–</span> kWh · <span id="eff-weather">–</span></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="ek">
@@ -1154,6 +1154,7 @@ async function loadEfficiency(){
     sv('eff-consumption',(d.consumptionKwh||0).toFixed(1));
     if(d.consumptionKwh>0)sb('eff-solar-bar',d.solarKwh/d.consumptionKwh*100);
     sv('eff-forecast',d.forecastKwh>0?d.forecastKwh.toFixed(1):'–');
+    sv('eff-forecast-tomorrow',d.forecastTomorrow>0?d.forecastTomorrow.toFixed(1):'–');
     if(d.weather?.length){
       const nowH=new Date().getHours();
       const cur=d.weather.find(w=>w.hour===nowH)||d.weather.find(w=>w.hour===nowH-1)||d.weather[Math.floor(d.weather.length/2)];

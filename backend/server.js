@@ -424,6 +424,7 @@ app.get('/api/efficiency', async (req, res) => {
       independence: Math.round(independence*10)/10,
       co2g: Math.round(co2g),
       forecastKwh, peakSunHours, weather,
+      forecastTomorrow: SOLCAST_KEY ? (await fetchSolcast().catch(()=>({tomorrow:0}))).tomorrow : 0,
       pvNow: deviceState.pvTotal, panelMax: PANEL_MAX_W,
       earningsToday, earningsLifetime
     });
