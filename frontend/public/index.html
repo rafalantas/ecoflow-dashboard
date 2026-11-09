@@ -383,15 +383,25 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
     <div class="card-title">// energia dziś</div>
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:10px">
       <div class="card" style="padding:14px 16px">
-        <div style="font-size:11px;color:var(--t2);margin-bottom:6px;display:flex;align-items:center;gap:5px">☀️ Produkcja PV</div>
-        <div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:6px">
-          <span id="eff-solar" style="font-family:var(--mono);font-size:34px;font-weight:500;color:var(--pv);line-height:1">–</span>
-          <span style="font-family:var(--mono);font-size:13px;color:var(--t2);padding-bottom:3px">kWh</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--t3);padding-bottom:3px">/ <span id="eff-consumption">–</span> kWh zużycia</span>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <span>☀️ Produkcja PV</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--t3)" id="eff-coverage-txt">pokrycie –%</span>
         </div>
-        <div class="ek-bar"><div id="eff-solar-bar" class="ek-bar-f" style="background:var(--pv);width:0%"></div></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:6px" id="eff-coverage-txt">pokrycie –%</div>
-        <div style="display:flex;gap:8px;margin-top:10px">
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:3px">
+          <span id="eff-solar" style="font-family:var(--mono);font-size:28px;font-weight:500;color:var(--pv);line-height:1">–</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">kWh</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-left:2px">z <span id="eff-forecast-inline">–</span> prognoza</span>
+        </div>
+        <div style="height:5px;background:var(--brd);border-radius:3px;overflow:hidden;margin-bottom:8px">
+          <div id="eff-solar-forecast-bar" style="height:100%;background:var(--pv);border-radius:3px;width:0%;transition:width .5s"></div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:3px">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">zużycie:</span>
+          <span id="eff-consumption" style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--t1)">–</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">kWh</span>
+        </div>
+        <div class="ek-bar" style="margin-bottom:10px"><div id="eff-solar-bar" class="ek-bar-f" style="background:var(--pv);width:0%"></div></div>
+        <div style="display:flex;gap:8px">
           <div style="flex:1;background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:7px 10px">
             <div style="font-size:10px;color:var(--t3)">prognoza dziś</div>
             <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--pv)" id="eff-forecast">–</div>
@@ -417,10 +427,8 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
           <span id="eff-co2" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-in)">–</span>
           <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">g</span>
         </div>
-        <div style="font-size:11px;color:var(--t3);margin-top:6px">zaoszczędzono</div>
-        <div style="margin-top:10px">
-          <span style="font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;background:rgba(29,158,117,.12);color:var(--pv)">↓ dziś</span>
-        </div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">zaoszczędzono dziś</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:6px">łącznie: <span id="eff-co2-life">–</span> kg</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
@@ -626,7 +634,7 @@ function batteryFlows(power,state){
   return{charging:power>20?power:0,discharging:power< -20?Math.abs(power):0};
 }
 
-function update(s){
+function update(s){ window._lastState = s;
   ds=s;
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
   const dotEl=document.getElementById('dot');
@@ -1211,6 +1219,24 @@ async function loadEfficiency(){
     }
     sv('eff-forecast',d.forecastKwh>0?d.forecastKwh.toFixed(1):'–');
     sv('eff-forecast-tomorrow',d.forecastTomorrow>0?d.forecastTomorrow.toFixed(1):'–');
+    // Pasek solar vs prognoza
+    sv('eff-forecast-inline', d.forecastKwh>0?d.forecastKwh.toFixed(1)+' kWh':'–');
+    if(d.forecastKwh>0 && d.solarKwh>=0){
+      const bar=document.getElementById('eff-solar-forecast-bar');
+      if(bar){
+        if(d.solarKwh <= d.forecastKwh){
+          // Normalne - solar wypelnia pasek do prognozy
+          const pct=Math.round(d.solarKwh/d.forecastKwh*100);
+          bar.style.width=pct+'%';
+          bar.style.background='var(--pv)';
+        } else {
+          // Przekroczono prognoze - pelny pasek z innym kolorem
+          bar.style.width='100%';
+          bar.style.background='var(--grid-in)';
+          sv('eff-forecast-inline', d.forecastKwh.toFixed(1)+' kWh ✓');
+        }
+      }
+    }
     if(d.weather?.length){
       const nowH=new Date().getHours();
       const cur=d.weather.find(w=>w.hour===nowH)||d.weather.find(w=>w.hour===nowH-1)||d.weather[Math.floor(d.weather.length/2)];
@@ -1229,6 +1255,11 @@ async function loadEfficiency(){
     sb('eff-batdsg-bar',Math.min((d.batDsgKwh||0)/8*100,100));
     sv('eff-batdsg','rozł: '+(d.batDsgKwh||0).toFixed(1)+' kWh');
     sv('eff-co2',d.co2g>0?d.co2g.toLocaleString('pl-PL'):'–');
+    // CO2 lifetime z importu zastapionego przez PV (0.549 kg CO2/kWh)
+    const co2Life=document.getElementById('eff-co2-life');
+    const s2=window._lastState||{};
+    const imp2=s2.meterTotalImport||0;
+    if(co2Life&&imp2>0) co2Life.textContent=Math.round(imp2/1000*0.549)+' kg';
     sv('eff-earnings-today', d.earningsToday>0?d.earningsToday.toFixed(2):'–');
     sv('eff-earnings-life',  d.earningsLifetime>0?d.earningsLifetime.toFixed(2):'–');
     sv('eff-daily-eff', d.dailyEff>0?d.dailyEff.toFixed(1):'–');
