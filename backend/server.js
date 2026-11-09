@@ -135,7 +135,7 @@ let solcastCache = { data: null, fetchedAt: 0, fromNow: 0, today: 0, tomorrow: 0
 
 async function fetchSolcast() {
   const now = Date.now();
-  if (solcastCache.data && now - solcastCache.fetchedAt < 2*60*60*1000) return solcastCache;
+  if (solcastCache.data && now - solcastCache.fetchedAt < 3*60*60*1000) return solcastCache;
   if (!SOLCAST_KEY) return solcastCache;
   try {
     // Pobierz prognoze i dane historyczne rownoczesnie (2 requesty)
