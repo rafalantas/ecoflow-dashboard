@@ -338,7 +338,7 @@ app.get('/api/efficiency', async (req, res) => {
         const privData = await fetchEnergyForPeriod('day', localDate);
         if (privData?.totalKwh > 0) solarWh = privData.totalKwh * 1000;
         if (privData?.loadKwh > 0) consumptionWh = privData.loadKwh * 1000;
-      } catch(e) {}
+      } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); }
     }
 
     const instantEff = deviceState.pvTotal > 0
@@ -348,7 +348,7 @@ app.get('/api/efficiency', async (req, res) => {
 
     // Prognoza: historia * korekta pogodowa
     let forecastKwh = 0, peakSunHours = 0, weather = [];
-    if (SOLCAST_KEY) { try { const sc = await fetchSolcast(); if (sc.fetchedAt > 0 && sc.today > 0) { forecastKwh = sc.today; } } catch(e) {} }
+    if (SOLCAST_KEY) { try { const sc = await fetchSolcast(); if (sc.fetchedAt > 0 && sc.today > 0) { forecastKwh = sc.today; } } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); } }
     try {
       const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
         'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
@@ -411,7 +411,7 @@ app.get('/api/efficiency', async (req, res) => {
           });
         }
       }
-    } catch(e) {}
+    } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); }
 
     res.json({
       instantEff, dailyEff,
@@ -903,7 +903,7 @@ function decodeAndApply(payload, isSN2, isMeter) {
       recordHistory();
       broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
     }
-  } catch(e) {}
+  } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); }
 }
 
 async function startPrivateMqtt() {
@@ -991,7 +991,7 @@ server.listen(PORT, async () => {
         const today = warsawDate();
         const data = await fetchEnergyForPeriod('day', today);
         if (data) { energyCache[`day:${today}`] = { ...data, fetchedAt: Date.now() }; broadcast({ type: 'energy', data }); }
-      } catch(e) {}
+      } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); }
     };
     setTimeout(async () => { await autoRefresh(); setInterval(autoRefresh, 5*60*1000); }, 10000);
   }
