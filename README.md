@@ -1,43 +1,43 @@
-# EcoFlow STREAM Dashboard
+# EcoFlow STREAM Ultra X Dashboard
 
-Polski dashboard do podglądu produkcji i przepływu energii z urządzeń EcoFlow. Dane na żywo trafiają przez MQTT do backendu Node.js, a następnie przez WebSocket do przeglądarki.
+Dashboard dla systemu magazynowania energii EcoFlow STREAM Ultra X (2× 3.84 kWh = 7.68 kWh).
 
-Frontend i API HTTP/WebSocket są częścią jednej aplikacji Node.js, dlatego dashboard działa z jednego obrazu i kontenera. Tunel Cloudflare uruchamia się jako osobny kontener.
+## Funkcje
+
+- Live monitoring: PV, bateria (2 banki), sieć, zużycie
+- Smart meter (3 fazy L1/L2/L3) z importem/eksportem kWh
+- Prognoza produkcji PV (Solcast API)
+- Energia dziś: produkcja, zużycie, niezależność, CO₂, zarobki
+- Historia WebSocket (wykresy)
+- Protobuf dekodowanie przez prywatne MQTT EcoFlow
 
 ## Wymagania
 
-- Docker i Docker Compose (lub Portainer)
-- Konto EcoFlow Developer oraz klucze API: Access Key i Secret Key
-- Numer seryjny urządzenia w `DEVICE_SN`
+- Konto developerskie EcoFlow: https://developer-eu.ecoflow.com
+- Docker + Portainer na Raspberry Pi
 
-## Uruchomienie
+## Zmienne środowiskowe
 
-1. Skopiuj `.env.example` do `.env` i uzupełnij `DEVICE_SN`, `EF_ACCESS_KEY` oraz `EF_SECRET_KEY`.
-2. Uruchom `docker compose up -d`.
-3. Otwórz `http://adres-serwera:8080`.
+| Zmienna | Opis |
+|---------|------|
+| `DEVICE_SN` | SN głównego urządzenia |
+| `DEVICE_SN2` | SN drugiego banku |
+| `METER_SN` | SN smart metera |
+| `EF_ACCESS_KEY` | Access Key z developer.ecoflow.com |
+| `EF_SECRET_KEY` | Secret Key z developer.ecoflow.com |
+| `EF_EMAIL` | Email konta EcoFlow |
+| `EF_PASSWORD` | Hasło konta EcoFlow |
+| `EF_SPACE_ID` | Space ID z aplikacji |
+| `EF_USER_ID` | User ID z konta EcoFlow |
+| `SOLCAST_API_KEY` | Klucz API Solcast (opcjonalny) |
+| `SOLCAST_RESOURCE_ID` | Resource ID instalacji Solcast |
+| `PSTRYK_API_KEY` | Klucz API Pstryk (opcjonalny) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Token tunelu Cloudflare |
 
-Logowanie jest opcjonalne. Aby je włączyć, ustaw `DASHBOARD_PASSWORD` oraz, opcjonalnie, `DASHBOARD_USER` (domyślnie `admin`).
+## Architektura
 
-W Portainerze użyj repozytorium `https://github.com/rafalantas/ecoflow-dashboard`, pliku `docker-compose.yml` i ustaw zmienne z `.env` w konfiguracji stosu. Nie dodawaj pliku `.env` do repozytorium.
-
-### Opcjonalne integracje
-
-- `DEVICE_SN2` — drugi bank/urządzenie.
-- `EF_EMAIL` i `EF_PASSWORD` — prywatne API EcoFlow do danych historycznych, harmonogramu i pogody.
-- `EF_SPACE_ID` — identyfikator przestrzeni EcoFlow, jeśli konto używa innego niż domyślny.
-- `METER_SN` — numer seryjny licznika EcoFlow.
-- `PSTRYK_API_KEY` — ceny energii z Pstryk.
-- `CLOUDFLARE_TUNNEL_TOKEN` — token tunelu Cloudflare. Usługa tunelu uruchamia się razem ze stosem przez `docker compose up -d`; w Portainerze ustaw token w zmiennych stosu i wybierz „Pull and redeploy”. Możesz dodatkowo ograniczyć dostęp regułami Cloudflare Access.
-
-## Dane i interfejs
-
-Dashboard pokazuje przepływ energii, wejścia PV, stan baterii, dane licznika, historię produkcji, a po skonfigurowaniu odpowiednich integracji także ceny i statystyki EcoFlow.
-
-W prawym górnym rogu interfejsu widoczny jest skrócony identyfikator commita obrazu. Pełny identyfikator można odczytać po najechaniu na ten skrót. Obraz publikowany przez GitHub Actions otrzymuje SHA commita z procesu budowania.
-
-## Bezpieczeństwo
-
-- Jeśli `DASHBOARD_PASSWORD` jest ustawione, dashboard i WebSocket wymagają HTTP Basic Auth.
-- Klucze EcoFlow i Pstryk są używane wyłącznie przez backend; nie są wysyłane do przeglądarki.
-- MQTT używa standardowej weryfikacji certyfikatu TLS.
-- Dostęp przez Cloudflare Tunnel powinien być dodatkowo ograniczony regułami Cloudflare Access.
+- Backend: Node.js + Express + WebSocket
+- Prywatne MQTT EcoFlow z dekodowaniem protobuf
+- Quota API polling co 2 minuty (keepalive)
+- Solcast API dla prognozy PV (cache 3h, limit 10 req/dzień)
+- Frontend: HTML/CSS/JS (bez frameworków)

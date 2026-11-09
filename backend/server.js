@@ -19,7 +19,7 @@ const EF_EMAIL   = process.env.EF_EMAIL      || '';
 const EF_PASSWORD= process.env.EF_PASSWORD   || '';
 const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
 const METER_SN   = process.env.METER_SN      || '';
-const EF_USER_ID = process.env.EF_USER_ID    || '2042232479813939201';
+const EF_USER_ID = process.env.EF_USER_ID    || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
 const PSTRYK_KEY      = process.env.PSTRYK_API_KEY     || '';
 const SOLCAST_KEY     = process.env.SOLCAST_API_KEY    || '';
@@ -1001,8 +1001,8 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.bmsChgDsgState != null) { deviceState.chgDsgState  = dp.bmsChgDsgState; updated=true; }
         if (dp.bmsMaxCellTemp != null) { deviceState.maxCellTemp  = dp.bmsMaxCellTemp;  updated=true; }
         if (dp.bmsMinCellTemp != null) { deviceState.minCellTemp  = dp.bmsMinCellTemp;  updated=true; }
-        if (dp.cmsDsgRemTime  != null && dp.cmsDsgRemTime  < 9000) { deviceState.dsgRemTime  = dp.cmsDsgRemTime;  updated=true; }
-        if (dp.cmsChgRemTime  != null && dp.cmsChgRemTime  < 9000) { deviceState.chgRemTime  = dp.cmsChgRemTime;  updated=true; }
+        if (dp.cmsDsgRemTime  != null && dp.cmsDsgRemTime  < 5939) { deviceState.dsgRemTime  = dp.cmsDsgRemTime;  updated=true; }
+        if (dp.cmsChgRemTime  != null && dp.cmsChgRemTime  < 5939) { deviceState.chgRemTime  = dp.cmsChgRemTime;  updated=true; }
         if (dp.bmsDsgRemTime  != null && dp.bmsDsgRemTime  < 2000) { deviceState.dsgRemTime1 = dp.bmsDsgRemTime;  updated=true; }
         if (dp.bmsChgRemTime  != null && dp.bmsChgRemTime  < 2000) { deviceState.chgRemTime1 = dp.bmsChgRemTime;  updated=true; }
         if (dp.plugInInfoPv3Flag != null) { deviceState.pv3Active = !!dp.plugInInfoPv3Flag; updated=true; }
