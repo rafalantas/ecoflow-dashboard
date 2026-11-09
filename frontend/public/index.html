@@ -1229,6 +1229,10 @@ async function loadEfficiency(){
     sv('eff-daily-eff', d.dailyEff>0?d.dailyEff.toFixed(1):'–');
     sb('eff-eff-bar', d.dailyEff||0);
     sv('eff-inst-eff', d.instantEff>0?d.instantEff.toFixed(1)+'%':'–');
+    sv('eff-pv-now', d.pvNow>0?d.pvNow+' W':'– W');
+    sv('eff-load-now', d.sysLoad>0?Math.round(d.sysLoad)+' W':'– W');
+    const curW=d.weather&&d.weather.length?d.weather[0]:null;
+    if(curW){sv('eff-weather',curW.weather);sv('eff-weather2',curW.weather);}
     // Wykres godzinowy
     if(d.hourlyPv && d.hourlyPv.length){
       const ch=document.getElementById('eff-hour-chart');
