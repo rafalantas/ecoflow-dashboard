@@ -379,58 +379,105 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
   </div>
 
   <!-- EFEKTYWNOŚĆ DZIŚ -->
-  <div class="card" id="eff-card" style="display:none">
+  <div id="eff-card" style="display:none">
     <div class="card-title">// energia dziś</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="ek">
-        <div class="ek-lbl">Solar · zużycie</div>
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span id="eff-solar" style="font-family:var(--mono);font-size:30px;font-weight:500;color:var(--pv)">–</span>
-          <span style="font-family:var(--mono);font-size:13px;color:var(--t2)">kWh</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--t3)">/ <span id="eff-consumption">–</span> kWh</span>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="card" style="padding:14px 16px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:6px;display:flex;align-items:center;gap:5px">☀️ Produkcja PV</div>
+        <div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:6px">
+          <span id="eff-solar" style="font-family:var(--mono);font-size:34px;font-weight:500;color:var(--pv);line-height:1">–</span>
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t2);padding-bottom:3px">kWh</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t3);padding-bottom:3px">/ <span id="eff-consumption">–</span> kWh zużycia</span>
         </div>
         <div class="ek-bar"><div id="eff-solar-bar" class="ek-bar-f" style="background:var(--pv);width:0%"></div></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:5px">dziś: <span id="eff-forecast">–</span> kWh · jutro: <span id="eff-forecast-tomorrow">–</span> kWh · <span id="eff-weather">–</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:6px" id="eff-coverage-txt">pokrycie –%</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div style="flex:1;background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:7px 10px">
+            <div style="font-size:10px;color:var(--t3)">prognoza dziś</div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--pv)" id="eff-forecast">–</div>
+          </div>
+          <div style="flex:1;background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:7px 10px">
+            <div style="font-size:10px;color:var(--t3)">jutro</div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:500;color:var(--t1)" id="eff-forecast-tomorrow">–</div>
+          </div>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="ek">
-          <div class="ek-lbl">Niezależność</div>
-          <div style="display:flex;align-items:baseline;gap:3px">
-            <span id="eff-independence" class="ek-val" style="color:var(--grid-in)">–</span>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">%</span>
-          </div>
-          <div class="ek-bar"><div id="eff-independence-bar" class="ek-bar-f" style="background:var(--grid-in);width:0%"></div></div>
+      <div class="card" style="padding:14px 16px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:6px">⚡ Niezależność</div>
+        <div style="display:flex;align-items:baseline;gap:3px">
+          <span id="eff-independence" style="font-family:var(--mono);font-size:26px;font-weight:500;color:var(--grid-in)">–</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">%</span>
         </div>
-        <div class="ek">
-          <div class="ek-lbl">CO₂ zaoszcz.</div>
-          <div style="display:flex;align-items:baseline;gap:3px">
-            <span id="eff-co2" class="ek-val" style="color:var(--grid-in)">–</span>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">g</span>
-          </div>
+        <div class="ek-bar" style="margin-top:8px"><div id="eff-independence-bar" class="ek-bar-f" style="background:var(--grid-in);width:0%"></div></div>
+        <div style="font-size:11px;color:var(--t3);margin-top:8px">energia własna</div>
+      </div>
+      <div class="card" style="padding:14px 16px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:6px">🌿 CO₂</div>
+        <div style="display:flex;align-items:baseline;gap:3px">
+          <span id="eff-co2" style="font-family:var(--mono);font-size:22px;font-weight:500;color:var(--grid-in)">–</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">g</span>
         </div>
-        <div class="ek">
-          <div class="ek-lbl">Zarobek dziś</div>
-          <div style="display:flex;align-items:baseline;gap:3px">
-            <span id="eff-earnings-today" class="ek-val" style="color:var(--grid-in)">–</span>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">zł</span>
-          </div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">łącznie: <span id="eff-earnings-life">–</span> zł</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">zaoszczędzono</div>
+        <div style="margin-top:10px">
+          <span style="font-size:11px;font-weight:500;padding:3px 8px;border-radius:6px;background:rgba(29,158,117,.12);color:var(--pv)">↓ dziś</span>
         </div>
-        <div class="ek">
-          <div class="ek-lbl">Z sieci</div>
-          <div style="display:flex;align-items:baseline;gap:3px">
-            <span id="eff-fromgrid" class="ek-val" style="color:var(--grid-out)">–</span>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">kWh</span>
-          </div>
-          <div id="eff-togrid" style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">do sieci: – kWh</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
+      <div class="card" style="padding:12px 14px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">Z sieci</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--grid-out)"><span id="eff-fromgrid">–</span> <span style="font-size:11px;color:var(--t2)">kWh</span></div>
+        <div class="ek-bar" style="margin-top:7px"><div id="eff-fromgrid-bar" class="ek-bar-f" style="background:var(--grid-out);width:0%"></div></div>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">Do sieci</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--grid-in)"><span id="eff-togrid-val">–</span> <span style="font-size:11px;color:var(--t2)">kWh</span></div>
+        <div class="ek-bar" style="margin-top:7px"><div id="eff-togrid-bar" class="ek-bar-f" style="background:var(--grid-in);width:0%"></div></div>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">Bat. ładow.</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--bat)"><span id="eff-batchg">–</span> <span style="font-size:11px;color:var(--t2)">kWh</span></div>
+        <div class="ek-bar" style="margin-top:7px"><div id="eff-batchg-bar" class="ek-bar-f" style="background:var(--bat);width:0%"></div></div>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">Bat. rozład.</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--t1)"><span id="eff-batdsg-val">–</span> <span style="font-size:11px;color:var(--t2)">kWh</span></div>
+        <div class="ek-bar" style="margin-top:7px"><div id="eff-batdsg-bar" class="ek-bar-f" style="background:var(--t3);width:0%"></div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;margin-bottom:10px">
+      <div class="card" style="padding:14px 16px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">💰 Zarobek dziś</div>
+        <div style="font-family:var(--mono);font-size:24px;font-weight:500;color:var(--grid-in)"><span id="eff-earnings-today">–</span> <span style="font-size:12px;color:var(--t2)">zł</span></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:6px">łącznie: <span id="eff-earnings-life">–</span> zł</div>
+      </div>
+      <div class="card" style="padding:14px 16px">
+        <div style="font-size:11px;color:var(--t2);margin-bottom:5px">📊 Efektywność</div>
+        <div style="font-family:var(--mono);font-size:24px;font-weight:500;color:var(--t1)"><span id="eff-daily-eff">–</span> <span style="font-size:12px;color:var(--t2)">%</span></div>
+        <div class="ek-bar" style="margin-top:8px"><div id="eff-eff-bar" class="ek-bar-f" style="background:var(--pv);width:0%"></div></div>
+      </div>
+      <div class="card" style="padding:14px 16px" id="eff-chart-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:11px;font-weight:500;color:var(--t1)">Teraz</span>
+          <span style="font-size:10px;color:var(--t3)" id="eff-weather"></span>
         </div>
-        <div class="ek">
-          <div class="ek-lbl">Bateria</div>
-          <div style="display:flex;align-items:baseline;gap:3px">
-            <span id="eff-batchg" class="ek-val" style="color:var(--bat)">–</span>
-            <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">↑</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:3px">moc PV</div>
+            <div style="font-family:var(--mono);font-size:20px;font-weight:500;color:var(--pv)" id="eff-pv-now">– W</div>
           </div>
-          <div id="eff-batdsg" style="font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:3px">rozł: – kWh</div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:3px">wydajność paneli</div>
+            <div style="font-family:var(--mono);font-size:20px;font-weight:500;color:var(--t1)" id="eff-inst-eff">– %</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:3px">zużycie teraz</div>
+            <div style="font-family:var(--mono);font-size:20px;font-weight:500;color:var(--t1)" id="eff-load-now">– W</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:3px">pogoda</div>
+            <div style="font-size:13px;color:var(--t2);margin-top:3px" id="eff-weather2">–</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1152,7 +1199,11 @@ async function loadEfficiency(){
     const sb=(id,pct)=>{const e=document.getElementById(id);if(e)e.style.width=Math.min(100,pct||0)+'%';};
     sv('eff-solar',d.solarKwh>0?d.solarKwh.toFixed(1):'–');
     sv('eff-consumption',(d.consumptionKwh||0).toFixed(1));
-    if(d.consumptionKwh>0)sb('eff-solar-bar',d.solarKwh/d.consumptionKwh*100);
+    if(d.consumptionKwh>0){
+      const cov=Math.round(d.solarKwh/d.consumptionKwh*100);
+      sb('eff-solar-bar',Math.min(cov,100));
+      sv('eff-coverage-txt','pokrycie '+cov+'%');
+    }
     sv('eff-forecast',d.forecastKwh>0?d.forecastKwh.toFixed(1):'–');
     sv('eff-forecast-tomorrow',d.forecastTomorrow>0?d.forecastTomorrow.toFixed(1):'–');
     if(d.weather?.length){
@@ -1163,12 +1214,35 @@ async function loadEfficiency(){
     sv('eff-independence',d.independence>0?d.independence.toFixed(1):'–');
     sb('eff-independence-bar',d.independence);
     sv('eff-fromgrid',d.fromGridKwh>0?d.fromGridKwh.toFixed(1):'–');
+    sb('eff-fromgrid-bar',Math.min((d.fromGridKwh||0)/20*100,100));
+    sv('eff-togrid-val',d.toGridKwh>0?d.toGridKwh.toFixed(1):'–');
+    sb('eff-togrid-bar',Math.min((d.toGridKwh||0)/5*100,100));
     sv('eff-togrid','do sieci: '+(d.toGridKwh||0).toFixed(1)+' kWh');
     sv('eff-batchg',d.batChgKwh>0?d.batChgKwh.toFixed(1):'–');
+    sb('eff-batchg-bar',Math.min((d.batChgKwh||0)/8*100,100));
+    sv('eff-batdsg-val',d.batDsgKwh>0?d.batDsgKwh.toFixed(1):'–');
+    sb('eff-batdsg-bar',Math.min((d.batDsgKwh||0)/8*100,100));
     sv('eff-batdsg','rozł: '+(d.batDsgKwh||0).toFixed(1)+' kWh');
     sv('eff-co2',d.co2g>0?d.co2g.toLocaleString('pl-PL'):'–');
     sv('eff-earnings-today', d.earningsToday>0?d.earningsToday.toFixed(2):'–');
     sv('eff-earnings-life',  d.earningsLifetime>0?d.earningsLifetime.toFixed(2):'–');
+    sv('eff-daily-eff', d.dailyEff>0?d.dailyEff.toFixed(1):'–');
+    sb('eff-eff-bar', d.dailyEff||0);
+    sv('eff-inst-eff', d.instantEff>0?d.instantEff.toFixed(1)+'%':'–');
+    // Wykres godzinowy
+    if(d.hourlyPv && d.hourlyPv.length){
+      const ch=document.getElementById('eff-hour-chart');
+      if(ch){
+        const mx=Math.max(...d.hourlyPv.map(h=>h.wh||0),0.1);
+        ch.innerHTML=d.hourlyPv.map(h=>{
+          const pct=Math.round((h.wh||0)/mx*100);
+          const col=h.wh>0?'var(--pv)':'var(--brd)';
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'+
+            '<div style="width:100%;background:'+col+';height:'+pct+'%;border-radius:3px 3px 0 0;min-height:2px;transition:height .4s"></div>'+
+            '<span style="font-size:9px;color:var(--t3)">'+h.h+'</span></div>';
+        }).join('');
+      }
+    }
   }catch(e){}
 }
 
