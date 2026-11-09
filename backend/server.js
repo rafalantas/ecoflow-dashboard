@@ -1106,7 +1106,9 @@ async function startPrivateMqtt() {
     setInterval(() => {
       if (DEVICE_SN)  privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN  + '/thing/property/get', wakeup);
       if (DEVICE_SN2) privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN2 + '/thing/property/get', wakeup);
+      if (METER_SN)   privClient.publish('/app/' + EF_USER_ID + '/' + METER_SN   + '/thing/property/get', wakeup);
     }, 60000);
+    if (METER_SN) privClient.publish('/app/' + EF_USER_ID + '/' + METER_SN + '/thing/property/get', wakeup);
   });
 
   privClient.on('message', (topic, payload) => {
