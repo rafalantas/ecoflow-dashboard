@@ -1098,6 +1098,15 @@ async function startPrivateMqtt() {
     if (DEVICE_SN)  privClient.subscribe('/app/device/property/' + DEVICE_SN);
     if (DEVICE_SN2) privClient.subscribe('/app/device/property/' + DEVICE_SN2);
     if (METER_SN)   privClient.subscribe('/app/device/property/' + METER_SN);
+    // Wybudz urzadzenie - zapytaj o wszystkie dane
+    const wakeup = JSON.stringify({id:1,version:'1.0',moduleType:0,operateType:'latestQuotas',params:{quotas:[]}});
+    if (DEVICE_SN)  privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN  + '/thing/property/get', wakeup);
+    if (DEVICE_SN2) privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN2 + '/thing/property/get', wakeup);
+    // Powtarzaj co 60s
+    setInterval(() => {
+      if (DEVICE_SN)  privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN  + '/thing/property/get', wakeup);
+      if (DEVICE_SN2) privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN2 + '/thing/property/get', wakeup);
+    }, 60000);
   });
 
   privClient.on('message', (topic, payload) => {
