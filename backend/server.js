@@ -131,11 +131,11 @@ let history = { pv: [], feed: [], soc: [], ts: [] };
 const MAX_HIST = 300;
 let dailySnapshots = {};
 // Cache Solcast (10 req/dzien limit - cache 2h)
-let solcastCache = { data: null, fetchedAt: 0, fromNow: 0, today: 0, tomorrow: 0 };
+let solcastCache = { data: null, fetchedAt: Date.now() - 2.5*60*60*1000, fromNow: 0, today: 0, tomorrow: 0 }; // pierwsze odpytanie po 30min
 
 async function fetchSolcast() {
   const now = Date.now();
-  if (solcastCache.data && now - solcastCache.fetchedAt < 3*60*60*1000) return solcastCache;
+  if (now - solcastCache.fetchedAt < 3*60*60*1000) return solcastCache;
   if (!SOLCAST_KEY) return solcastCache;
   try {
     // Pobierz prognoze i dane historyczne rownoczesnie (2 requesty)
