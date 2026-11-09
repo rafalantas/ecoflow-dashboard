@@ -1114,7 +1114,21 @@ async function startPrivateMqtt() {
 // ─── Start ────────────────────────────────────────────────────────────────────
 server.listen(PORT, async () => {
   console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
-  startMqtt();
+  // startMqtt(); // wylaczone - prywatne MQTT zastepuje oficjalne
+  // Quota polling co 2 minuty - keepalive i fallback danych
+  const pollQuota = async () => {
+    try {
+      const r = await axios.get('https://api.ecoflow.com/iot-open/sign/device/quota/all',
+        { headers: hmacSign({ sn: DEVICE_SN }), params: { sn: DEVICE_SN }, timeout: 10000 });
+      if (r.data?.data && Object.keys(r.data.data).length > 0) {
+        applyParams(r.data.data);
+        console.log('Quota: SOC='+deviceState.cmsBattSoc+'% PV='+deviceState.pvTotal+'W');
+      }
+    } catch(e) { console.error('pollQuota:', e.message); }
+  };
+  pollQuota();
+  setInterval(pollQuota, 2 * 60 * 1000);
+
   if (EF_EMAIL && EF_PASSWORD) {
     await loginPrivateApi();
     await initDecoder();
