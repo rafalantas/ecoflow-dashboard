@@ -88,7 +88,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .no-data{font-family:var(--mono);font-size:11px;color:var(--t2);text-align:center;padding:24px;opacity:.5}
 #echart-tooltip{display:none;position:absolute;background:var(--sur);border:1px solid var(--brd);border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--t1);pointer-events:none;white-space:nowrap;z-index:10;box-shadow:var(--shadow-md)}
 .estats{display:none;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:12px 0}
-.estat{padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--brd)}
+.estat{padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--brd);display:flex;flex-direction:column}
 .estatlbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
 .estatval{font-family:var(--mono);font-size:18px;font-weight:500}
 .estatunit{font-size:10px;font-weight:400;color:var(--t2)}
@@ -514,8 +514,8 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
   <div class="card">
     <div class="card-title">// produkcja energii</div>
     <div class="etabs">
-      <button class="etab active" onclick="switchP('day',this)">Dzień</button>
-      <button class="etab" onclick="switchP('week',this)">Tydzień</button>
+      <button class="etab" onclick="switchP('day',this)">Dzień</button>
+      <button class="etab active" onclick="switchP('week',this)">Tydzień</button>
       <button class="etab" onclick="switchP('month',this)">Miesiąc</button>
       <button class="etab" onclick="switchP('year',this)">Rok</button>
     </div>
@@ -596,7 +596,7 @@ function warsawDate(date=new Date()){
   const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
   return `${values.year}-${values.month}-${values.day}`;
 }
-let ds={}, curP='day', curD=warsawDate(), curData=null;
+let ds={}, curP='week', curD=warsawDate(), curData=null;
 let hist={pv:[],feed:[],soc:[],ts:[]};
 let wsOK=false;
 let wsRetry=null;
@@ -1022,7 +1022,13 @@ function showEnergy(data){
     }
   }
   document.getElementById('eloading').style.display='none';
-  if(data.chart?.length){ec.style.display='block';drawEChart(data);}
+  if(data.chart?.length && (curP!=='day' || data.chart.length>1)){
+    ec.style.display='block';requestAnimationFrame(()=>drawEChart(data));
+  } else if(curP==='day'){
+    ec.style.display='none';
+    document.getElementById('eloading').style.display='none';
+    document.getElementById('no-data').style.display='none';
+  }
   else document.getElementById('no-data').style.display='block';
 
   let hs=false;
