@@ -586,7 +586,7 @@ function applyParams(params) {
   }
   set('f32ShowSoc',  'socExact', r1);
   if (params.powGetBpCms !== undefined) {
-    const newVal = -r1(params.powGetBpCms);
+    const newVal = r1(params.powGetBpCms); // dodatnia = ladowanie
     const prev   = deviceState.battPower || 0;
     if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) deviceState.battPower = newVal;
     else console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
@@ -791,7 +791,7 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.powGetPv3   != null) { deviceState.pv3Power   = Math.round(dp.powGetPv3);    updated=true; }
         if (dp.powGetPv4   != null) { deviceState.pv4Power   = Math.round(dp.powGetPv4);    updated=true; }
         if (dp.powGetBpCms != null) {
-          const newVal = -Math.round(dp.powGetBpCms);
+          const newVal = Math.round(dp.powGetBpCms); // dodatnia = ladowanie
           const prev   = deviceState.battPower || 0;
           if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) deviceState.battPower = newVal;
           else console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
