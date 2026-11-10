@@ -150,7 +150,7 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
 .earr:hover{color:var(--bg)}
 #bnr{background:color-mix(in srgb,var(--grid-out) 8%,var(--sur));border-color:color-mix(in srgb,var(--grid-out) 25%,var(--brd))}
 .power-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
-.power-tile{min-width:0;padding:15px 17px;background:var(--sur);border:1px solid var(--brd);border-radius:15px;box-shadow:var(--shadow);transition:background .2s,border-color .2s}
+.power-tile{min-width:0;padding:15px 17px;background:var(--sur);border:1px solid var(--brd);border-radius:15px;box-shadow:var(--shadow);transition:background .2s,border-color .2s,transform .15s,box-shadow .15s;cursor:default}.power-tile:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}
 .power-label{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--t2);font-size:11px;margin-bottom:8px}
 .power-value{display:block;font:500 24px var(--mono);letter-spacing:-.04em;color:var(--t1);font-variant-numeric:tabular-nums;white-space:nowrap}
 .power-unit{font-size:12px;color:var(--t2);letter-spacing:0}
@@ -195,10 +195,10 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
   <div id="bnr">⚠ Brak połączenia z urządzeniem</div>
 
   <div class="power-overview" aria-label="Bieżący bilans mocy">
-    <div class="power-tile pv"><div class="power-label">Produkcja PV <span aria-hidden="true">☀</span></div><strong class="power-value"><span id="overview-pv">–</span> <span class="power-unit">W</span></strong></div>
-    <div class="power-tile grid" id="overview-grid-tile"><div class="power-label"><span id="overview-grid-label">Przepływ z siecią</span><span aria-hidden="true">↕</span></div><strong class="power-value"><span id="overview-grid">–</span> <span class="power-unit">W</span></strong></div>
-    <div class="power-tile load"><div class="power-label">Zużycie domu <span aria-hidden="true">⌂</span></div><strong class="power-value"><span id="overview-load">–</span> <span class="power-unit">W</span></strong></div>
-    <div class="power-tile battery"><div class="power-label">Moc baterii <span aria-hidden="true">↕</span></div><strong class="power-value"><span id="overview-battery">–</span> <span class="power-unit">W</span></strong></div>
+    <div class="power-tile pv"><div class="power-label">☀️ Produkcja PV</div><strong class="power-value"><span id="overview-pv">–</span> <span class="power-unit">W</span></strong></div>
+    <div class="power-tile grid" id="overview-grid-tile"><div class="power-label">⚡ <span id="overview-grid-label">Przepływ z siecią</span></div><strong class="power-value"><span id="overview-grid">–</span> <span class="power-unit">W</span></strong></div>
+    <div class="power-tile load"><div class="power-label">🏠 Zużycie domu</div><strong class="power-value"><span id="overview-load">–</span> <span class="power-unit">W</span></strong></div>
+    <div class="power-tile battery"><div class="power-label">🔋 Moc baterii</div><strong class="power-value"><span id="overview-battery">–</span> <span class="power-unit">W</span></strong></div>
   </div>
 
   <!-- PRZEPŁYW -->
@@ -292,6 +292,10 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
     </div>
 
     <!-- ZAKŁADKI BANKÓW -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.14em;white-space:nowrap">🔋 Szczegóły banku</div>
+      <div style="flex:1;height:1px;background:var(--brd)"></div>
+    </div>
     <div class="bank-tabs" role="tablist" aria-label="Szczegóły banku baterii">
       <button id="btab1" class="bank-tab active" role="tab" aria-controls="bpanel1" aria-selected="true" type="button" onclick="switchBat(1)">Ultra X · 1</button>
       <button id="btab2" class="bank-tab" role="tab" aria-controls="bpanel2" aria-selected="false" type="button" onclick="switchBat(2)">Ultra X · 2</button>
