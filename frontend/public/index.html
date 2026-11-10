@@ -180,6 +180,7 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.energy-particle{display:none}}
 </style>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 </head>
 <body>
 <div class="topbar">
@@ -678,8 +679,8 @@ function combinedBankRuntime(bank1,bank2,hasBank2){
 }
 function batteryFlows(power,state){
   power=Number(power)||0;state=Number(state)||0;
-  if(state===2)return{charging:Math.abs(power),discharging:0};
-  if(state===1)return{charging:0,discharging:Math.abs(power)};
+  if(state===1)return{charging:Math.abs(power),discharging:0};
+  if(state===2)return{charging:0,discharging:Math.abs(power)};
   return{charging:power>20?power:0,discharging:power< -20?Math.abs(power):0};
 }
 
@@ -811,7 +812,7 @@ function update(s){ window._lastState = s;
   if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${(s.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   // Czasy bank 1
-  const b1chg = s.chgDsgState===2 ? ft(s.chgRemTime1||s.chgRemTime) : '–';
+  const b1chg = s.chgDsgState===1 ? ft(s.chgRemTime1||s.chgRemTime) : '–';
   const b1dsg=bank1Runtime.minutes?`${bank1Runtime.estimated?'~':''}${ft(bank1Runtime.minutes)}`:'–';
   const b1ct=document.getElementById('b1-chg-time'), b1dt=document.getElementById('b1-dsg-time');
   if(b1ct) b1ct.textContent=b1chg;
@@ -820,7 +821,7 @@ function update(s){ window._lastState = s;
 
   // === BANK 2 ===
   if(s.device2) {
-    const d2=s.device2;
+    const d2=s.device2||{};
     const b2=document.getElementById('b2-soc'), b2bar=document.getElementById('b2-bar');
     if(b2) b2.innerHTML=`${soc2==null?'–':soc2}<span style="font-size:16px;color:var(--t2)">%</span>`;
     if(b2bar){ b2bar.style.width=(soc2??0)+'%'; b2bar.style.background=soc2>60?'var(--bat)':soc2>25?'var(--pv)':'var(--grid-out)'; }
@@ -832,7 +833,7 @@ function update(s){ window._lastState = s;
     if(d2.accuChgEnergy!=null) document.getElementById('b2-ce').innerHTML=`${(d2.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     if(d2.accuDsgEnergy!=null) document.getElementById('b2-de').innerHTML=`${(d2.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     // Czasy bank 2
-    const b2chg = d2.chgDsgState===2 ? ft(d2.chgRemTime) : '–';
+    const b2chg = d2.chgDsgState===1 ? ft(d2.chgRemTime) : '–';
     const b2dsg=bank2Runtime.minutes?`${bank2Runtime.estimated?'~':''}${ft(bank2Runtime.minutes)}`:'–';
     const b2ct=document.getElementById('b2-chg-time'), b2dt=document.getElementById('b2-dsg-time');
     if(b2ct) b2ct.textContent=b2chg;

@@ -130,6 +130,10 @@ let deviceState = {
 let history = { pv: [], feed: [], soc: [], ts: [] };
 const MAX_HIST = 300;
 let dailySnapshots = {};
+function cleanDailySnapshots() {
+  const keys = Object.keys(dailySnapshots);
+  if (keys.length > 7) keys.sort().slice(0, keys.length - 7).forEach(k => delete dailySnapshots[k]);
+}
 // Cache Solcast (10 req/dzien limit - cache 2h)
 let solcastCache = { data: null, fetchedAt: Date.now() - 2.5*60*60*1000, fromNow: 0, today: 0, tomorrow: 0 }; // pierwsze odpytanie po 30min
 
@@ -165,13 +169,20 @@ async function fetchSolcast() {
       console.log('Solcast: fromNow='+solcastCache.fromNow+' today='+solcastCache.today+' jutro='+solcastCache.tomorrow);
     }
   } catch(e) {
-    if (e.response && e.response.status === 429) console.log('Solcast: limit 429');
+    if (e.response && e.response.status === 429) { console.log('Solcast: limit 429'); solcastCache.fetchedAt = Date.now(); }
     else console.error('Solcast error:', e.message);
   }
   return solcastCache;
 }
 
 let energyCache = {};
+function cleanEnergyCache() {
+  const keys = Object.keys(energyCache);
+  if (keys.length > 60) {
+    keys.sort((a,b) => energyCache[a].fetchedAt - energyCache[b].fetchedAt)
+        .slice(0, keys.length - 60).forEach(k => delete energyCache[k]);
+  }
+}
 let pricesCache = { data: null, fetchedAt: 0 };
 let scheduleCache = { data: null, fetchedAt: 0 };
 
@@ -485,7 +496,7 @@ app.get('/api/energy', async (req, res) => {
   if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);
   try {
     const data = await fetchEnergyForPeriod(period, refDate);
-    if (data) { energyCache[cacheKey] = { ...data, fetchedAt: Date.now() }; return res.json(energyCache[cacheKey]); }
+    if (data) { energyCache[cacheKey] = { ...data, fetchedAt: Date.now() }; cleanEnergyCache(); return res.json(energyCache[cacheKey]); }
     res.json({ error: 'no_data' });
   } catch(e) { res.json({ error: e.message }); }
 });
@@ -513,6 +524,7 @@ function recordHistory() {
 }
 
 function recordSnapshot(date, totalWh) {
+  cleanDailySnapshots();
   if (!dailySnapshots[date]) dailySnapshots[date] = [];
   const snaps = dailySnapshots[date];
   const last = snaps[snaps.length - 1];
@@ -605,7 +617,7 @@ function applyParams(params) {
   }
   set('f32ShowSoc',  'socExact', r1);
   if (params.powGetBpCms !== undefined) {
-    const newVal = r1(params.powGetBpCms);
+    const newVal = -r1(params.powGetBpCms);
     const prev   = deviceState.battPower || 0;
     if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) deviceState.battPower = newVal;
     else console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
@@ -657,7 +669,7 @@ function applyParams(params) {
     deviceState.lastMqttData = Date.now();
     recordHistory();
     broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
-    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc}%/${deviceState2.soc}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${deviceState.gridPower.toFixed(0)}W`);
+    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc||0}%/${deviceState2.soc||0}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${(deviceState.gridPower||0).toFixed(0)}W`);
   }
 }
 
@@ -758,7 +770,7 @@ function startDemo() {
     t += 0.05;
     const pv = Math.max(0, 800 + 400*Math.sin(t) + Math.random()*20);
     soc = Math.min(95, soc + 0.01);
-    applyParams({ powGetPvSum: pv, powGetPv3: pv*0.52, powGetPv4: pv*0.48, plugInInfoPv3Flag: true, plugInInfoPv4Flag: true, gridConnectionPower: pv > 200 ? 100 : -50, bmsBattSoc: soc, f32ShowSoc: soc, cmsBattSoc: soc - 10, powGetBpCms: pv > 200 ? 200 : -100, bmsChgDsgState: pv > 200 ? 2 : 1, cmsChgRemTime: 120, cmsDsgRemTime: 300, gridConnectionVol: 230, gridConnectionFreq: 50, powGetSysLoad: 300, powGetSysLoadFromPv: Math.min(pv, 300), powGetSysLoadFromGrid: Math.max(0, 300-pv), invTempNtc: 35, bmsMaxCellTemp: 25 });
+    applyParams({ powGetPvSum: pv, powGetPv3: pv*0.52, powGetPv4: pv*0.48, plugInInfoPv3Flag: true, plugInInfoPv4Flag: true, gridConnectionPower: pv > 200 ? 100 : -50, bmsBattSoc: soc, f32ShowSoc: soc, cmsBattSoc: soc - 10, powGetBpCms: pv > 200 ? 200 : -100, bmsChgDsgState: pv > 200 ? 1 : 2, cmsChgRemTime: 120, cmsDsgRemTime: 300, gridConnectionVol: 230, gridConnectionFreq: 50, powGetSysLoad: 300, powGetSysLoadFromPv: Math.min(pv, 300), powGetSysLoadFromGrid: Math.max(0, 300-pv), invTempNtc: 35, bmsMaxCellTemp: 25 });
   }, 2000);
 }
 
@@ -818,7 +830,7 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.plugInInfoPv2Flag !== undefined) { deviceState.pv2Active = !!dp.plugInInfoPv2Flag; updated=true; }
         if (dp.powGetPv3   != null) { deviceState.pv3Power   = Math.round(dp.powGetPv3);    updated=true; }
         if (dp.powGetPv4   != null) { deviceState.pv4Power   = Math.round(dp.powGetPv4);    updated=true; }
-        if (dp.powGetBpCms != null) { deviceState.battPower  = Math.round(dp.powGetBpCms);  updated=true; }
+        if (dp.powGetBpCms != null) { deviceState.battPower  = -Math.round(dp.powGetBpCms); updated=true; }
         if (dp.powGetSysLoad         != null) { deviceState.sysLoad      = Math.round(dp.powGetSysLoad);         updated=true; }
         if (dp.powGetSysLoadFromPv   != null) { deviceState.loadFromPv   = Math.round(dp.powGetSysLoadFromPv);   updated=true; }
         if (dp.powGetSysLoadFromGrid != null) { deviceState.loadFromGrid = Math.round(dp.powGetSysLoadFromGrid); updated=true; }
