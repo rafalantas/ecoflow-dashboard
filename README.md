@@ -33,6 +33,11 @@ Dashboard dla systemu magazynowania energii EcoFlow STREAM Ultra X (2× 3.84 kWh
 | `SOLCAST_RESOURCE_ID` | Resource ID instalacji Solcast |
 | `PSTRYK_API_KEY` | Klucz API Pstryk (opcjonalny) |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Token tunelu Cloudflare |
+| `DASHBOARD_USER` | Login do dashboardu (domyślnie `admin`) |
+| `DASHBOARD_PASSWORD` | Hasło do dashboardu. **Puste = brak logowania** |
+| `EF_MQTT_INSECURE` | `1` wyłącza weryfikację certyfikatu MQTT (tylko gdy połączenie się nie udaje) |
+
+`EF_SPACE_ID` i `SOLCAST_RESOURCE_ID` nie mają już wartości domyślnych – trzeba je ustawić.
 
 ## Architektura
 

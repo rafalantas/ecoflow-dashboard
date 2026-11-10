@@ -17,13 +17,19 @@ const ACCESS_KEY = process.env.EF_ACCESS_KEY || '';
 const SECRET_KEY = process.env.EF_SECRET_KEY || '';
 const EF_EMAIL   = process.env.EF_EMAIL      || '';
 const EF_PASSWORD= process.env.EF_PASSWORD   || '';
-const SPACE_ID   = process.env.EF_SPACE_ID   || '2042460095875207170';
+const SPACE_ID   = process.env.EF_SPACE_ID   || '';
 const METER_SN   = process.env.METER_SN      || '';
 const EF_USER_ID = process.env.EF_USER_ID    || '';
 const API_HOST   = 'https://api-e.ecoflow.com';
 const PSTRYK_KEY      = process.env.PSTRYK_API_KEY     || '';
 const SOLCAST_KEY     = process.env.SOLCAST_API_KEY    || '';
-const SOLCAST_SITE    = process.env.SOLCAST_RESOURCE_ID || 'b5b9-c2dd-085b-d416';
+const SOLCAST_SITE    = process.env.SOLCAST_RESOURCE_ID || '';
+// Domyslnie weryfikuj certyfikat brokera MQTT; EF_MQTT_INSECURE=1 wylacza weryfikacje
+const MQTT_INSECURE   = process.env.EF_MQTT_INSECURE === '1';
+const EF_HEADERS_APP  = { 'X-Appid': '9', 'platform': 'android', 'version': '6.10.5' };
+const PEAK_SUN_EFF    = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
+  'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
+const AVG_SUN_BY_MONTH = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
 
 function isAuthorized(req) {
   if (!DASHBOARD_PASSWORD) return true;
@@ -93,7 +99,7 @@ function md5Sign(token) {
   return {
     'Authorization': `Bearer ${token}`, 'lang': 'en_US',
     'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
-    'X-Appid': '9', 'platform': 'android', 'version': '6.10.5',
+    ...EF_HEADERS_APP,
     'content-type': 'application/json',
   };
 }
@@ -134,13 +140,13 @@ function cleanDailySnapshots() {
   const keys = Object.keys(dailySnapshots);
   if (keys.length > 7) keys.sort().slice(0, keys.length - 7).forEach(k => delete dailySnapshots[k]);
 }
-// Cache Solcast (10 req/dzien limit - cache 2h)
+// Cache Solcast (10 req/dzien limit - cache 3h)
 let solcastCache = { data: null, fetchedAt: Date.now() - 2.5*60*60*1000, fromNow: 0, today: 0, tomorrow: 0 }; // pierwsze odpytanie po 30min
 
 async function fetchSolcast() {
   const now = Date.now();
   if (now - solcastCache.fetchedAt < 3*60*60*1000) return solcastCache;
-  if (!SOLCAST_KEY) return solcastCache;
+  if (!SOLCAST_KEY || !SOLCAST_SITE) return solcastCache;
   try {
     // Pobierz prognoze i dane historyczne rownoczesnie (2 requesty)
     const [rf, ra] = await Promise.all([
@@ -199,7 +205,7 @@ function efSign(params) {
       const v = obj[k];
       if (Array.isArray(v)) {
         v.forEach((item, i) => {
-          if (v !== null && typeof item === 'object') flatten(item, `${key}[${i}]`);
+          if (item !== null && typeof item === 'object') flatten(item, `${key}[${i}]`);
           else flat[`${key}[${i}]`] = item;
         });
       } else if (v !== null && typeof v === 'object') {
@@ -244,6 +250,24 @@ async function efHistorical(code, beginTime, endTime) {
   return r?.data?.data || [];
 }
 
+// Cache historycznej produkcji PV (ostatnie 7 dni, odswiezany raz na godzine)
+let histSolarCache = { date: null, days: [], fetchedAt: 0 };
+async function getHistoricalSolarDays(localDate) {
+  if (histSolarCache.date === localDate && Date.now() - histSolarCache.fetchedAt < 3600000) return histSolarCache.days;
+  const code = 'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA';
+  const results = await Promise.all([1,2,3,4,5,6,7].map(async i => {
+    const ds = addCalendarDays(localDate, -i);
+    try {
+      const hd = await efHistorical(code, `${ds} 00:00:00`, `${ds} 23:59:59`);
+      const v = hd?.length ? parseFloat(hd[0].indexValue) / 1000 : NaN;
+      return Number.isFinite(v) ? v : null;
+    } catch (_) { return null; }
+  }));
+  const days = results.filter(v => v !== null); // od najnowszego do najstarszego
+  histSolarCache = { date: localDate, days, fetchedAt: Date.now() };
+  return days;
+}
+
 // Token prywatnego API
 let privateToken = null;
 let tokenExpiry = 0;
@@ -252,18 +276,11 @@ let tokenExpiry = 0;
 let weatherCache = { date: null, weather: [], peakSunHours: 0 };
 
 async function refreshWeatherCache() {
-  if (!privateToken) return;
-  const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
-    'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
+  if (!privateToken || !SPACE_ID) return;
   try {
     const now = new Date();
     const localDate = warsawDate(now);
-    const nonce = crypto.randomBytes(8).toString('hex');
-    const timestamp = String(Date.now());
-    const sign = crypto.createHash('md5').update(`nonce=${nonce}&timestamp=${timestamp}`).digest('hex');
-    const wh = {'Authorization': `Bearer ${privateToken}`, 'lang': 'en_US',
-      'X-Timestamp': timestamp, 'X-Nonce': nonce, 'X-Sign': sign,
-      'X-Appid': '9', 'platform': 'android', 'version': '6.10.5'};
+    const wh = md5Sign(privateToken);
     const wr = await axios.get('https://api-e.ecoflow.com/app/solarEnergy/weatherBySpaceId',
       { headers: wh, params: { beginTime: `${localDate} 07:00:00`, endTime: `${localDate} 20:00:00`,
         spaceId: SPACE_ID, timeType: 1 }, timeout: 8000 });
@@ -275,7 +292,7 @@ async function refreshWeatherCache() {
       const merged = [...existing, ...newWeather.filter(w => !existing.find(e => e.hour === w.hour))];
       merged.sort((a,b) => a.hour - b.hour);
       const sunHours = merged.filter(w => w.hour >= 6 && w.hour <= 20);
-      const peakSunHours = Math.round(sunHours.reduce((s,w) => s+(effMap[w.weather]||0.5), 0)*10)/10;
+      const peakSunHours = Math.round(sunHours.reduce((s,w) => s+(PEAK_SUN_EFF[w.weather]||0.5), 0)*10)/10;
       weatherCache = { date: localDate, weather: merged, peakSunHours };
       console.log(`☀️  Weather cache: ${peakSunHours}h peak sun (${merged.length} godzin)`);
     }
@@ -361,17 +378,7 @@ app.get('/api/efficiency', async (req, res) => {
     let forecastKwh = 0, peakSunHours = 0, weather = [];
     if (SOLCAST_KEY) { try { const sc = await fetchSolcast(); if (sc.fetchedAt > 0 && sc.today > 0) { forecastKwh = sc.today; } } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); } }
     try {
-      const effMap = {'Clear Sky':1.0,'Few Clouds':0.85,'Scattered Clouds':0.65,
-        'Broken Clouds':0.45,'Overcast Clouds':0.3,'Rain':0.1,'Light Rain':0.15};
-      const histDays = [];
-      for (let i = 1; i <= 7; i++) {
-        const ds = addCalendarDays(localDate, -i);
-        const hd = await efHistorical(
-          'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA',
-          `${ds} 00:00:00`, `${ds} 23:59:59`
-        );
-        if (hd?.length) histDays.push(parseFloat(hd[0].indexValue) / 1000);
-      }
+      const histDays = await getHistoricalSolarDays(localDate);
 
       if (histDays.length >= 3) {
         let sumW = 0, sumV = 0;
@@ -379,22 +386,12 @@ app.get('/api/efficiency', async (req, res) => {
         const histAvg = sumV / sumW;
 
         let weatherFactor = 1.0;
-        // Uzyj cache pogody
-        if (weatherCache.weather.length > 0) {
+        if (weatherCache.weather.length === 0 && privateToken) await refreshWeatherCache();
+        if (weatherCache.weather.length > 0 && weatherCache.peakSunHours > 0) {
           weather = weatherCache.weather;
           peakSunHours = weatherCache.peakSunHours;
-          const avgSunByMonth = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
-          const typicalSunHours = avgSunByMonth[new Date().getMonth()];
+          const typicalSunHours = AVG_SUN_BY_MONTH[new Date().getMonth()];
           weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
-        } else if (privateToken) {
-          await refreshWeatherCache();
-          if (weatherCache.peakSunHours > 0) {
-            weather = weatherCache.weather;
-            peakSunHours = weatherCache.peakSunHours;
-            const avgSunByMonth = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
-            const typicalSunHours = avgSunByMonth[new Date().getMonth()];
-            weatherFactor = Math.min(1.3, Math.max(0.4, peakSunHours / typicalSunHours));
-          }
         }
         // Uzyj Solcast jesli dostepny, inaczej stary algorytm
         if (forecastKwh === 0) forecastKwh = Math.round(histAvg * weatherFactor * 10) / 10;
@@ -404,17 +401,11 @@ app.get('/api/efficiency', async (req, res) => {
     // Zarobki dzienne
     let earningsToday = 0, earningsLifetime = 0;
     try {
-      if (privateToken) {
-        const nonce2 = crypto.randomBytes(8).toString('hex');
-        const timestamp2 = String(Date.now());
-        const sign2 = crypto.createHash('md5').update('nonce='+nonce2+'&timestamp='+timestamp2).digest('hex');
-        const eh = { 'Authorization': 'Bearer '+privateToken, 'lang': 'en_US',
-          'X-Timestamp': timestamp2, 'X-Nonce': nonce2, 'X-Sign': sign2,
-          'X-Appid': '9', 'platform': 'android', 'version': '6.10.5' };
+      if (privateToken && SPACE_ID) {
         const er = await axios.post('https://api-e.ecoflow.com/app/space/data/single/index/',
           { code: 'SPACE-APP-EARNINGS-MONEY-VALUE-MONTH', spaceId: SPACE_ID,
             params: { beginTime: localDate, endTime: localDate } },
-          { headers: eh, timeout: 5000 });
+          { headers: md5Sign(privateToken), timeout: 5000 });
         if (er.data?.code === '0' && er.data?.data) {
           er.data.data.forEach(d => {
             if (d.extra === '1') earningsToday    = Math.round(d.indexValue * 100) / 100;
@@ -542,28 +533,6 @@ function buildHourlyChart(date) {
     const diff = byHour[h] - byHour[hours[i]];
     return diff > 0 ? { time: `${date} ${String(hours[i]).padStart(2,'0')}:00:00`, wh: Math.round(diff) } : null;
   }).filter(Boolean);
-}
-
-function applyMeterParams(params) {
-  let updated = false;
-  const r1 = v => Math.round(v * 10) / 10;
-  if (params.gridConnectionPowerL1 !== undefined) { deviceState.meterL1 = r1(params.gridConnectionPowerL1); updated = true; }
-  if (params.gridConnectionPowerL2 !== undefined) { deviceState.meterL2 = r1(params.gridConnectionPowerL2); updated = true; }
-  if (params.gridConnectionPowerL3 !== undefined) { deviceState.meterL3 = r1(params.gridConnectionPowerL3); updated = true; }
-  if (params.powGetSysGrid !== undefined)         { deviceState.meterTotal = r1(params.powGetSysGrid); updated = true; }
-  if (params.gridConnectionDataRecord) {
-    const rec = params.gridConnectionDataRecord;
-    if (rec.todayActive != null) deviceState.meterTodayConsumption = Math.max(0, Math.round(rec.todayActive));
-    if (rec.totalActiveEnergy != null) deviceState.meterTotalConsumption = Math.max(0, Math.round(rec.totalActiveEnergy));
-    if (rec.totalReactiveEnergy != null && rec.totalReactiveEnergy > 0) deviceState.meterTodayExport = Math.round(rec.totalReactiveEnergy);
-    updated = true;
-  }
-  if (updated) {
-    if (deviceState.feedPower === 0 && deviceState.meterTotal > 0) deviceState.fromGrid = deviceState.meterTotal;
-    deviceState.connected = true;
-    deviceState.lastMqttData = Date.now();
-    broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
-  }
 }
 
 function calcGridBalance() {
@@ -763,19 +732,10 @@ async function fetchEnergyForPeriod(period, refDate) {
 }
 
 // ─── MQTT ─────────────────────────────────────────────────────────────────────
-function startDemo() {
-  console.log('🎭 Demo mode');
-  let t = 0, soc = 45;
-  setInterval(() => {
-    t += 0.05;
-    const pv = Math.max(0, 800 + 400*Math.sin(t) + Math.random()*20);
-    soc = Math.min(95, soc + 0.01);
-    applyParams({ powGetPvSum: pv, powGetPv3: pv*0.52, powGetPv4: pv*0.48, plugInInfoPv3Flag: true, plugInInfoPv4Flag: true, gridConnectionPower: pv > 200 ? 100 : -50, bmsBattSoc: soc, f32ShowSoc: soc, cmsBattSoc: soc - 10, powGetBpCms: pv > 200 ? 200 : -100, bmsChgDsgState: pv > 200 ? 1 : 2, cmsChgRemTime: 120, cmsDsgRemTime: 300, gridConnectionVol: 230, gridConnectionFreq: 50, powGetSysLoad: 300, powGetSysLoadFromPv: Math.min(pv, 300), powGetSysLoadFromGrid: Math.max(0, 300-pv), invTempNtc: 35, bmsMaxCellTemp: 25 });
-  }, 2000);
-}
-
 // Odswiezaj cache pogody co godzine
 setInterval(refreshWeatherCache, 60*60*1000);
+// Odnawiaj token prywatnego API zanim wygasnie (nie czekaj na kolejne zapytanie)
+setInterval(() => { if (EF_EMAIL && EF_PASSWORD) ensureToken().catch(() => {}); }, 60*60*1000);
 
 
 // ─── Prywatne MQTT z protobuf ─────────────────────────────────────────────────
@@ -830,7 +790,13 @@ function decodeAndApply(payload, isSN2, isMeter) {
         if (dp.plugInInfoPv2Flag !== undefined) { deviceState.pv2Active = !!dp.plugInInfoPv2Flag; updated=true; }
         if (dp.powGetPv3   != null) { deviceState.pv3Power   = Math.round(dp.powGetPv3);    updated=true; }
         if (dp.powGetPv4   != null) { deviceState.pv4Power   = Math.round(dp.powGetPv4);    updated=true; }
-        if (dp.powGetBpCms != null) { deviceState.battPower  = -Math.round(dp.powGetBpCms); updated=true; }
+        if (dp.powGetBpCms != null) {
+          const newVal = -Math.round(dp.powGetBpCms);
+          const prev   = deviceState.battPower || 0;
+          if (prev === 0 || Math.abs(newVal) <= Math.abs(prev) * 5 + 300) deviceState.battPower = newVal;
+          else console.log(`battPower spike: ${newVal}W -> ignorowany (prev ${prev}W)`);
+          updated = true;
+        }
         if (dp.powGetSysLoad         != null) { deviceState.sysLoad      = Math.round(dp.powGetSysLoad);         updated=true; }
         if (dp.powGetSysLoadFromPv   != null) { deviceState.loadFromPv   = Math.round(dp.powGetSysLoadFromPv);   updated=true; }
         if (dp.powGetSysLoadFromGrid != null) { deviceState.loadFromGrid = Math.round(dp.powGetSysLoadFromGrid); updated=true; }
@@ -908,6 +874,8 @@ function decodeAndApply(payload, isSN2, isMeter) {
   } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); }
 }
 
+const privMqtt = { client: null, timer: null };
+
 async function startPrivateMqtt() {
   if (!efDecoder) return;
   if (!privateToken) { setTimeout(startPrivateMqtt, 5000); return; }
@@ -915,7 +883,7 @@ async function startPrivateMqtt() {
   let privCreds;
   try {
     const r = await axios.get('https://api.ecoflow.com/iot-auth/app/certification', {
-      headers: { 'Authorization': 'Bearer ' + privateToken, 'lang': 'en_US' }
+      headers: { 'Authorization': 'Bearer ' + privateToken, 'lang': 'en_US' }, timeout: 10000
     });
     if (r.data.code !== '0') throw new Error(r.data.message);
     privCreds = r.data.data;
@@ -926,32 +894,33 @@ async function startPrivateMqtt() {
     return;
   }
 
-  const userId = EF_USER_ID;
+  // Zamknij poprzedniego klienta i jego timer (unikamy podwojnych polaczen)
+  if (privMqtt.timer) { clearInterval(privMqtt.timer); privMqtt.timer = null; }
+  if (privMqtt.client) { privMqtt.client.removeAllListeners(); privMqtt.client.on('error', () => {}); privMqtt.client.end(true); privMqtt.client = null; }
 
   const privClient = mqtt.connect('mqtts://mqtt-e.ecoflow.com:8883', {
-    clientId: 'ANDROID_' + uuidv4().toUpperCase() + '_' + userId,
+    clientId: 'ANDROID_' + uuidv4().toUpperCase() + '_' + EF_USER_ID,
     username: privCreds.certificateAccount,
     password: privCreds.certificatePassword,
-    rejectUnauthorized: false,
+    rejectUnauthorized: !MQTT_INSECURE,
     reconnectPeriod: 10000,
   });
+  privMqtt.client = privClient;
+
+  const wakeup = JSON.stringify({id:1,version:'1.0',moduleType:0,operateType:'latestQuotas',params:{quotas:[]}});
+  const sendWakeup = () => {
+    [DEVICE_SN, DEVICE_SN2, METER_SN].filter(Boolean).forEach(sn =>
+      privClient.publish('/app/' + EF_USER_ID + '/' + sn + '/thing/property/get', wakeup));
+  };
 
   privClient.on('connect', () => {
     console.log('✅ Prywatne MQTT połączone!');
-    if (DEVICE_SN)  privClient.subscribe('/app/device/property/' + DEVICE_SN);
-    if (DEVICE_SN2) privClient.subscribe('/app/device/property/' + DEVICE_SN2);
-    if (METER_SN)   privClient.subscribe('/app/device/property/' + METER_SN);
-    // Wybudz urzadzenie - zapytaj o wszystkie dane
-    const wakeup = JSON.stringify({id:1,version:'1.0',moduleType:0,operateType:'latestQuotas',params:{quotas:[]}});
-    if (DEVICE_SN)  privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN  + '/thing/property/get', wakeup);
-    if (DEVICE_SN2) privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN2 + '/thing/property/get', wakeup);
-    // Powtarzaj co 60s
-    setInterval(() => {
-      if (DEVICE_SN)  privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN  + '/thing/property/get', wakeup);
-      if (DEVICE_SN2) privClient.publish('/app/' + EF_USER_ID + '/' + DEVICE_SN2 + '/thing/property/get', wakeup);
-      if (METER_SN)   privClient.publish('/app/' + EF_USER_ID + '/' + METER_SN   + '/thing/property/get', wakeup);
-    }, 60000);
-    if (METER_SN) privClient.publish('/app/' + EF_USER_ID + '/' + METER_SN + '/thing/property/get', wakeup);
+    [DEVICE_SN, DEVICE_SN2, METER_SN].filter(Boolean).forEach(sn =>
+      privClient.subscribe('/app/device/property/' + sn));
+    // Wybudz urzadzenia i powtarzaj co 60s (jeden timer na klienta, nie na kazdy reconnect)
+    sendWakeup();
+    if (privMqtt.timer) clearInterval(privMqtt.timer);
+    privMqtt.timer = setInterval(sendWakeup, 60000);
   });
 
   privClient.on('message', (topic, payload) => {
@@ -968,7 +937,9 @@ async function startPrivateMqtt() {
 // ─── Start ────────────────────────────────────────────────────────────────────
 server.listen(PORT, async () => {
   console.log(`🚀 http://localhost:${PORT}  SN:${DEVICE_SN}  Email:${EF_EMAIL||'brak'}  SpaceID:${SPACE_ID}`);
-  // startMqtt(); // wylaczone - prywatne MQTT zastepuje oficjalne
+  if (!DASHBOARD_PASSWORD) console.warn('⚠️  DASHBOARD_PASSWORD nie ustawione - dashboard jest dostepny bez logowania!');
+  if (MQTT_INSECURE) console.warn('⚠️  EF_MQTT_INSECURE=1 - certyfikat MQTT nie jest weryfikowany');
+  if (!SPACE_ID) console.warn('⚠️  EF_SPACE_ID nie ustawione - statystyki energii/pogody beda niedostepne');
   // Quota polling co 2 minuty - keepalive i fallback danych
   const pollQuota = async () => {
     try {
