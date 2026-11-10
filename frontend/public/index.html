@@ -29,7 +29,7 @@
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--sur);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100}
 .logo{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--t1);display:flex;align-items:center;gap:8px}
-.logo::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--pv);box-shadow:0 0 8px var(--pv)}
+.logo::before{display:none}
 .logo span{color:var(--pv)}
 .topbar-r{display:flex;align-items:center;gap:14px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--grid-out);transition:all .3s}
@@ -183,7 +183,7 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
 </head>
 <body>
 <div class="topbar">
-  <div class="logo">EcoFlow <span>STREAM</span></div>
+  <div class="logo"><img src="/favicon.svg" width="20" height="20" style="margin-right:2px;vertical-align:middle">EcoFlow <span>STREAM</span></div>
   <div class="topbar-r">
     <div class="dot" id="dot"></div>
     <span id="connection-label" class="connection-label">Łączenie…</span>
