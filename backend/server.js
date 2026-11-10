@@ -555,24 +555,11 @@ function applyMeterParams(params) {
 }
 
 function calcGridBalance() {
-  const pv    = deviceState.pvTotal   || 0;
-  const load  = deviceState.sysLoad   || 0;
   const meter = deviceState.meterTotal || 0;
-  if (meter > 20) { deviceState.fromGrid = meter; deviceState.feedPower = 0; return; }
-  const bankFlows = bank => {
-    const power = Number(bank.battPower) || 0;
-    const state = Number(bank.chgDsgState) || 0;
-    if (state === 2) return { charging: Math.abs(power), discharging: 0 };
-    if (state === 1) return { charging: 0, discharging: Math.abs(power) };
-    return { charging: power > 20 ? power : 0, discharging: power < -20 ? Math.abs(power) : 0 };
-  };
-  const banks = [bankFlows(deviceState), bankFlows(deviceState2)];
-  const batCharging = banks.reduce((sum, bank) => sum + bank.charging, 0);
-  const batDischarging = banks.reduce((sum, bank) => sum + bank.discharging, 0);
-  const net = pv + batDischarging - load - batCharging;
-  if (net > 20)       { deviceState.feedPower = Math.round(net);  deviceState.fromGrid = 0; }
-  else if (net < -20) { deviceState.feedPower = 0; deviceState.fromGrid = Math.round(-net); }
-  else                { deviceState.feedPower = 0; deviceState.fromGrid = 0; }
+  // Licznik smart meter jest zrodlem prawdy
+  if (meter > 20)       { deviceState.fromGrid = Math.round(meter);  deviceState.feedPower = 0; }
+  else if (meter < -20) { deviceState.feedPower = Math.round(-meter); deviceState.fromGrid = 0; }
+  else                  { deviceState.feedPower = 0; deviceState.fromGrid = 0; }
 }
 
 setInterval(() => {
@@ -978,6 +965,7 @@ server.listen(PORT, async () => {
       if (r.data?.data && Object.keys(r.data.data).length > 0) {
         applyParams(r.data.data);
         deviceState.connected = true;
+        calcGridBalance();
         console.log('Quota: SOC='+deviceState.cmsBattSoc+'% PV='+deviceState.pvTotal+'W');
       }
     } catch(e) { console.error('pollQuota:', e.message); }
