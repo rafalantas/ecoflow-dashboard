@@ -680,8 +680,8 @@ function combinedBankRuntime(bank1,bank2,hasBank2){
 function batteryFlows(power,state){
   power=Number(power)||0;state=Number(state)||0;
   // chgDsgState: 1 = rozladowanie, 2 = ladowanie (potwierdzone na zywo)
-  if(state===2)return{charging:Math.abs(power),discharging:0};
-  if(state===1)return{charging:0,discharging:Math.abs(power)};
+  if(state===2)return{charging:0,discharging:Math.abs(power)};
+  if(state===1)return{charging:Math.abs(power),discharging:0};
   return{charging:power>20?power:0,discharging:power< -20?Math.abs(power):0};
 }
 
