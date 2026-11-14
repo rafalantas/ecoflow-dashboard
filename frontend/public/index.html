@@ -678,13 +678,15 @@ function combinedBankRuntime(bank1,bank2,hasBank2){
   const dischargeRate=active.reduce((sum,bank)=>sum+bank.energy/bank.minutes,0);
   return dischargeRate>0?energy/dischargeRate:0;
 }
-function batteryFlows(power,state){
-  power=Number(power)||0;state=Number(state)||0;
-  // chgDsgState: 1 = rozladowanie, 2 = ladowanie (potwierdzone na zywo)
-  if(state===2)return{charging:0,discharging:Math.abs(power)};
-  if(state===1)return{charging:Math.abs(power),discharging:0};
-  return{charging:power>20?power:0,discharging:power< -20?Math.abs(power):0};
+// Kierunek ze znaku mocy: dodatnia = ladowanie, ujemna = rozladowanie (zgodnie z aplikacja EcoFlow).
+// chgDsgState NIE jest uzywany - przychodzi z roznych wiadomosci i skacze.
+// Moc w zakresie +-BAT_IDLE_W to szum pomiarowy = idle (jeden prog dla calego UI).
+const BAT_IDLE_W=5;
+function batteryFlows(power){
+  power=Number(power)||0;
+  return{charging:power>BAT_IDLE_W?power:0,discharging:power<-BAT_IDLE_W?-power:0};
 }
+function batteryIsCharging(s){return (Number(s?.battPower)||0)>BAT_IDLE_W;}
 
 function update(s){ window._lastState = s;
   ds=s;
@@ -699,9 +701,9 @@ function update(s){ window._lastState = s;
   if(elLoadNow) elLoadNow.textContent=(load>0?Math.round(load)+' W':'– W');
   const elPvNow=document.getElementById('eff-pv-now');
   if(elPvNow) elPvNow.textContent=(s.pvTotal>0?Math.round(s.pvTotal)+' W':'– W');
-  const bank1Flow=batteryFlows(s.battPower,s.chgDsgState),bank2Flow=batteryFlows(s.device2?.battPower,s.device2?.chgDsgState);
+  const bank1Flow=batteryFlows(s.battPower),bank2Flow=batteryFlows(s.device2?.battPower);
   const batCharge=bank1Flow.charging+bank2Flow.charging,batDischarge=bank1Flow.discharging+bank2Flow.discharging;
-  const batPwr=batCharge-batDischarge,batChg=batCharge>20&&batCharge>=batDischarge,batDsg=batDischarge>20&&batDischarge>batCharge;
+  const batPwr=batCharge-batDischarge,batChg=batCharge>0&&batCharge>=batDischarge,batDsg=batDischarge>0&&batDischarge>batCharge;
   const fromPv=s.loadFromPv||0, fromBat=s.loadFromBat||0, fromGrd=s.loadFromGrid||0;
   const pvActive=pv>5;
   const feedActive=feed>5, fromActive=from>5||fromGrd>5;
@@ -814,7 +816,7 @@ function update(s){ window._lastState = s;
   if(s.accuChgEnergy!=null) document.getElementById('b-ce').innerHTML=`${(s.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   if(s.accuDsgEnergy!=null) document.getElementById('b-de').innerHTML=`${(s.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
   // Czasy bank 1
-  const b1chg = s.chgDsgState===2 ? ft(s.chgRemTime1||s.chgRemTime) : '–';
+  const b1chg = batteryIsCharging(s) ? ft(s.chgRemTime1||s.chgRemTime) : '–';
   const b1dsg=bank1Runtime.minutes?`${bank1Runtime.estimated?'~':''}${ft(bank1Runtime.minutes)}`:'–';
   const b1ct=document.getElementById('b1-chg-time'), b1dt=document.getElementById('b1-dsg-time');
   if(b1ct) b1ct.textContent=b1chg;
@@ -835,7 +837,7 @@ function update(s){ window._lastState = s;
     if(d2.accuChgEnergy!=null) document.getElementById('b2-ce').innerHTML=`${(d2.accuChgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     if(d2.accuDsgEnergy!=null) document.getElementById('b2-de').innerHTML=`${(d2.accuDsgEnergy/1000).toFixed(2)}<span class="u"> kWh</span>`;
     // Czasy bank 2
-    const b2chg = d2.chgDsgState===2 ? ft(d2.chgRemTime) : '–';
+    const b2chg = batteryIsCharging(s) ? ft(d2.chgRemTime) : '–';
     const b2dsg=bank2Runtime.minutes?`${bank2Runtime.estimated?'~':''}${ft(bank2Runtime.minutes)}`:'–';
     const b2ct=document.getElementById('b2-chg-time'), b2dt=document.getElementById('b2-dsg-time');
     if(b2ct) b2ct.textContent=b2chg;

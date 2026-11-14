@@ -638,7 +638,7 @@ function applyParams(params) {
     deviceState.lastMqttData = Date.now();
     recordHistory();
     broadcast({ type: 'state', data: { ...deviceState, device2: deviceState2 } });
-    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc||0}%/${deviceState2.soc||0}% ${deviceState.chgDsgState===2?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${(deviceState.gridPower||0).toFixed(0)}W`);
+    console.log(`☀️  PV=${deviceState.pvTotal}W | BAT=${deviceState.soc||0}%/${deviceState2.soc||0}% ${deviceState.battPower>=0?'↑':'↓'} ${Math.round(Math.abs(deviceState.battPower))}W | GRID=${(deviceState.gridPower||0).toFixed(0)}W`);
   }
 }
 
