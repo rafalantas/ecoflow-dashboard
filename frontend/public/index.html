@@ -93,7 +93,7 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .estatval{font-family:var(--mono);font-size:18px;font-weight:500}
 .estatunit{font-size:10px;font-weight:400;color:var(--t2)}
 .estatsub{font-family:var(--mono);font-size:9px;margin-top:2px}
-.eff-sec{margin-top:14px}
+.eff-sec{margin-top:14px;max-width:100%;overflow:hidden}
 .mk{padding:10px;border-radius:8px;border:1px solid var(--brd);background:var(--sur)}
 .mk-lbl{font-family:var(--mono);font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
 .mk-val{font-family:var(--mono);font-size:15px;font-weight:500}
@@ -559,7 +559,7 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
     <div id="energy-extra" style="display:none"></div>
     <div class="eff-sec" id="eff-sec" style="display:none">
       <div class="card-title" style="margin-bottom:8px">// efektywność (%)</div>
-      <canvas id="effchart" height="70"></canvas>
+      <canvas id="effchart" height="70" style="display:block;width:100%;height:70px"></canvas>
     </div>
   </div>
 
