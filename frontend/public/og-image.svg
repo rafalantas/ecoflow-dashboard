@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#081522"/><stop offset=".58" stop-color="#102b3c"/><stop offset="1" stop-color="#071923"/></linearGradient><linearGradient id="sun" x2="0" y2="1"><stop stop-color="#ffe19a"/><stop offset="1" stop-color="#f3a629"/></linearGradient><linearGradient id="battery" x2="1" y2="1"><stop stop-color="#45d8e8"/><stop offset="1" stop-color="#0a819f"/></linearGradient></defs>
+<rect width="1200" height="630" rx="30" fill="url(#bg)"/><circle cx="1000" cy="90" r="180" fill="#17788a" opacity=".17"/>
+<path d="M0 490C180 435 275 520 440 470S745 380 910 465s210 55 290 10v155H0Z" fill="#0b5362" opacity=".5"/>
+<g transform="translate(74 130)">
+<rect width="82" height="82" rx="22" fill="#101e2c"/><circle cx="40" cy="29" r="13" fill="#ffbd4a"/>
+<g stroke="#ffbd4a" stroke-width="3" stroke-linecap="round"><path d="M40 7v5M40 46v5M18 29h5M57 29h5M24 13l4 4M53 41l4 4M56 13l-4 4M28 41l-4 4"/></g>
+<rect x="17" y="53" width="47" height="19" rx="5" fill="#102f38" stroke="#43c7db" stroke-width="2"/><rect x="22" y="58" width="28" height="9" rx="2" fill="#43c7db"/>
+<text x="105" y="61" font-family="Arial,sans-serif" font-size="51" font-weight="700" fill="#f3f7fc">EcoFlow <tspan fill="#ffbd4a">STREAM</tspan></text>
+<text x="0" y="145" font-family="Arial,sans-serif" font-size="28" fill="#e8f2f7">Inteligentny monitoring energii</text><text x="0" y="183" font-family="Arial,sans-serif" font-size="22" fill="#9db6c8">PV · magazyn energii · dom · sieć 3-fazowa</text>
+<g transform="translate(0 240)">
+<rect width="170" height="94" rx="16" fill="#11283a" stroke="#df9e35" stroke-width="2"/><text x="18" y="31" fill="#a9c0d0" font-family="Arial" font-size="16">Produkcja PV</text><text x="18" y="70" fill="#ffbd4a" font-family="Arial" font-size="31" font-weight="700">3.2 kW</text>
+<rect x="186" width="170" height="94" rx="16" fill="#11283a" stroke="#30b8d0" stroke-width="2"/><text x="204" y="31" fill="#a9c0d0" font-family="Arial" font-size="16">Bateria</text><text x="204" y="70" fill="#55d8ea" font-family="Arial" font-size="31" font-weight="700">84%</text>
+<rect x="372" width="170" height="94" rx="16" fill="#11283a" stroke="#39c68c" stroke-width="2"/><text x="390" y="31" fill="#a9c0d0" font-family="Arial" font-size="16">Zużycie domu</text><text x="390" y="70" fill="#55dfa6" font-family="Arial" font-size="31" font-weight="700">1.1 kW</text>
+</g></g>
+<g transform="translate(700 110)">
+<path d="M230 10L450 135L230 260L10 135Z" fill="#132d3e" stroke="#46677d" stroke-width="3"/>
+<path d="M230 10L450 135L230 260L10 135Z" fill="none" stroke="#42c5d7" stroke-opacity=".24" stroke-width="12"/>
+<g transform="translate(162 48)"><circle cx="68" cy="52" r="44" fill="url(#sun)"/><g stroke="#ffcf6c" stroke-width="6" stroke-linecap="round"><path d="M68 -8v-15M68 112v15M8 52H-7M128 52h15M25 9L14 -2M111 95l11 11M111 9l11 -11M25 95L14 106"/></g></g>
+<path d="M230 150V205" stroke="#ffb743" stroke-width="9" stroke-linecap="round"/><path d="M230 205L208 183M230 205l22-22" stroke="#ffb743" stroke-width="8" fill="none" stroke-linecap="round"/>
+<g transform="translate(175 220)"><rect width="110" height="155" rx="16" fill="url(#battery)" stroke="#84e4ec" stroke-width="3"/><rect x="38" y="-12" width="34" height="14" rx="5" fill="#43c7db"/><path d="M62 24L42 75h23l-12 44 36-61H65l13-34Z" fill="#e6fbff"/></g>
+<path d="M230 375V425H390" stroke="#3ed39a" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M390 425l-22-18m22 18-22 18" stroke="#3ed39a" stroke-width="8" fill="none" stroke-linecap="round"/>
+<g transform="translate(390 390)"><rect width="135" height="76" rx="14" fill="#122c3c" stroke="#42d39a" stroke-width="3"/><path d="M23 38h88M67 16v44" stroke="#42d39a" stroke-width="5" stroke-linecap="round"/></g>
+<path d="M230 260V305H55" stroke="#47c7e3" stroke-width="8" fill="none" stroke-linecap="round"/><path d="M55 305l20-18m-20 18 20 18" stroke="#47c7e3" stroke-width="7" fill="none" stroke-linecap="round"/>
+</g>
+<path d="M75 580H1125" stroke="#42c5d7" stroke-opacity=".3"/><text x="75" y="607" fill="#8eabbc" font-family="Arial,sans-serif" font-size="15" letter-spacing="2">PV.RAFALONTHE.NET · ENERGY AT A GLANCE</text>
+</svg>
