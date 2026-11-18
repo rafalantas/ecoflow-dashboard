@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "EcoFlow STREAM Dashboard",
+  "short_name": "EcoFlow",
+  "description": "Monitoring PV, baterii i przepływu energii.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a111c",
+  "theme_color": "#0a111c",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
