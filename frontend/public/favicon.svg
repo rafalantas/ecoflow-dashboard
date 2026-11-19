@@ -1,6 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<rect width="64" height="64" rx="16" fill="#101e2c"/>
-<circle cx="31" cy="23" r="11" fill="#ffbd4a"/>
-<g stroke="#ffbd4a" stroke-width="3" stroke-linecap="round"><path d="M31 5v4M31 37v4M13 23h4M45 23h4M18 10l3 3M42 33l3 3M44 10l-3 3M20 33l-3 3"/></g>
-<rect x="13" y="42" width="38" height="15" rx="4" fill="#102f38" stroke="#43c7db" stroke-width="2"/><rect x="17" y="46" width="23" height="7" rx="2" fill="#43c7db"/><path d="M52 47h3v5h-3" fill="#43c7db"/>
+  <style>
+    .tile { fill: #101e2c; stroke: #20384a; stroke-opacity: .32; }
+    .battery-shell { fill: #102f38; stroke: #43c7db; }
+    .battery-level { fill: #43c7db; }
+    .battery-cap { fill: #43c7db; }
+    @media (prefers-color-scheme: light) {
+      .tile { fill: #eef3f8; stroke: #9aabba; stroke-opacity: .42; }
+      .battery-shell { fill: #dceff3; stroke: #087f96; }
+      .battery-level { fill: #0b9fb7; }
+      .battery-cap { fill: #087f96; }
+    }
+  </style>
+  <rect class="tile" width="64" height="64" rx="16"/>
+  <circle cx="31" cy="23" r="11" fill="#ffbd4a"/>
+  <g stroke="#ffbd4a" stroke-width="3" stroke-linecap="round">
+    <path d="M31 5v4M31 37v4M13 23h4M45 23h4M18 10l3 3M42 33l3 3M44 10l-3 3M20 33l-3 3"/>
+  </g>
+  <rect class="battery-shell" x="13" y="42" width="38" height="15" rx="4" stroke-width="2"/>
+  <rect class="battery-level" x="17" y="46" width="23" height="7" rx="2"/>
+  <path class="battery-cap" d="M52 47h3v5h-3"/>
 </svg>
