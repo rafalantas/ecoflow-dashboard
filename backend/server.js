@@ -5,6 +5,7 @@ const mqtt      = require('mqtt');
 const path      = require('path');
 const crypto    = require('crypto');
 const axios     = require('axios');
+const { isValidDateString, isValidPeriod } = require('./validation');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT       = process.env.PORT          || 8080;
@@ -34,10 +35,12 @@ const AVG_SUN_BY_MONTH = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
 function isAuthorized(req) {
   if (!DASHBOARD_PASSWORD) return true;
   const header = req.headers.authorization || '';
-  const match = header.match(/^Basic\s+(.+)$/i);
-  if (!match) return false;
+  const schemeEnd = header.indexOf(' ');
+  if (schemeEnd < 0 || header.slice(0, schemeEnd).toLowerCase() !== 'basic') return false;
+  const encoded = header.slice(schemeEnd + 1).trim();
+  if (!encoded || /\s/.test(encoded)) return false;
   let supplied;
-  try { supplied = Buffer.from(match[1], 'base64').toString('utf8'); }
+  try { supplied = Buffer.from(encoded, 'base64').toString('utf8'); }
   catch (_) { return false; }
   const separator = supplied.indexOf(':');
   if (separator < 0) return false;
@@ -318,6 +321,34 @@ app.use((req, res, next) => {
   res.status(401).send('Wymagane logowanie.');
 });
 
+// Ograniczenie liczby żądań API: chroni kosztowne endpointy przed nadużyciem.
+const API_RATE_WINDOW_MS = 60 * 1000;
+const API_RATE_LIMIT = 120;
+const apiRateBuckets = new Map();
+function apiRateLimit(req, res, next) {
+  const now = Date.now();
+  const key = req.ip || req.socket.remoteAddress || 'unknown';
+  let bucket = apiRateBuckets.get(key);
+  if (!bucket || now - bucket.startedAt >= API_RATE_WINDOW_MS) {
+    bucket = { startedAt: now, count: 0 };
+    apiRateBuckets.set(key, bucket);
+  }
+  bucket.count += 1;
+  if (apiRateBuckets.size > 10000) {
+    for (const [ip, item] of apiRateBuckets) {
+      if (now - item.startedAt >= API_RATE_WINDOW_MS) apiRateBuckets.delete(ip);
+    }
+  }
+  res.set('X-RateLimit-Limit', String(API_RATE_LIMIT));
+  res.set('X-RateLimit-Remaining', String(Math.max(0, API_RATE_LIMIT - bucket.count)));
+  if (bucket.count > API_RATE_LIMIT) {
+    res.set('Retry-After', String(Math.ceil((API_RATE_WINDOW_MS - (now - bucket.startedAt)) / 1000)));
+    return res.status(429).json({ error: 'rate_limit_exceeded' });
+  }
+  return next();
+}
+
+app.use('/api', apiRateLimit);
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json({...deviceState, device2: deviceState2}));
 app.get('/api/history', (_, res) => res.json(history));
@@ -503,9 +534,23 @@ app.get('/api/prices', async (req, res) => {
 });
 
 app.get('/api/energy', async (req, res) => {
-  const period  = req.query.period || 'day';
-  const today   = warsawDate();
-  const refDate = req.query.date || today;
+  const rawPeriod = req.query.period;
+  // Normalize request input in the assignment itself: downstream helpers
+  // receive only a scalar string from the allow-list.
+  const period = typeof rawPeriod === 'string' &&
+    ['day', 'week', 'month', 'year'].includes(rawPeriod)
+      ? rawPeriod
+      : rawPeriod === undefined ? 'day' : null;
+  if (period === null) return res.status(400).json({ error: 'invalid_period' });
+
+  const today = warsawDate();
+  const rawDate = req.query.date;
+  // Normalize to a validated scalar before using it in cache keys or date helpers.
+  const refDate = typeof rawDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && isValidDateString(rawDate)
+      ? rawDate
+      : rawDate === undefined ? today : null;
+  if (refDate === null) return res.status(400).json({ error: 'invalid_date' });
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
   if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);

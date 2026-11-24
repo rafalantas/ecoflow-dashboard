@@ -704,6 +704,15 @@ function batteryFlows(power){
 }
 function batteryIsCharging(s){return (Number(s?.battPower)||0)>BAT_IDLE_W;}
 
+function setValueWithUnit(id, value, unit, className) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const unitEl = document.createElement('span');
+  if (className) unitEl.className = className;
+  unitEl.textContent = unit;
+  el.replaceChildren(document.createTextNode(String(value)), unitEl);
+}
+
 function update(s){ window._lastState = s;
   ds=s;
   if(s.lastUpdate) document.getElementById('ts').textContent=new Date(s.lastUpdate).toLocaleTimeString('pl-PL');
@@ -805,7 +814,7 @@ function update(s){ window._lastState = s;
   ):0;
   const bsys = document.getElementById('b-soc-system');
   const bbsys = document.getElementById('b-bar-system');
-  if(bsys) bsys.innerHTML=`${sysSoc}<span class="bat-soc-u">%</span>`;
+  if(bsys) setValueWithUnit('b-soc-system', sysSoc, '%', 'bat-soc-u');
   if(bbsys){ bbsys.style.width=sysSoc+'%'; bbsys.style.background=sysSoc>60?'var(--bat)':sysSoc>25?'var(--pv)':'var(--grid-out)'; }
   document.getElementById('b-range').textContent=`${s.minDsgSoc||20}% – ${s.maxChgSoc||95}%`;
   const bcomb = document.getElementById('b-combined-kwh');
@@ -823,7 +832,7 @@ function update(s){ window._lastState = s;
 
   // === BANK 1 ===
   const b1=document.getElementById('b-soc'), b1bar=document.getElementById('b-bar');
-  if(b1) b1.innerHTML=`${soc}<span style="font-size:16px;color:var(--t2)">%</span>`;
+  if(b1) setValueWithUnit('b-soc', soc, '%', 'bat-soc-u');
   if(b1bar){ b1bar.style.width=soc+'%'; b1bar.style.background=soc>60?'var(--bat)':soc>25?'var(--pv)':'var(--grid-out)'; }
   document.getElementById('b-temp').textContent=s.maxCellTemp?`${s.minCellTemp}–${s.maxCellTemp} °C`:'–';
   if(s.vBat) document.getElementById('b-volt').textContent=(s.vBat/1000).toFixed(2)+' V';
@@ -843,7 +852,7 @@ function update(s){ window._lastState = s;
   if(s.device2) {
     const d2=s.device2||{};
     const b2=document.getElementById('b2-soc'), b2bar=document.getElementById('b2-bar');
-    if(b2) b2.innerHTML=`${soc2==null?'–':soc2}<span style="font-size:16px;color:var(--t2)">%</span>`;
+    if(b2) setValueWithUnit('b2-soc', soc2==null?'–':soc2, '%', 'bat-soc-u');
     if(b2bar){ b2bar.style.width=(soc2??0)+'%'; b2bar.style.background=soc2>60?'var(--bat)':soc2>25?'var(--pv)':'var(--grid-out)'; }
     const t2=document.getElementById('b2-temp');
     if(t2) t2.textContent=d2.maxCellTemp?`${d2.minCellTemp||'?'}–${d2.maxCellTemp} °C`:'–';
@@ -1034,7 +1043,16 @@ function setupTT(){
     if(curP==='week') lb=['Niedziela','Poniedziałek','Wtorek','Środa','Czwartek','Piątek','Sobota'][new Date(d.time+'T12:00').getDay()];
     if(curP==='month') lb=new Date(d.time+'T12:00').toLocaleDateString('pl-PL',{day:'numeric',month:'long'});
     if(curP==='year') lb=['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'][new Date(d.time+'T12:00').getMonth()];
-    tt.innerHTML=`<span style="color:var(--t2)">${lb}</span><br><span style="color:var(--pv);font-size:14px;font-weight:500">${(d.wh/1000).toFixed(2)}</span><span style="color:var(--t2)"> kWh</span>`;
+    const dateLabel = document.createElement('span');
+    dateLabel.style.color = 'var(--t2)';
+    dateLabel.textContent = lb;
+    const valueLabel = document.createElement('span');
+    valueLabel.style.cssText = 'color:var(--pv);font-size:14px;font-weight:500';
+    valueLabel.textContent = (d.wh/1000).toFixed(2);
+    const unitLabel = document.createElement('span');
+    unitLabel.style.color = 'var(--t2)';
+    unitLabel.textContent = ' kWh';
+    tt.replaceChildren(dateLabel, document.createElement('br'), valueLabel, unitLabel);
     tt.style.display='block';
     const bx=p.l+(ci/n)*cw+(cw/n)/2,tw=tt.offsetWidth;
     let tx=bx-tw/2;if(tx<0)tx=4;if(tx+tw>ec.offsetWidth)tx=ec.offsetWidth-tw-4;
@@ -1112,7 +1130,7 @@ function showEnergy(data){
   if(data.earnings!=null){
     const lbl={day:'Zyski (dziś)',week:'Zyski (tydz.)',month:'Zyski (mies.)',year:'Zyski (rok)'};
     document.getElementById('earn-lbl').textContent=lbl[curP]||'Zyski';
-    document.getElementById('e-earn').innerHTML=`${data.earnings.toFixed(2)}<span class="estatunit"> ${data.currency||'zł'}</span>`;
+    setValueWithUnit('e-earn', data.earnings.toFixed(2), ' '+(data.currency||'zł'), 'estatunit');
     document.getElementById('est-earn').style.display='flex';hs=true;
   } else document.getElementById('est-earn').style.display='none';
 
