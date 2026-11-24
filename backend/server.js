@@ -503,9 +503,11 @@ app.get('/api/prices', async (req, res) => {
 });
 
 app.get('/api/energy', async (req, res) => {
-  const period  = req.query.period || 'day';
+  const rawPeriod = req.query.period;
+  const period = (typeof rawPeriod === 'string' && ['day', 'week', 'month', 'year'].includes(rawPeriod)) ? rawPeriod : 'day';
   const today   = warsawDate();
-  const refDate = req.query.date || today;
+  const rawDate = req.query.date;
+  const refDate = (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) ? rawDate : today;
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
   if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);
