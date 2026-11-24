@@ -315,7 +315,10 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
-app.use(apiRateLimit, (req, res, next) => {
+// Limit API traffic before authentication so unauthenticated requests are throttled too.
+app.use('/api', apiRateLimit);
+
+app.use((req, res, next) => {
   if (isAuthorized(req)) return next();
   res.set('WWW-Authenticate', 'Basic realm="EcoFlow Dashboard", charset="UTF-8"');
   res.status(401).send('Wymagane logowanie.');
@@ -348,7 +351,6 @@ function apiRateLimit(req, res, next) {
   return next();
 }
 
-app.use('/api', apiRateLimit);
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json({...deviceState, device2: deviceState2}));
 app.get('/api/history', (_, res) => res.json(history));
