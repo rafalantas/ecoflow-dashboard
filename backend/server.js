@@ -1,4 +1,5 @@
 const express   = require('express');
+const { rateLimit } = require('express-rate-limit');
 const http      = require('http');
 const WebSocket = require('ws');
 const mqtt      = require('mqtt');
@@ -324,32 +325,14 @@ app.use((req, res, next) => {
   res.status(401).send('Wymagane logowanie.');
 });
 
-// Ograniczenie liczby żądań API: chroni kosztowne endpointy przed nadużyciem.
-const API_RATE_WINDOW_MS = 60 * 1000;
-const API_RATE_LIMIT = 120;
-const apiRateBuckets = new Map();
-function apiRateLimit(req, res, next) {
-  const now = Date.now();
-  const key = req.ip || req.socket.remoteAddress || 'unknown';
-  let bucket = apiRateBuckets.get(key);
-  if (!bucket || now - bucket.startedAt >= API_RATE_WINDOW_MS) {
-    bucket = { startedAt: now, count: 0 };
-    apiRateBuckets.set(key, bucket);
-  }
-  bucket.count += 1;
-  if (apiRateBuckets.size > 10000) {
-    for (const [ip, item] of apiRateBuckets) {
-      if (now - item.startedAt >= API_RATE_WINDOW_MS) apiRateBuckets.delete(ip);
-    }
-  }
-  res.set('X-RateLimit-Limit', String(API_RATE_LIMIT));
-  res.set('X-RateLimit-Remaining', String(Math.max(0, API_RATE_LIMIT - bucket.count)));
-  if (bucket.count > API_RATE_LIMIT) {
-    res.set('Retry-After', String(Math.ceil((API_RATE_WINDOW_MS - (now - bucket.startedAt)) / 1000)));
-    return res.status(429).json({ error: 'rate_limit_exceeded' });
-  }
-  return next();
-}
+// Recognized rate-limiting middleware: protect all HTTP routes before authentication.
+const apiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ error: 'rate_limit_exceeded' })
+});
 
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json({...deviceState, device2: deviceState2}));
