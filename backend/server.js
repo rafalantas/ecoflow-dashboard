@@ -65,6 +65,15 @@ function warsawDate(date = new Date()) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+function isValidDateString(value) {
+  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day;
+}
+
 function addCalendarDays(dateString, days) {
   const date = new Date(`${dateString}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -503,9 +512,19 @@ app.get('/api/prices', async (req, res) => {
 });
 
 app.get('/api/energy', async (req, res) => {
-  const period  = req.query.period || 'day';
-  const today   = warsawDate();
-  const refDate = req.query.date || today;
+  const allowedPeriods = new Set(['day', 'week', 'month', 'year']);
+  const requestedPeriod = req.query.period;
+  if (requestedPeriod !== undefined &&
+      (typeof requestedPeriod !== 'string' || !allowedPeriods.has(requestedPeriod))) {
+    return res.status(400).json({ error: 'invalid_period' });
+  }
+  const period = requestedPeriod === undefined ? 'day' : requestedPeriod;
+  const today = warsawDate();
+  const requestedDate = req.query.date;
+  if (requestedDate !== undefined && !isValidDateString(requestedDate)) {
+    return res.status(400).json({ error: 'invalid_date' });
+  }
+  const refDate = requestedDate === undefined ? today : requestedDate;
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
   if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);
