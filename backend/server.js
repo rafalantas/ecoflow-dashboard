@@ -316,15 +316,6 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
-// Limit traffic before authentication so unauthenticated requests are throttled too.
-app.use(apiRateLimit);
-
-app.use((req, res, next) => {
-  if (isAuthorized(req)) return next();
-  res.set('WWW-Authenticate', 'Basic realm="EcoFlow Dashboard", charset="UTF-8"');
-  res.status(401).send('Wymagane logowanie.');
-});
-
 // Recognized rate-limiting middleware: protect all HTTP routes before authentication.
 const apiRateLimit = rateLimit({
   windowMs: 60 * 1000,
@@ -332,6 +323,15 @@ const apiRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => res.status(429).json({ error: 'rate_limit_exceeded' })
+});
+
+// Limit traffic before authentication so unauthenticated requests are throttled too.
+app.use(apiRateLimit);
+
+app.use((req, res, next) => {
+  if (isAuthorized(req)) return next();
+  res.set('WWW-Authenticate', 'Basic realm="EcoFlow Dashboard", charset="UTF-8"');
+  res.status(401).send('Wymagane logowanie.');
 });
 
 app.use(express.static(path.join(__dirname, '../frontend/public')));
