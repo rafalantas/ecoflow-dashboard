@@ -462,42 +462,43 @@ app.get('/api/prices', async (req, res) => {
     const dayAfterTomorrow = addCalendarDays(today, 2);
     const windowStart = warsawMidnightUtc(today);
     const windowEnd = new Date(Date.parse(warsawMidnightUtc(dayAfterTomorrow)) - 1000).toISOString();
-    // Pstryk's documented prosumer-pricing endpoint returns hourly frames
-    // with price_gross / price_net and is_cheap / is_expensive fields.
-    const params = {
-      resolution: 'hour',
-      window_start: windowStart,
-      window_end: windowEnd,
-      for_tz: 'Europe/Warsaw',
-    };
-    const apiKey = PSTRYK_KEY.startsWith('sk-') ? PSTRYK_KEY : `sk-${PSTRYK_KEY}`;
-    const r = await axios.get('https://api.pstryk.pl/integrations/prosumer-pricing/', {
-      headers: { 'Authorization': apiKey, 'Accept': 'application/json' },
-      params,
+    // Keep the standard Pstryk endpoint: it is accessible with the user's
+    // regular API key and returns the full hourly pricing breakdown.
+    const url = `https://api.pstryk.pl/integrations/meter-data/unified-metrics/?metrics=pricing&resolution=hour&window_start=${windowStart}&window_end=${windowEnd}`;
+    const r = await axios.get(url, {
+      headers: { 'Authorization': PSTRYK_KEY, 'Accept': 'application/json' },
       timeout: 10000,
     });
     const frames = Array.isArray(r.data?.frames) ? r.data.frames : [];
     const prices = frames
-      .filter(f => f && typeof f.start === 'string' &&
-        (typeof f.price_gross === 'number' || typeof f.price_gross_avg === 'number'))
-      .map(f => ({
-        start: f.start,
-        end: f.end,
-        price: f.price_gross ?? f.price_gross_avg,
-        priceNet: f.price_net ?? f.price_net_avg ?? null,
-        priceProsumer: f.price_gross ?? f.price_gross_avg,
-        isCheap: f.is_cheap === true,
-        isExpensive: f.is_expensive === true,
-      }));
+      .filter(f => {
+        const p = f?.metrics?.pricing;
+        return typeof f?.start === 'string' &&
+          p && Number.isFinite(p.full_price ?? p.price_gross);
+      })
+      .map(f => {
+        const p = f.metrics.pricing;
+        return {
+          start: f.start,
+          end: f.end,
+          // Keep the existing e-paper contract: price is the full retail price.
+          price: p.full_price ?? p.price_gross,
+          priceNet: p.price_net ?? null,
+          // Prosumer compensation is a distinct value, not the retail gross price.
+          priceProsumer: p.price_prosumer_gross ?? null,
+          isCheap: p.is_cheap === true,
+          isExpensive: p.is_expensive === true,
+        };
+      });
     if (prices.length === 0) {
       console.error('Pstryk pricing: response contained no usable hourly prices');
       return res.status(502).json({ error: 'no_price_frames', prices: [] });
     }
     pricesCache = { data: { prices }, fetchedAt: now };
-    res.json({ prices });
+    return res.json({ prices });
   } catch(e) {
     console.error('Pstryk pricing error:', e.response?.status || e.message);
-    res.status(502).json({ error: 'pstryk_unavailable', prices: [] });
+    return res.status(502).json({ error: 'pstryk_unavailable', prices: [] });
   }
 });
 
