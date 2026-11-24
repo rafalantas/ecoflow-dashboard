@@ -315,7 +315,7 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
-app.use((req, res, next) => {
+app.use(apiRateLimit, (req, res, next) => {
   if (isAuthorized(req)) return next();
   res.set('WWW-Authenticate', 'Basic realm="EcoFlow Dashboard", charset="UTF-8"');
   res.status(401).send('Wymagane logowanie.');
