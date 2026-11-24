@@ -315,8 +315,8 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
-// Limit API traffic before authentication so unauthenticated requests are throttled too.
-app.use('/api', apiRateLimit);
+// Limit traffic before authentication so unauthenticated requests are throttled too.
+app.use(apiRateLimit);
 
 app.use((req, res, next) => {
   if (isAuthorized(req)) return next();
