@@ -462,20 +462,44 @@ app.get('/api/prices', async (req, res) => {
     const dayAfterTomorrow = addCalendarDays(today, 2);
     const windowStart = warsawMidnightUtc(today);
     const windowEnd = new Date(Date.parse(warsawMidnightUtc(dayAfterTomorrow)) - 1000).toISOString();
+    // Keep the standard Pstryk endpoint: it is accessible with the user's
+    // regular API key and returns the full hourly pricing breakdown.
     const url = `https://api.pstryk.pl/integrations/meter-data/unified-metrics/?metrics=pricing&resolution=hour&window_start=${windowStart}&window_end=${windowEnd}`;
-    const r = await axios.get(url, { headers: { 'Authorization': PSTRYK_KEY }, timeout: 10000 });
-    const frames = r.data.frames || [];
-    const prices = frames.map(f => ({
-      start: f.start, end: f.end,
-      price: f.metrics?.pricing?.full_price,
-      priceNet: f.metrics?.pricing?.price_net,
-      priceProsumer: f.metrics?.pricing?.price_prosumer_gross,
-      isCheap: f.metrics?.pricing?.is_cheap,
-      isExpensive: f.metrics?.pricing?.is_expensive,
-    }));
+    const r = await axios.get(url, {
+      headers: { 'Authorization': PSTRYK_KEY, 'Accept': 'application/json' },
+      timeout: 10000,
+    });
+    const frames = Array.isArray(r.data?.frames) ? r.data.frames : [];
+    const prices = frames
+      .filter(f => {
+        const p = f?.metrics?.pricing;
+        return typeof f?.start === 'string' &&
+          p && Number.isFinite(p.full_price ?? p.price_gross);
+      })
+      .map(f => {
+        const p = f.metrics.pricing;
+        return {
+          start: f.start,
+          end: f.end,
+          // Keep the existing e-paper contract: price is the full retail price.
+          price: p.full_price ?? p.price_gross,
+          priceNet: p.price_net ?? null,
+          // Prosumer compensation is a distinct value, not the retail gross price.
+          priceProsumer: p.price_prosumer_gross ?? null,
+          isCheap: p.is_cheap === true,
+          isExpensive: p.is_expensive === true,
+        };
+      });
+    if (prices.length === 0) {
+      console.error('Pstryk pricing: response contained no usable hourly prices');
+      return res.status(502).json({ error: 'no_price_frames', prices: [] });
+    }
     pricesCache = { data: { prices }, fetchedAt: now };
-    res.json({ prices });
-  } catch(e) { res.json({ error: e.message }); }
+    return res.json({ prices });
+  } catch(e) {
+    console.error('Pstryk pricing error:', e.response?.status || e.message);
+    return res.status(502).json({ error: 'pstryk_unavailable', prices: [] });
+  }
 });
 
 app.get('/api/energy', async (req, res) => {
