@@ -5,6 +5,7 @@ const mqtt      = require('mqtt');
 const path      = require('path');
 const crypto    = require('crypto');
 const axios     = require('axios');
+const { isValidDateString, isValidPeriod } = require('./validation');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT       = process.env.PORT          || 8080;
@@ -34,10 +35,12 @@ const AVG_SUN_BY_MONTH = [2.0,3.0,4.5,5.5,6.5,7.0,6.5,6.0,4.5,3.0,2.0,1.5];
 function isAuthorized(req) {
   if (!DASHBOARD_PASSWORD) return true;
   const header = req.headers.authorization || '';
-  const match = header.match(/^Basic\s+(.+)$/i);
-  if (!match) return false;
+  const schemeEnd = header.indexOf(' ');
+  if (schemeEnd < 0 || header.slice(0, schemeEnd).toLowerCase() !== 'basic') return false;
+  const encoded = header.slice(schemeEnd + 1).trim();
+  if (!encoded || /\s/.test(encoded)) return false;
   let supplied;
-  try { supplied = Buffer.from(match[1], 'base64').toString('utf8'); }
+  try { supplied = Buffer.from(encoded, 'base64').toString('utf8'); }
   catch (_) { return false; }
   const separator = supplied.indexOf(':');
   if (separator < 0) return false;
@@ -63,15 +66,6 @@ function warsawDate(date = new Date()) {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
-}
-
-function isValidDateString(value) {
-  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day;
 }
 
 function addCalendarDays(dateString, days) {
@@ -327,6 +321,7 @@ app.use((req, res, next) => {
   res.status(401).send('Wymagane logowanie.');
 });
 
+app.use('/api', apiRateLimit);
 app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.get('/api/state',   (_, res) => res.json({...deviceState, device2: deviceState2}));
 app.get('/api/history', (_, res) => res.json(history));
@@ -512,10 +507,8 @@ app.get('/api/prices', async (req, res) => {
 });
 
 app.get('/api/energy', async (req, res) => {
-  const allowedPeriods = new Set(['day', 'week', 'month', 'year']);
   const requestedPeriod = req.query.period;
-  if (requestedPeriod !== undefined &&
-      (typeof requestedPeriod !== 'string' || !allowedPeriods.has(requestedPeriod))) {
+  if (requestedPeriod !== undefined && !isValidPeriod(requestedPeriod)) {
     return res.status(400).json({ error: 'invalid_period' });
   }
   const period = requestedPeriod === undefined ? 'day' : requestedPeriod;
