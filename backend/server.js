@@ -535,21 +535,22 @@ app.get('/api/prices', async (req, res) => {
 
 app.get('/api/energy', async (req, res) => {
   const rawPeriod = req.query.period;
-  // Keep the type check and allow-list inline so CodeQL can verify that
-  // request-controlled values are narrowed before use.
-  if (rawPeriod !== undefined &&
-      (typeof rawPeriod !== 'string' || !['day', 'week', 'month', 'year'].includes(rawPeriod))) {
-    return res.status(400).json({ error: 'invalid_period' });
-  }
-  const period = rawPeriod === undefined ? 'day' : rawPeriod;
+  // Normalize request input in the assignment itself: downstream helpers
+  // receive only a scalar string from the allow-list.
+  const period = typeof rawPeriod === 'string' &&
+    ['day', 'week', 'month', 'year'].includes(rawPeriod)
+      ? rawPeriod
+      : rawPeriod === undefined ? 'day' : null;
+  if (period === null) return res.status(400).json({ error: 'invalid_period' });
+
   const today = warsawDate();
   const rawDate = req.query.date;
-  // Check the scalar type and exact wire format before calendar validation.
-  if (rawDate !== undefined &&
-      (typeof rawDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) || !isValidDateString(rawDate))) {
-    return res.status(400).json({ error: 'invalid_date' });
-  }
-  const refDate = rawDate === undefined ? today : rawDate;
+  // Normalize to a validated scalar before using it in cache keys or date helpers.
+  const refDate = typeof rawDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && isValidDateString(rawDate)
+      ? rawDate
+      : rawDate === undefined ? today : null;
+  if (refDate === null) return res.status(400).json({ error: 'invalid_date' });
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
   if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);
