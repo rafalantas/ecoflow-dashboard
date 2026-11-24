@@ -534,19 +534,22 @@ app.get('/api/prices', async (req, res) => {
 });
 
 app.get('/api/energy', async (req, res) => {
-  const requestedPeriod = req.query.period;
-  if (requestedPeriod !== undefined &&
-      (Array.isArray(requestedPeriod) || typeof requestedPeriod !== 'string' || !isValidPeriod(requestedPeriod))) {
+  const rawPeriod = req.query.period;
+  // Keep the type check and allow-list inline so CodeQL can verify that
+  // request-controlled values are narrowed before use.
+  if (rawPeriod !== undefined &&
+      (typeof rawPeriod !== 'string' || !['day', 'week', 'month', 'year'].includes(rawPeriod))) {
     return res.status(400).json({ error: 'invalid_period' });
   }
-  const period = requestedPeriod === undefined ? 'day' : requestedPeriod;
+  const period = rawPeriod === undefined ? 'day' : rawPeriod;
   const today = warsawDate();
-  const requestedDate = req.query.date;
-  if (requestedDate !== undefined &&
-      (Array.isArray(requestedDate) || typeof requestedDate !== 'string' || !isValidDateString(requestedDate))) {
+  const rawDate = req.query.date;
+  // Check the scalar type and exact wire format before calendar validation.
+  if (rawDate !== undefined &&
+      (typeof rawDate !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(rawDate) || !isValidDateString(rawDate))) {
     return res.status(400).json({ error: 'invalid_date' });
   }
-  const refDate = requestedDate === undefined ? today : requestedDate;
+  const refDate = rawDate === undefined ? today : rawDate;
   const cacheKey = `${period}:${refDate}`;
   const ttl = refDate === today ? 60000 : 3600000;
   if (energyCache[cacheKey] && Date.now() - energyCache[cacheKey].fetchedAt < ttl) return res.json(energyCache[cacheKey]);
