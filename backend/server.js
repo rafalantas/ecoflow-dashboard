@@ -535,13 +535,15 @@ app.get('/api/prices', async (req, res) => {
 
 app.get('/api/energy', async (req, res) => {
   const requestedPeriod = req.query.period;
-  if (requestedPeriod !== undefined && !isValidPeriod(requestedPeriod)) {
+  if (requestedPeriod !== undefined &&
+      (Array.isArray(requestedPeriod) || typeof requestedPeriod !== 'string' || !isValidPeriod(requestedPeriod))) {
     return res.status(400).json({ error: 'invalid_period' });
   }
   const period = requestedPeriod === undefined ? 'day' : requestedPeriod;
   const today = warsawDate();
   const requestedDate = req.query.date;
-  if (requestedDate !== undefined && !isValidDateString(requestedDate)) {
+  if (requestedDate !== undefined &&
+      (Array.isArray(requestedDate) || typeof requestedDate !== 'string' || !isValidDateString(requestedDate))) {
     return res.status(400).json({ error: 'invalid_date' });
   }
   const refDate = requestedDate === undefined ? today : requestedDate;
