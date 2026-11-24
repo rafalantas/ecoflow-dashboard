@@ -546,7 +546,7 @@ app.get('/api/energy', async (req, res) => {
   const rawDate = req.query.date;
   // Check the scalar type and exact wire format before calendar validation.
   if (rawDate !== undefined &&
-      (typeof rawDate !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(rawDate) || !isValidDateString(rawDate))) {
+      (typeof rawDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) || !isValidDateString(rawDate))) {
     return res.status(400).json({ error: 'invalid_date' });
   }
   const refDate = rawDate === undefined ? today : rawDate;
