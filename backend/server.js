@@ -316,7 +316,7 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
-// Recognized rate-limiting middleware: protect all HTTP routes before authentication.
+// Rate-limit API traffic before authentication; static assets must not consume API quota.
 const apiRateLimit = rateLimit({
   windowMs: 60 * 1000,
   limit: 120,
@@ -325,8 +325,9 @@ const apiRateLimit = rateLimit({
   handler: (_req, res) => res.status(429).json({ error: 'rate_limit_exceeded' })
 });
 
-// Limit traffic before authentication so unauthenticated requests are throttled too.
-app.use(apiRateLimit);
+// Limit traffic before authentication so unauthenticated API requests are throttled too.
+// Keep static HTML/CSS/JS/images outside this quota.
+app.use('/api', apiRateLimit);
 
 app.use((req, res, next) => {
   if (isAuthorized(req)) return next();
