@@ -48,6 +48,11 @@ body{background:var(--bg);color:var(--t1);font-family:var(--sans);min-height:100
 .logo{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--t1);display:flex;align-items:center;gap:8px}
 .logo::before{display:none}
 .logo span{color:var(--pv)}
+.logo-mark{display:block;flex:none}
+.logo-tile{fill:var(--sur2);stroke:var(--brd);stroke-width:1}
+.logo-sun,.logo-rays{fill:var(--pv);stroke:var(--pv)}
+.logo-battery{fill:var(--sur2);stroke:var(--bat)}
+.logo-level,.logo-cap{fill:var(--bat)}
 .topbar-r{display:flex;align-items:center;gap:14px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--grid-out);transition:all .3s}
 .dot.on{background:var(--grid-in);box-shadow:0 0 0 3px rgba(16,185,129,.2)}
@@ -201,7 +206,19 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
 </head>
 <body>
 <div class="topbar">
-  <div class="logo"><img src="/favicon.svg?v=2" width="40" height="40" style="margin-right:8px;vertical-align:middle">EcoFlow <span>STREAM</span></div>
+  <div class="logo" aria-label="EcoFlow STREAM Dashboard">
+    <svg class="logo-mark" viewBox="0 0 64 64" width="40" height="40" aria-hidden="true" focusable="false">
+      <rect class="logo-tile" width="64" height="64" rx="16"/>
+      <circle class="logo-sun" cx="31" cy="23" r="11"/>
+      <g class="logo-rays" stroke-width="3" stroke-linecap="round">
+        <path d="M31 5v4M31 37v4M13 23h4M45 23h4M18 10l3 3M42 33l3 3M44 10l-3 3M20 33l-3 3"/>
+      </g>
+      <rect class="logo-battery" x="13" y="42" width="38" height="15" rx="4" stroke-width="2"/>
+      <rect class="logo-level" x="17" y="46" width="23" height="7" rx="2"/>
+      <path class="logo-cap" d="M52 47h3v5h-3"/>
+    </svg>
+    EcoFlow <span>STREAM</span>
+  </div>
   <div class="topbar-r">
     <div class="dot" id="dot"></div>
     <span id="connection-label" class="connection-label">Łączenie…</span>
