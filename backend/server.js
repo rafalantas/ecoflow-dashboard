@@ -349,7 +349,6 @@ app.get('/api/efficiency', async (req, res) => {
     const PANEL_MAX_W = 2030;
 
     const CODES = {
-      independence: 'BK621-App-HOME-INDEPENDENCE-PERCENT-FLOW-indep-progress_bar-NOTDISTINGUISH-MASTER_DATA',
       solar:        'BK621-App-HOME-SOLAR-ENERGY-FLOW-solor-line-NOTDISTINGUISH-MASTER_DATA',
       consumption:  'BK621-App-HOME-LOAD-ENERGY-FLOW-consumption-prop_arc-NOTDISTINGUISH-MASTER_DATA',
       grid:         'BK621-App-HOME-GRID-ENERGY-FLOW-grid_prop_bar-NOTDISTINGUISH-MASTER_DATA',
@@ -374,17 +373,21 @@ app.get('/api/efficiency', async (req, res) => {
     const toGridWh      = getVal(results.grid, '2');
     const batChgWh      = getVal(results.battery, '2');
     const batDsgWh      = getVal(results.battery, '1');
-    const independence  = getVal(results.independence, undefined);
     const co2g          = getVal(results.co2, undefined);
 
-    // Fallback: prywatne API gdy oficjalne zwraca 0
-    if ((solarWh === 0 || isNaN(solarWh)) && privateToken) {
-      try {
-        const privData = await fetchEnergyForPeriod('day', localDate);
-        if (privData?.totalKwh > 0) solarWh = privData.totalKwh * 1000;
-        if (privData?.loadKwh > 0) consumptionWh = privData.loadKwh * 1000;
-      } catch(e) { if(e.message) console.debug('catch:', e.message.slice(0,60)); }
+    // Główne wartości energii i efektywność pobieramy z tego samego
+    // endpointu SPACE, którego używa widok statystyk zgodny z aplikacją EcoFlow.
+    // Nie mieszamy go z historycznym quota API (inna skala/jednostki).
+    let appEnergy = null;
+    if (privateToken && SPACE_ID) {
+      try { appEnergy = await fetchEnergyForPeriod('day', localDate); }
+      catch(e) { if(e.message) console.debug('Energy metrics error:', e.message.slice(0,80)); }
     }
+    if (Number.isFinite(appEnergy?.totalKwh)) solarWh = appEnergy.totalKwh * 1000;
+    else solarWh = NaN;
+    if (Number.isFinite(appEnergy?.loadKwh)) consumptionWh = appEnergy.loadKwh * 1000;
+    else consumptionWh = NaN;
+    const productionEfficiency = Number.isFinite(appEnergy?.efficiency) ? appEnergy.efficiency : null;
 
     const instantEff = deviceState.pvTotal > 0
       ? Math.round(deviceState.pvTotal / PANEL_MAX_W * 1000) / 10 : 0;
@@ -434,13 +437,13 @@ app.get('/api/efficiency', async (req, res) => {
 
     res.json({
       instantEff, dailyEff,
-      solarKwh: Math.round(solarWh/100)/10,
-      consumptionKwh: Math.round(consumptionWh/100)/10,
+      solarKwh: Number.isFinite(solarWh) ? Math.round(solarWh/10)/100 : null,
+      consumptionKwh: Number.isFinite(consumptionWh) ? Math.round(consumptionWh/10)/100 : null,
       fromGridKwh: Math.round(fromGridWh/100)/10,
       toGridKwh: Math.round(toGridWh/100)/10,
       batChgKwh: Math.round(batChgWh/100)/10,
       batDsgKwh: Math.round(batDsgWh/100)/10,
-      independence: Math.round(independence*10)/10,
+      productionEfficiency,
       co2g: Math.round(co2g),
       forecastKwh, peakSunHours, weather,
       forecastTomorrow: SOLCAST_KEY ? (await fetchSolcast().catch(()=>({tomorrow:0}))).tomorrow : 0,
