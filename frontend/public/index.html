@@ -453,12 +453,12 @@ body{background:radial-gradient(ellipse at 82% 0%,color-mix(in srgb,var(--bat) 8
         </div>
       </div>
       <div class="card" style="padding:14px 16px">
-        <div style="font-size:11px;color:var(--t2);margin-bottom:6px">⚡ Niezależność</div>
+        <div style="font-size:11px;color:var(--t2);margin-bottom:6px">☀️ Efektywność produkcji</div>
         <div style="display:flex;align-items:baseline;gap:3px">
-          <span id="eff-independence" style="font-family:var(--mono);font-size:26px;font-weight:500;color:var(--grid-in)">–</span>
+          <span id="eff-production-efficiency" style="font-family:var(--mono);font-size:26px;font-weight:500;color:var(--grid-in)">–</span>
           <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">%</span>
         </div>
-        <div class="ek-bar" style="margin-top:8px"><div id="eff-independence-bar" class="ek-bar-f" style="background:var(--grid-in);width:0%"></div></div>
+        <div class="ek-bar" style="margin-top:8px"><div id="eff-production-efficiency-bar" class="ek-bar-f" style="background:var(--grid-in);width:0%"></div></div>
         <div style="font-size:11px;color:var(--t3);margin-top:8px">energia własna</div>
       </div>
       <div class="card" style="padding:14px 16px">
@@ -1333,8 +1333,8 @@ async function loadEfficiency(){
     const card=document.getElementById('eff-card');if(card)card.style.display='block';
     const sv=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
     const sb=(id,pct)=>{const e=document.getElementById(id);if(e)e.style.width=Math.min(100,pct||0)+'%';};
-    sv('eff-solar',d.solarKwh>0?d.solarKwh.toFixed(1):'–');
-    sv('eff-consumption',(d.consumptionKwh||0).toFixed(1));
+    sv('eff-solar',d.solarKwh!=null?d.solarKwh.toFixed(2):'–');
+    sv('eff-consumption',d.consumptionKwh!=null?d.consumptionKwh.toFixed(2):'–');
     if(d.consumptionKwh>0){
       const cov=Math.round(d.solarKwh/d.consumptionKwh*100);
       sb('eff-solar-bar',Math.min(cov,100));
@@ -1365,8 +1365,8 @@ async function loadEfficiency(){
       const cur=d.weather.find(w=>w.hour===nowH)||d.weather.find(w=>w.hour===nowH-1)||d.weather[Math.floor(d.weather.length/2)];
       sv('eff-weather',(cur?.weather||'–')+' · '+(d.peakSunHours||0)+'h');
     }
-    sv('eff-independence',d.independence>0?d.independence.toFixed(1):'–');
-    sb('eff-independence-bar',d.independence);
+    sv('eff-production-efficiency',d.productionEfficiency!=null?d.productionEfficiency.toFixed(1):'–');
+    sb('eff-production-efficiency-bar',d.productionEfficiency);
     sv('eff-fromgrid',d.fromGridKwh>0?d.fromGridKwh.toFixed(1):'–');
     sb('eff-fromgrid-bar',Math.min((d.fromGridKwh||0)/20*100,100));
     sv('eff-togrid-val',d.toGridKwh>0?d.toGridKwh.toFixed(1):'–');
